@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.log
+.cache/
+# banco e notas pessoais nunca vao pro repo (que e publico na plataforma)
+data/2brain.db
+data/2brain.bin
+data/2brain.bin.tmp
+data/ideias.json

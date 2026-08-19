@@ -1,0 +1,413 @@
+/* Segundo cerebro - estilos.
+   Tokens do iOS (system colors) com indigo #5856D6 no lugar do azul padrao. */
+
+/* ===========================================================
+   Tokens: system colors do iOS. Indigo #5856D6 no lugar do azul
+   padrao, pra ter identidade sem sair da linguagem da plataforma.
+   =========================================================== */
+:root {
+  --fundo: #F2F2F7;
+  --superficie: #FFFFFF;
+  --superficie-2: #F0F0F4;
+  --elevado: rgba(255,255,255,.72);
+  --texto: #1C1C1E;
+  --texto-2: #6C6C70;
+  --texto-3: #A1A1A6;
+  --separador: rgba(60,60,67,.13);
+  --acento: #5856D6;
+  --acento-eco: rgba(88,86,214,.10);
+  --perigo: #FF3B30;
+  --sucesso: #34C759;
+  --alerta: #FF9500;
+  --sombra: 0 1px 2px rgba(0,0,0,.05), 0 6px 22px rgba(0,0,0,.05);
+  --r-card: 14px; --r-grande: 20px; --r-pill: 999px; --toque: 44px;
+
+  /* Tokens da visão sináptica. Ela segue o tema como o resto do app: no claro
+     usamos desenho normal (cor sólida), no escuro o brilho aditivo. */
+  --sin-fundo: #EEF0F5;
+  --sin-txt: #1C1C1E;
+  --sin-txt2: rgba(28,28,30,.55);
+  --sin-txt3: rgba(28,28,30,.42);
+  --sin-chip: rgba(28,28,30,.07);
+  --sin-chip-txt: rgba(28,28,30,.72);
+  --sin-ficha: rgba(255,255,255,.94);
+  --sin-borda: rgba(60,60,67,.16);
+  --sin-btn: rgba(28,28,30,.08);
+  --fonte: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+           "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif;
+}
+html[data-tema="escuro"] {
+  --fundo: #000000; --superficie: #1C1C1E; --superficie-2: #2C2C2E;
+  --elevado: rgba(28,28,30,.78);
+  --texto: #FFFFFF; --texto-2: #98989F; --texto-3: #636366;
+  --separador: rgba(84,84,88,.40);
+  --acento: #7D7AFF; --acento-eco: rgba(125,122,255,.16);
+  --sombra: 0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.5);
+  --sin-fundo: #05060B;
+  --sin-txt: #FFFFFF;
+  --sin-txt2: rgba(255,255,255,.5);
+  --sin-txt3: rgba(255,255,255,.42);
+  --sin-chip: rgba(255,255,255,.08);
+  --sin-chip-txt: rgba(255,255,255,.75);
+  --sin-ficha: rgba(22,23,32,.92);
+  --sin-borda: rgba(255,255,255,.1);
+  --sin-btn: rgba(255,255,255,.12);
+}
+@media (prefers-color-scheme: dark) {
+  html[data-tema="sistema"] {
+    --fundo: #000000; --superficie: #1C1C1E; --superficie-2: #2C2C2E;
+    --elevado: rgba(28,28,30,.78);
+    --texto: #FFFFFF; --texto-2: #98989F; --texto-3: #636366;
+    --separador: rgba(84,84,88,.40);
+    --acento: #7D7AFF; --acento-eco: rgba(125,122,255,.16);
+    --sombra: 0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.5);
+  --sin-fundo: #05060B;
+  --sin-txt: #FFFFFF;
+  --sin-txt2: rgba(255,255,255,.5);
+  --sin-txt3: rgba(255,255,255,.42);
+  --sin-chip: rgba(255,255,255,.08);
+  --sin-chip-txt: rgba(255,255,255,.75);
+  --sin-ficha: rgba(22,23,32,.92);
+  --sin-borda: rgba(255,255,255,.1);
+  --sin-btn: rgba(255,255,255,.12);
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--fonte); background: var(--fundo); color: var(--texto);
+  font-size: 17px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+  padding-bottom: env(safe-area-inset-bottom);
+  transition: background .25s ease, color .25s ease;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; touch-action: manipulation; }
+.envolucro { max-width: 720px; margin: 0 auto; padding: 0 16px 72px; }
+
+/* ===================== Barra ===================== */
+.barra {
+  position: sticky; top: 0; z-index: 30; background: var(--elevado);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid transparent; padding-top: env(safe-area-inset-top);
+  transition: border-color .2s ease;
+}
+.barra.rolou { border-bottom-color: var(--separador); }
+.barra-int { max-width: 720px; margin: 0 auto; padding: 6px 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.barra-titulo { font-size: 17px; font-weight: 600; letter-spacing: -.01em; opacity: 0;
+  transition: opacity .2s ease; padding-left: 4px; }
+.barra.rolou .barra-titulo { opacity: 1; }
+.barra-acoes { display: flex; align-items: center; gap: 2px; }
+
+.icone-btn { width: var(--toque); height: var(--toque); display: grid; place-items: center;
+  border-radius: var(--r-pill); color: var(--acento); transition: background .15s ease; }
+.icone-btn:hover { background: var(--acento-eco); }
+.icone-btn:active { transform: scale(.94); }
+.icone-btn svg { width: 22px; height: 22px; }
+
+.titulao { font-size: 34px; line-height: 1.15; font-weight: 700; letter-spacing: -.022em; margin: 10px 0 2px; }
+.subtitulao { color: var(--texto-2); font-size: 15px; margin: 0 0 18px; }
+
+/* ===================== Busca ===================== */
+.busca { position: relative; margin-bottom: 16px; }
+.busca > svg { position: absolute; left: 11px; top: 19px; transform: translateY(-50%);
+  width: 17px; height: 17px; color: var(--texto-3); pointer-events: none; }
+.busca input { width: 100%; height: 38px; padding: 0 38px; background: var(--superficie-2);
+  border: 1px solid var(--separador); border-radius: 11px; font-size: 17px; outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease; }
+html[data-tema="escuro"] .busca input { border-color: transparent; }
+.busca input:focus { border-color: var(--acento); box-shadow: 0 0 0 3px var(--acento-eco); }
+.busca input::-webkit-search-cancel-button { display: none; }
+.busca .limpar { position: absolute; right: 6px; top: 19px; transform: translateY(-50%);
+  width: 28px; height: 28px; border-radius: var(--r-pill); display: none; place-items: center; color: var(--texto-3); }
+.busca.tem-texto .limpar { display: grid; }
+
+/* ===================== Compositor ===================== */
+.compositor { background: var(--superficie); border-radius: var(--r-grande);
+  box-shadow: var(--sombra); padding: 14px; margin-bottom: 20px; }
+.compositor textarea { width: 100%; border: 0; outline: none; resize: none; background: none;
+  font-size: 17px; line-height: 1.45; min-height: 52px; max-height: 220px; }
+.compositor textarea::placeholder { color: var(--texto-3); }
+.compositor-rodape { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.dica-compositor { font-size: 13px; color: var(--texto-3); }
+
+.btn { height: 36px; padding: 0 16px; border-radius: var(--r-pill); font-size: 15px; font-weight: 600;
+  background: var(--acento); color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: opacity .15s ease, transform .06s ease; }
+.btn:disabled { opacity: .4; }
+.btn:not(:disabled):active { transform: scale(.97); }
+.btn-suave { background: var(--acento-eco); color: var(--acento); }
+.btn-largo { width: 100%; height: 46px; font-size: 17px; }
+
+/* ===================== Segmentado ===================== */
+.segmentado { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  background: var(--superficie-2); border-radius: 10px; padding: 2px; margin-bottom: 16px; position: relative; }
+.segmentado button { height: 32px; border-radius: 8px; font-size: 14px; font-weight: 600;
+  color: var(--texto-2); transition: color .2s ease; position: relative; z-index: 1; }
+.segmentado button.ativo { color: var(--texto); }
+.segmentado .indicador { position: absolute; top: 2px; bottom: 2px; border-radius: 8px;
+  background: var(--superficie); box-shadow: 0 1px 3px rgba(0,0,0,.12);
+  transition: transform .28s cubic-bezier(.32,.72,0,1), width .28s cubic-bezier(.32,.72,0,1); z-index: 0; }
+
+/* ===================== Filtros (chips) ===================== */
+/* Rola na horizontal. O degrade na direita e a pista de que tem mais coisa:
+   sem ele, com a barra escondida, parece que a lista simplesmente acaba. */
+.faixa-chips { position: relative; margin: 0 -16px 2px; }
+.faixa-chips::after { content: ""; position: absolute; right: 0; top: 0; bottom: 14px; width: 34px;
+  pointer-events: none; background: linear-gradient(90deg, transparent, var(--fundo) 78%); }
+.chips { display: flex; gap: 7px; overflow-x: auto; padding: 0 16px 14px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.chips::-webkit-scrollbar { display: none; }
+.chips.periodo { margin: 0 -16px 4px; }
+.chip { flex: none; touch-action: manipulation; height: 32px; padding: 0 13px; border-radius: var(--r-pill);
+  background: var(--superficie); color: var(--texto-2); font-size: 14px; font-weight: 500;
+  box-shadow: var(--sombra); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.chip.ativo { background: var(--acento); color: #fff; box-shadow: none; }
+.chip .ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+/* ===================== Secao ===================== */
+.cab-secao { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 4px 2px 10px; }
+.cab-secao h2 { font-size: 20px; font-weight: 700; letter-spacing: -.015em; margin: 0; }
+.cab-secao p { font-size: 13px; color: var(--texto-2); margin: 2px 0 0; }
+.mini-seg { display: inline-flex; background: var(--superficie-2); border-radius: 8px; padding: 2px; flex: none; }
+.mini-seg button { padding: 4px 11px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--texto-2); }
+.mini-seg button.ativo { background: var(--superficie); color: var(--texto); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+
+/* ===================== Cards ===================== */
+.lista { display: grid; gap: 10px; }
+@media (min-width: 900px) { .lista.duas { grid-template-columns: 1fr 1fr; } }
+
+.nota { background: var(--superficie); border-radius: var(--r-card); padding: 14px; text-align: left;
+  width: 100%; box-shadow: var(--sombra); display: grid; gap: 7px; position: relative; overflow: hidden;
+  touch-action: manipulation;
+  transition: transform .1s ease, box-shadow .2s ease; }
+.nota:active { transform: scale(.985); }
+/* A animacao de entrada so roda quando a VISTA muda (trocar aba, buscar).
+   Antes ela rodava a cada render, entao filtrar ou digitar fazia todos os
+   cards re-animarem e os toques caiam no vazio durante o movimento. */
+.lista.animar .nota { animation: entrar .3s cubic-bezier(.32,.72,0,1) both; }
+@keyframes entrar { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* faixa lateral com a cor da area: mesma cor do neuronio na visao sinaptica */
+.nota::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--cor-area, transparent); }
+.nota.recente { box-shadow: 0 0 0 2px var(--acento), var(--sombra); }
+
+.nota-topo { display: flex; align-items: center; gap: 8px; }
+.selo-tipo { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--acento); background: var(--acento-eco); padding: 3px 8px; border-radius: var(--r-pill); white-space: nowrap; }
+.selo-evento { color: var(--alerta); background: rgba(255,149,0,.13); }
+.selo-agora { color: var(--sucesso); background: rgba(52,199,89,.14); }
+.nota-resumo { font-size: 16px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+.nota-texto { font-size: 14px; color: var(--texto-2); margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.nota-pe { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--texto-3); }
+.area-chip { color: var(--texto-2); font-weight: 500; font-size: 13px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.ligacoes { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.ligacoes .bolha { width: 6px; height: 6px; border-radius: 50%; background: var(--separador); }
+.ligacoes .bolha.on { background: var(--acento); }
+.ligacoes .num { font-size: 12px; color: var(--texto-2); font-weight: 600; margin-left: 2px; }
+
+/* ===================== Estados ===================== */
+.vazio { text-align: center; padding: 44px 20px; color: var(--texto-2); }
+.vazio .emoji { font-size: 34px; display: block; margin-bottom: 10px; }
+.vazio h3 { font-size: 17px; font-weight: 600; color: var(--texto); margin: 0 0 4px; }
+.vazio p { font-size: 15px; margin: 0; }
+.esqueleto { background: var(--superficie); border-radius: var(--r-card); padding: 14px; box-shadow: var(--sombra); }
+.esqueleto .linha { height: 12px; border-radius: 6px; background: var(--separador); margin-bottom: 9px;
+  animation: pulsar 1.4s ease-in-out infinite; }
+.esqueleto .linha:last-child { margin-bottom: 0; width: 55%; }
+@keyframes pulsar { 0%,100% { opacity: .5; } 50% { opacity: .9; } }
+
+
+/* Botao de gerar insight: acao explicita, porque usa o modelo forte e demora. */
+.btn-insight { margin-bottom: 0; gap: 8px; }
+
+/* Progresso do relink */
+.relink-fase { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+.barra-prog { height: 8px; border-radius: var(--r-pill); background: var(--superficie-2); overflow: hidden; }
+html[data-tema="escuro"] .barra-prog { background: #2C2C2E; }
+.barra-prog-cheia { height: 100%; border-radius: var(--r-pill); background: var(--acento);
+  transition: width .4s cubic-bezier(.32,.72,0,1); }
+.relink-linha { display: flex; justify-content: space-between; margin-top: 8px;
+  font-size: 13px; color: var(--texto-2); }
+.relink-tempo { margin: 6px 0 0; font-size: 13px; color: var(--texto-3); }
+.relink-falhas { margin: 8px 0 0; font-size: 13px; color: var(--alerta); }
+/* As duas acoes da busca ficam lado a lado no desktop e empilhadas no celular. */
+.acoes-busca { display: grid; gap: 8px; margin-bottom: 14px; }
+@media (min-width: 560px) { .acoes-busca { grid-template-columns: 1fr 1fr; } }
+.acoes-busca .faixa-insight { margin-bottom: 0; }
+.btn-perguntas { gap: 8px; }
+/* Faixa compacta: o insight nao ocupa mais a tela toda, ele mora no modal. */
+.faixa-insight { display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--acento-eco); color: var(--acento); border-radius: var(--r-card);
+  padding: 11px 14px; margin-bottom: 12px; font-size: 14px; font-weight: 600; text-align: left; }
+.faixa-insight.aguardando { color: var(--texto-2); font-weight: 500; }
+.refazer-mini { margin-left: auto; font-size: 12px; font-weight: 600; opacity: .7;
+  text-decoration: underline; }
+.refazer-mini:hover { opacity: 1; }
+.texto-insight { padding: 14px; }
+.texto-insight p { margin: 0 0 12px; font-size: 15.5px; line-height: 1.6; }
+.texto-insight p:last-child { margin-bottom: 0; }
+.texto-insight strong { color: var(--acento); font-weight: 600; }
+.btn-refazer { margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--acento);
+  opacity: .75; text-decoration: underline; padding: 4px 0; }
+.btn-refazer:hover { opacity: 1; }
+.cartao-insight .pensando { display: flex; align-items: center; gap: 8px; color: var(--texto-2); }
+.pontinhos { display: inline-flex; gap: 3px; flex: none; }
+.pontinhos i { width: 5px; height: 5px; border-radius: 50%; background: var(--acento);
+  animation: saltar 1.1s ease-in-out infinite; }
+.pontinhos i:nth-child(2) { animation-delay: .15s; }
+.pontinhos i:nth-child(3) { animation-delay: .3s; }
+@keyframes saltar { 0%,60%,100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+/* ===================== Sheet ===================== */
+.cortina { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 40; opacity: 0;
+  pointer-events: none; transition: opacity .3s ease; }
+.cortina.aberta { opacity: 1; pointer-events: auto; }
+/* IMPORTANTE: fechado precisa de visibility:hidden + pointer-events:none.
+   Sem isso, no desktop o sheet continua centralizado com opacity:0 e vira um
+   painel invisivel de 480px engolindo todos os cliques do meio da tela.
+   A visibility troca com atraso igual ao da transicao, pra animacao de saida rodar. */
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--fundo);
+  border-radius: 16px 16px 0 0; max-height: 88vh; overflow-y: auto; overscroll-behavior: contain;
+  transform: translateY(100%);
+  visibility: hidden; pointer-events: none;
+  transition: transform .38s cubic-bezier(.32,.72,0,1), opacity .3s ease, visibility 0s linear .38s;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 40px rgba(0,0,0,.22); }
+.sheet.aberto { transform: none; visibility: visible; pointer-events: auto;
+  transition: transform .38s cubic-bezier(.32,.72,0,1), opacity .3s ease, visibility 0s; }
+@media (min-width: 640px) {
+  .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: 480px; border-radius: 16px;
+    transform: translate(-50%,-46%) scale(.96); opacity: 0; max-height: 84vh; }
+  .sheet.aberto { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+}
+.puxador { width: 36px; height: 5px; border-radius: var(--r-pill); background: var(--texto-3); opacity: .35; margin: 8px auto 4px; }
+@media (min-width: 640px) { .puxador { display: none; } }
+.sheet-cab { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px 12px; }
+.sheet-cab h3 { font-size: 20px; font-weight: 700; letter-spacing: -.015em; margin: 0; }
+.sheet-corpo { padding: 0 16px; }
+
+.grupo { background: var(--superficie); border-radius: var(--r-card); overflow: hidden; margin-bottom: 18px; }
+.grupo-titulo { font-size: 13px; color: var(--texto-2); text-transform: uppercase; letter-spacing: .04em;
+  font-weight: 600; margin: 0 0 7px 14px; }
+.item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 14px; min-height: var(--toque);
+  text-align: left; border-bottom: 1px solid var(--separador); transition: background .12s ease; }
+.item:last-child { border-bottom: 0; }
+.item:hover { background: var(--superficie-2); }
+.item svg { width: 20px; height: 20px; color: var(--acento); flex: none; }
+.item-txt { flex: 1; min-width: 0; }
+.item-txt strong { display: block; font-size: 16px; font-weight: 500; }
+.item-txt span { display: block; font-size: 13px; color: var(--texto-2); margin-top: 1px; }
+.item-txt em { display: block; font-size: 13px; color: var(--texto-2); font-style: italic; margin-top: 3px; }
+.item .valor { font-size: 15px; color: var(--texto-2); flex: none; }
+.item.destrutivo { color: var(--perigo); }
+.item.destrutivo svg { color: var(--perigo); }
+
+.convite { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  background: var(--superficie); border-radius: var(--r-card); padding: 13px 14px; margin-top: 14px;
+  box-shadow: var(--sombra); color: var(--texto); }
+.convite svg { color: var(--acento); flex: none; }
+.convite span { flex: 1; font-size: 13px; color: var(--texto-2); }
+.convite strong { display: block; font-size: 15px; color: var(--texto); font-weight: 600; margin-bottom: 1px; }
+.num-sugestao { width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--acento-eco); color: var(--acento); font-size: 12px; font-weight: 700; }
+
+.ponto-area { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.voltar { display: inline-flex; align-items: center; gap: 3px; color: var(--acento);
+  font-size: 16px; font-weight: 500; margin: 0 0 8px -6px; padding: 6px; }
+.voltar svg { width: 20px; height: 20px; }
+
+/* Linha do tempo */
+.dia-rot { font-size: 13px; font-weight: 700; color: var(--texto-2); text-transform: uppercase;
+  letter-spacing: .04em; margin: 20px 2px 8px; }
+.dia-rot:first-of-type { margin-top: 4px; }
+.intervalo { display: flex; gap: 10px; margin: 0 0 16px; }
+.intervalo label { flex: 1; display: flex; flex-direction: column; gap: 5px;
+  font-size: 13px; font-weight: 600; color: var(--texto-2); }
+.intervalo input { height: 38px; padding: 0 11px; border: 1.5px solid var(--separador);
+  border-radius: 11px; background: var(--superficie); font-size: 15px; color: var(--texto); }
+.intervalo input:focus { outline: none; border-color: var(--acento); }
+.cab-secao .btn { flex: none; height: 32px; font-size: 13px; padding: 0 13px; }
+
+.detalhe-bloco { padding: 14px; border-bottom: 1px solid var(--separador); }
+.detalhe-bloco:last-child { border-bottom: 0; }
+.detalhe-rot { font-size: 12px; color: var(--texto-2); text-transform: uppercase; letter-spacing: .04em;
+  font-weight: 600; margin: 0 0 5px; }
+.detalhe-txt { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-size: 13px; background: var(--superficie-2); color: var(--texto-2); padding: 4px 10px; border-radius: var(--r-pill); }
+
+/* ===================== Toast ===================== */
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom));
+  transform: translate(-50%, 160%); z-index: 90; pointer-events: none; background: rgba(28,28,30,.94); color: #fff;
+  padding: 12px 18px; border-radius: var(--r-pill); font-size: 15px; font-weight: 500;
+  box-shadow: 0 10px 34px rgba(0,0,0,.3); transition: transform .38s cubic-bezier(.32,.72,0,1);
+  max-width: calc(100vw - 32px); text-align: center; }
+html[data-tema="escuro"] .toast { background: rgba(72,72,74,.98); }
+.toast.visivel { transform: translate(-50%, 0); }
+
+/* ===================== Visao Sinaptica =====================
+   Sempre escura: o brilho aditivo dos neuronios so tem contraste
+   no escuro. E uma "sala de observacao", nao uma tela do app. */
+.sinapse { position: fixed; inset: 0; z-index: 80; background: var(--sin-fundo); display: none;
+  pointer-events: none; }
+.sinapse.aberta { pointer-events: auto; }
+.sinapse.aberta { display: block; animation: fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+#telaSinapse { width: 100%; height: 100%; display: block; touch-action: none; }
+.sinapse-topo { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center;
+  justify-content: space-between; padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+  background: linear-gradient(var(--sin-fundo), transparent); pointer-events: none; }
+.sinapse-topo h2 { margin: 0; font-size: 17px; font-weight: 600; color: var(--sin-txt); letter-spacing: -.01em; }
+.sinapse-topo p { margin: 2px 0 0; font-size: 12px; color: var(--sin-txt2); }
+.sinapse-topo button { pointer-events: auto; color: var(--sin-txt); }
+.sinapse-dica { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom));
+  text-align: center; font-size: 12px; color: var(--sin-txt3); pointer-events: none; }
+.sinapse-carregando { position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--sin-txt2); font-size: 14px; }
+/* Controles da visao: ficam no topo, sem tampar o grafo */
+.sinapse-controles { position: absolute; left: 0; right: 0; top: calc(58px + env(safe-area-inset-top));
+  display: flex; flex-direction: column; gap: 6px; padding: 0 12px; }
+.sc-linha { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none;
+  align-items: center; padding-bottom: 2px; }
+.sc-linha::-webkit-scrollbar { display: none; }
+.sc-rot { font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--sin-txt3); flex: none; margin-right: 2px; margin-left: 4px; }
+.sc-rot:first-child { margin-left: 0; }
+.sc-chip { flex: none; height: 26px; padding: 0 10px; border-radius: var(--r-pill);
+  background: var(--sin-chip); color: var(--sin-chip-txt); font-size: 12px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px; backdrop-filter: blur(8px); }
+.sc-chip.on { background: var(--acento); color: #fff; }
+.sc-chip i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+.legenda { position: absolute; left: 14px; bottom: calc(46px + env(safe-area-inset-bottom));
+  display: flex; flex-wrap: wrap; gap: 6px; max-width: min(70vw, 420px); }
+.legenda span { display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
+  color: var(--sin-chip-txt); background: var(--sin-chip); padding: 3px 8px; border-radius: var(--r-pill); }
+.legenda i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.ficha-neuronio { position: absolute; left: 14px; right: 14px; bottom: calc(46px + env(safe-area-inset-bottom));
+  background: var(--sin-ficha); backdrop-filter: blur(20px); border: 1px solid var(--sin-borda);
+  border-radius: var(--r-card); padding: 14px; color: var(--sin-txt); max-width: 440px;
+  animation: subir .3s cubic-bezier(.32,.72,0,1) both; }
+@keyframes subir { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.ficha-neuronio .rot { font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--sin-txt2); margin: 0 0 4px; }
+.ficha-neuronio h4 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+.ficha-neuronio p { margin: 0; font-size: 13px; color: var(--sin-txt2); line-height: 1.5; }
+.ficha-neuronio .acoes { display: flex; gap: 8px; margin-top: 12px; }
+.ficha-neuronio .acoes button { height: 34px; padding: 0 14px; border-radius: var(--r-pill);
+  font-size: 14px; font-weight: 600; background: var(--sin-btn); color: var(--sin-txt); }
+.ficha-neuronio .acoes .primario { background: var(--acento); }
+
+.oculto { display: none !important; }
+:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; border-radius: 8px; }
+.opcoes-radio { display: grid; gap: 8px; }
+.op-radio { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--superficie);
+  border-radius: var(--r-card); cursor: pointer; }
+.op-radio input { accent-color: var(--acento); width: 20px; height: 20px; flex: none; }
+.op-radio .txt strong { display: block; font-size: 16px; font-weight: 500; }
+.op-radio .txt span { font-size: 13px; color: var(--texto-2); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+@media (max-width: 380px) { .titulao { font-size: 30px; } .envolucro { padding: 0 12px 64px; } }
