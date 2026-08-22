@@ -415,6 +415,21 @@ textarea.campo { height: auto; min-height: 62px; padding: 10px 12px; resize: ver
 .insight-fonte svg { flex: none; margin-top: 1px; }
 .insight-fonte strong { font-weight: 600; }
 
+/* Acordeon das notas que alimentaram o insight */
+.notas-insight { margin: 4px 0 14px; }
+.notas-insight > summary { display: flex; align-items: center; gap: 9px; cursor: pointer;
+  list-style: none; padding: 12px 14px; border-radius: var(--r-card);
+  background: var(--superficie-2); border: 1.5px solid var(--separador);
+  color: var(--texto); font-size: 14px; font-weight: 600; user-select: none; }
+.notas-insight > summary::-webkit-details-marker { display: none; }
+.notas-insight > summary:hover { border-color: var(--acento); }
+.notas-insight > summary .chevron { flex: none; opacity: .5; transition: transform .18s ease; }
+.notas-insight[open] > summary .chevron { transform: rotate(90deg); }
+.notas-insight > summary .conta { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  color: var(--acento); background: var(--acento-eco); border-radius: var(--r-pill); }
+.notas-insight > .lista { margin-top: 12px; }
+
 .oculto { display: none !important; }
 :focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; border-radius: 8px; }
 .opcoes-radio { display: grid; gap: 8px; }

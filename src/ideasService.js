@@ -449,7 +449,9 @@ function montarEscopoTexto({ area, periodo, desde, ate, tema }) {
  *   ate     ISO/AAAA-MM-DD
  *   limite  quantas notas no maximo entram no insight (padrao 20, teto 60)
  */
-export async function insightAvancado({ q = null, area = null, periodo = null, desde = null, ate = null, limite = 20 } = {}) {
+/* Seleciona o recorte de notas (area + periodo) e, se houver frase, reordena
+   por relevancia. Nao chama o LLM: e a base comum do insight e do preview. */
+async function selecionarRecorte({ q = null, area = null, periodo = null, desde = null, ate = null, limite = 20 } = {}) {
   const tema = q && String(q).trim() ? String(q).trim() : null;
   const lim = Math.max(1, Math.min(Number(limite) || 20, 60));
 
@@ -478,7 +480,7 @@ export async function insightAvancado({ q = null, area = null, periodo = null, d
   });
 
   if (base.length === 0) {
-    return { insight: null, insight_meta: null, usou: 0, escopo, escopoTexto, motivo: "nenhuma nota neste recorte" };
+    return { tema, lim, escopo, escopoTexto, base, selecionadas: [] };
   }
 
   let selecionadas;
@@ -501,6 +503,16 @@ export async function insightAvancado({ q = null, area = null, periodo = null, d
     selecionadas = base.slice(-lim).reverse();
   }
 
+  return { tema, lim, escopo, escopoTexto, base, selecionadas };
+}
+
+export async function insightAvancado(args = {}) {
+  const { tema, escopo, escopoTexto, base, selecionadas } = await selecionarRecorte(args);
+
+  if (base.length === 0) {
+    return { insight: null, insight_meta: null, usou: 0, escopo, escopoTexto, motivo: "nenhuma nota neste recorte" };
+  }
+
   const ins = await gerarInsight(tema, selecionadas, { escopoTexto });
   if (!ins) {
     return { insight: null, insight_meta: null, usou: selecionadas.length, escopo, escopoTexto, motivo: "modelo indisponivel agora" };
@@ -510,6 +522,20 @@ export async function insightAvancado({ q = null, area = null, periodo = null, d
     insight: ins.texto,
     insight_meta: ins.meta,
     usou: selecionadas.length,
+    escopo,
+    escopoTexto,
+    notas: selecionadas.map((n) => ({ id: n.id, resumo: n.resumo, area: n.area, score: n.score ?? null })),
+  };
+}
+
+/* Preview do recorte: mesmas notas que o insight usaria, SEM chamar o LLM.
+   Serve pro modal mostrar ao vivo o que sera considerado. Com frase custa 1
+   embedding + 1 busca vetorial; sem frase nem embedding. Nada de LLM. */
+export async function previewRecorte(args = {}) {
+  const { escopo, escopoTexto, base, selecionadas } = await selecionarRecorte(args);
+  return {
+    usou: selecionadas.length,
+    total: base.length,
     escopo,
     escopoTexto,
     notas: selecionadas.map((n) => ({ id: n.id, resumo: n.resumo, area: n.area, score: n.score ?? null })),

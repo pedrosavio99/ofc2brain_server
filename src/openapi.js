@@ -198,6 +198,35 @@ const openapi = {
         },
       },
     },
+    "/insight/preview": {
+      get: {
+        tags: ["Busca e insight"],
+        summary: "Preview do recorte: as mesmas notas do insight, SEM gerar o insight (sem LLM)",
+        description:
+          "Devolve exatamente as notas que /insight usaria, sem chamar o modelo. Com frase (q) " +
+          "custa 1 embedding + busca vetorial; sem frase, nem embedding. A UI chama isso ao vivo " +
+          "(com debounce) enquanto a pessoa mexe nos filtros.",
+        parameters: [
+          { name: "q", in: "query", schema: { type: "string" }, description: "Frase/pergunta de base (opcional)" },
+          { name: "area", in: "query", schema: { type: "string" } },
+          {
+            name: "periodo",
+            in: "query",
+            schema: { type: "string", enum: ["1d", "7d", "30d", "90d", "365d", "tudo"] },
+          },
+          { name: "desde", in: "query", schema: { type: "string" }, description: "ISO ou AAAA-MM-DD" },
+          { name: "ate", in: "query", schema: { type: "string" } },
+          { name: "limite", in: "query", schema: { type: "integer", default: 20, maximum: 60 } },
+        ],
+        responses: {
+          200: {
+            description: "Notas do recorte",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/PreviewRecorte" } } },
+          },
+          500: { $ref: "#/components/responses/Erro" },
+        },
+      },
+    },
     "/insight/sugestoes": {
       get: {
         tags: ["Busca e insight"],
@@ -417,6 +446,37 @@ const openapi = {
                 resumo: { type: "string" },
                 area: { type: "string" },
                 score: { type: "number", nullable: true },
+              },
+            },
+          },
+        },
+      },
+      PreviewRecorte: {
+        type: "object",
+        properties: {
+          usou: { type: "integer", description: "Quantas notas foram selecionadas" },
+          total: { type: "integer", description: "Total de notas no recorte antes do limite" },
+          escopoTexto: { type: "string" },
+          escopo: {
+            type: "object",
+            properties: {
+              area: { type: "string", nullable: true },
+              periodo: { type: "string", nullable: true },
+              desde: { type: "string", nullable: true },
+              ate: { type: "string", nullable: true },
+              tema: { type: "string", nullable: true },
+              limite: { type: "integer" },
+            },
+          },
+          notas: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+                resumo: { type: "string" },
+                area: { type: "string" },
+                score: { type: "number", nullable: true, description: "So com frase de base" },
               },
             },
           },

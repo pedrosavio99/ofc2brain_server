@@ -8,7 +8,7 @@
    ============================================================ */
 var S = {
   notas: [], eventos: [], aba: "foco", quantosNoHall: 5,
-  recentes: [], busca: "", resultadosBusca: null, insight: null, insightFonte: null, insightCarregando: false, insightEscopo: null,
+  recentes: [], busca: "", resultadosBusca: null, insight: null, insightFonte: null, insightNotas: null, insightCarregando: false, insightEscopo: null,
   filtroArea: null, filtroTipo: null, carregando: true,
   areaAberta: null, periodo: '7d', dataDe: '', dataAte: '', limiteTempo: 40,
 };
@@ -234,10 +234,11 @@ function adicionar() {
 }
 
 function buscar(q) {
-  if (!q) { S.resultadosBusca = null; S.insight = null; S.insightFonte = null; S.insightCarregando = false; render(); return; }
+  if (!q) { S.resultadosBusca = null; S.insight = null; S.insightFonte = null; S.insightNotas = null; S.insightCarregando = false; render(); return; }
   S.resultadosBusca = "carregando";
   S.insight = null;
   S.insightFonte = null;
+  S.insightNotas = null;
   S.insightCarregando = false;
   render();
   api("/pesquisa?q=" + encodeURIComponent(q) + "&limite=10")
@@ -249,6 +250,21 @@ function buscar(q) {
 
 /* Insight sob demanda: so roda quando voce pede, porque usa o modelo forte
    (Gemini) e demora alguns segundos. Nao faz sentido disparar a cada tecla. */
+/* Guarda, de forma enxuta, as notas que alimentaram o ultimo insight, pra
+   mostrar o acordeon depois. Mantem resumo/area como reserva caso a nota nao
+   esteja mais em S.notas na hora de desenhar o card. */
+function guardarNotasInsight(lista) {
+  if (!Array.isArray(lista) || lista.length === 0) { S.insightNotas = null; return; }
+  S.insightNotas = lista.map(function (n) {
+    return {
+      id: n.id,
+      resumo: n.resumo || null,
+      area: n.area || null,
+      score: (typeof n.score === "number" ? n.score : null),
+    };
+  });
+}
+
 function gerarInsight(escopo) {
   if (S.insightCarregando) return;
   var esc0 = escopo || S.insightEscopo || (S.busca ? { tipo: "busca", q: S.busca } : null);
@@ -256,6 +272,7 @@ function gerarInsight(escopo) {
   S.insightEscopo = esc0;
   S.insightCarregando = true;
   S.insight = null;
+  S.insightNotas = null;
   render();
 
   var url;
@@ -273,6 +290,8 @@ function gerarInsight(escopo) {
     S.insight = d.insight || null;
     S.insightFonte = d.insight_meta || null;
     if (esc0.tipo === "busca" && d.resultados) S.resultadosBusca = d.resultados;
+    // acordeon: mostra o que o modelo realmente leu (busca e periodo mandam em d.resultados)
+    guardarNotasInsight(d.resultados);
     if (!S.insight) { avisar("O modelo nao conseguiu gerar um insight agora."); return; }
     abrirInsight(esc0.tipo === "periodo" ? "Insight do período" : "Insight");
   }).catch(function (e) { avisar(e.message || "Não deu pra gerar o insight."); })
@@ -526,6 +545,28 @@ function descreverFonte(meta) {
     (linha2.length ? "<br>" + esc(linha2.join(" · ")) : "") + "</span></div>";
 }
 
+/* Acordeon com as notas que alimentaram o insight. Reusa o cardNota, entao
+   fica igual a home (e o clique ja abre a nota pelo handler global do .nota).
+   Prefere a nota completa de S.notas; se nao achar, cai no que veio do backend. */
+function blocoNotasInsight() {
+  var lista = S.insightNotas;
+  if (!Array.isArray(lista) || lista.length === 0) return "";
+  var cards = lista.map(function (ref) {
+    var full = S.notas.filter(function (x) { return x.id === ref.id; })[0];
+    var nota = full || { id: ref.id, resumo: ref.resumo, area: ref.area, texto_original: "" };
+    return cardNota(nota, { score: ref.score });
+  }).join("");
+  var n = lista.length;
+  return '<details class="notas-insight">' +
+    '<summary>' +
+      '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 6l6 6-6 6"/></svg>' +
+      "<span>Notas usadas no insight</span>" +
+      '<span class="conta">' + n + "</span>" +
+    "</summary>" +
+    '<div class="lista duas">' + cards + "</div>" +
+  "</details>";
+}
+
 /* Insight agora vive num modal: fecha no X, no toque fora ou no Esc, e nao
    empurra mais a lista pra baixo. */
 function abrirInsight(titulo) {
@@ -540,6 +581,7 @@ function abrirInsight(titulo) {
   abrirSheet(titulo || "Insight",
     descreverFonte(S.insightFonte) +
     '<div class="grupo texto-insight">' + paragrafos + "</div>" +
+    blocoNotasInsight() +
     '<button class="btn btn-suave btn-largo" id="btnInsightRefazer">Gerar de novo</button>');
   var b = $("#btnInsightRefazer");
   if (b) b.addEventListener("click", function () { fecharSheet(); gerarInsight(S.insightEscopo); });
@@ -915,6 +957,140 @@ function lerFormIA() {
   var ate = $("#iaAte"); if (ate) IA.ate = ate.value;
 }
 
+/* Replica no cliente a selecao que o backend faz em insightAvancado, pra dar um
+   preview ao vivo. Filtro por area + periodo e identico ao servidor. A ordenacao
+   por relevancia a frase NAO da pra fazer aqui (precisa de embedding), entao com
+   frase mostramos o recorte inteiro como candidatas. */
+function recorteIA() {
+  var area = IA.area || "";
+  var de = null, ate = null;
+  if (IA.periodo === "custom") {
+    de = IA.de ? new Date(IA.de + "T00:00:00").getTime() : null;
+    ate = IA.ate ? new Date(IA.ate + "T23:59:59.999").getTime() : null;
+  } else if (IA.periodo && IA.periodo !== "tudo") {
+    var dias = { "1d": 1, "7d": 7, "30d": 30, "90d": 90, "365d": 365 }[IA.periodo];
+    if (dias) de = Date.now() - dias * 86400000;
+  }
+  var pool = S.notas.filter(function (n) {
+    if (area && (n.area || "") !== area) return false;
+    var t = new Date(n.criado_em).getTime();
+    if (isNaN(t)) return de === null && ate === null;
+    if (de !== null && t < de) return false;
+    if (ate !== null && t > ate) return false;
+    return true;
+  });
+  // mais recentes primeiro (o backend usa slice(-lim).reverse())
+  pool.sort(function (a, b) { return String(b.criado_em || "").localeCompare(String(a.criado_em || "")); });
+  return pool;
+}
+
+// desenha o acordeon do preview a partir de uma lista de notas
+function envelopePreviewIA(titulo, conta, cards, sobra) {
+  return '<details class="notas-insight" open>' +
+    "<summary>" +
+      '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 6l6 6-6 6"/></svg>' +
+      "<span>" + esc(titulo) + "</span>" +
+      '<span class="conta">' + conta + "</span>" +
+    "</summary>" +
+    '<div class="lista duas">' + cards + "</div>" + (sobra || "") +
+  "</details>";
+}
+
+// monta os cards olhando a nota completa em S.notas (pra ter texto/ligacoes),
+// caindo no que veio do backend se a nota nao estiver em memoria
+function cardsPreviewIA(lista) {
+  return lista.map(function (ref) {
+    var full = S.notas.filter(function (x) { return x.id === ref.id; })[0];
+    var nota = full || { id: ref.id, resumo: ref.resumo, area: ref.area, texto_original: "" };
+    return cardNota(nota, (ref.score != null ? { score: ref.score } : {}));
+  }).join("");
+}
+
+function vazioPreviewIA() {
+  return '<div class="dica-compositor" style="display:block;text-align:center;margin:2px 2px 4px">' +
+    "Nenhuma nota nesse recorte. Afrouxe a área ou o período.</div>";
+}
+
+// sem frase: exato e instantaneo (as mais recentes do recorte)
+function previewLocalHtmlIA() {
+  var pool = recorteIA();
+  var total = pool.length;
+  if (total === 0) return vazioPreviewIA();
+  var usadas = Math.min(IA.limite, total);
+  var titulo = "As " + usadas + " mais recentes" + (total > usadas ? " de " + total : "");
+  return envelopePreviewIA(titulo, usadas, cardsPreviewIA(pool.slice(0, IA.limite)), "");
+}
+
+// com frase: mostra o que o servidor devolveu, ja ordenado por relevancia
+function previewServidorHtmlIA(d) {
+  var lista = (d && d.notas) || [];
+  if (lista.length === 0) return vazioPreviewIA();
+  var total = d.total || lista.length;
+  var titulo = "As " + lista.length + " mais próximas da frase" + (total > lista.length ? " de " + total : "");
+  return envelopePreviewIA(titulo, lista.length, cardsPreviewIA(lista), "");
+}
+
+function carregandoPreviewIA() {
+  return '<div class="dica-compositor" style="display:block;text-align:center;margin:2px 2px 4px">' +
+    "Procurando as notas mais próximas da frase…</div>";
+}
+
+function erroPreviewIA() {
+  return '<div class="dica-compositor" style="display:block;text-align:center;margin:2px 2px 4px">' +
+    "Não deu pra montar o preview agora. As notas certas ainda entram ao gerar.</div>";
+}
+
+// estado do debounce + guarda de corrida (respostas fora de ordem)
+var IA_PREVIEW = { seq: 0, timer: null };
+
+function montarPreviewIA() {
+  lerFormIA();
+  var box = $("#iaPreview");
+  if (!box) return;
+
+  var temFrase = !!(IA.q && IA.q.trim());
+  IA_PREVIEW.seq++;                              // invalida resposta pendente
+  if (IA_PREVIEW.timer) { clearTimeout(IA_PREVIEW.timer); IA_PREVIEW.timer = null; }
+
+  if (!temFrase) {                               // instantaneo, de graca
+    box.innerHTML = previewLocalHtmlIA();
+    return;
+  }
+
+  // com frase: relevancia so o servidor calcula. Debounce pra nao chamar a cada tecla.
+  box.innerHTML = carregandoPreviewIA();
+  var meuSeq = IA_PREVIEW.seq;
+  IA_PREVIEW.timer = setTimeout(function () { buscarPreviewIA(meuSeq); }, 450);
+}
+
+function buscarPreviewIA(meuSeq) {
+  var params = [];
+  var q = (IA.q || "").trim();
+  if (q) params.push("q=" + encodeURIComponent(q));
+  if (IA.area) params.push("area=" + encodeURIComponent(IA.area));
+  if (IA.periodo === "custom") {
+    if (IA.de) params.push("desde=" + encodeURIComponent(IA.de));
+    if (IA.ate) params.push("ate=" + encodeURIComponent(IA.ate));
+  } else if (IA.periodo && IA.periodo !== "tudo") {
+    params.push("periodo=" + encodeURIComponent(IA.periodo));
+  }
+  params.push("limite=" + IA.limite);
+
+  api("/insight/preview?" + params.join("&"))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (meuSeq !== IA_PREVIEW.seq) return;     // chegou tarde, ignora
+      var box = $("#iaPreview");
+      if (!box) return;
+      box.innerHTML = d && d.erro ? erroPreviewIA() : previewServidorHtmlIA(d);
+    })
+    .catch(function () {
+      if (meuSeq !== IA_PREVIEW.seq) return;
+      var box = $("#iaPreview");
+      if (box) box.innerHTML = erroPreviewIA();
+    });
+}
+
 function telaInsightAvancado() {
   var opcoesArea = '<option value="">Todas as áreas</option>' + areasDisponiveis().map(function (a) {
     return '<option value="' + esc(a) + '"' + (IA.area === a ? " selected" : "") + ">" + esc(a) + "</option>";
@@ -945,17 +1121,39 @@ function telaInsightAvancado() {
     '<p class="dica-compositor" style="display:block;margin:0 2px 16px">Com uma frase, o insight foca nela. ' +
       "Sem nada, ele resume o que as notas do recorte dizem juntas.</p>" +
     '<p class="grupo-titulo">Quantas notas considerar</p>' + chipsQtd +
-    '<button class="btn btn-largo" id="iaGerar" style="margin-top:14px">Gerar insight</button>');
+    '<button class="btn btn-largo" id="iaGerar" style="margin-top:14px">Gerar insight</button>' +
+    '<p class="grupo-titulo" style="margin-top:20px">Notas selecionadas</p>' +
+    '<div id="iaPreview"></div>');
 
   var corpo = $("#sheetCorpo");
   corpo.querySelectorAll("[data-ia-periodo]").forEach(function (b) {
     b.addEventListener("click", function () { lerFormIA(); IA.periodo = b.dataset.iaPeriodo; telaInsightAvancado(); });
   });
+  // quantidade atualiza em lugar, sem re-render, pra nao resetar o scroll do modal
   corpo.querySelectorAll("[data-ia-qtd]").forEach(function (b) {
-    b.addEventListener("click", function () { lerFormIA(); IA.limite = Number(b.dataset.iaQtd); telaInsightAvancado(); });
+    b.addEventListener("click", function () {
+      lerFormIA();
+      IA.limite = Number(b.dataset.iaQtd);
+      corpo.querySelectorAll("[data-ia-qtd]").forEach(function (x) {
+        x.classList.toggle("ativo", Number(x.dataset.iaQtd) === IA.limite);
+      });
+      montarPreviewIA();
+    });
   });
+  // area, frase e datas customizadas atualizam o preview ao vivo
+  var selArea = $("#iaArea");
+  if (selArea) selArea.addEventListener("change", function () { IA.area = selArea.value; montarPreviewIA(); });
+  var campoQ = $("#iaQ");
+  if (campoQ) campoQ.addEventListener("input", function () { IA.q = campoQ.value; montarPreviewIA(); });
+  var campoDe = $("#iaDe");
+  if (campoDe) campoDe.addEventListener("change", function () { IA.de = campoDe.value; montarPreviewIA(); });
+  var campoAte = $("#iaAte");
+  if (campoAte) campoAte.addEventListener("change", function () { IA.ate = campoAte.value; montarPreviewIA(); });
+
   var g = $("#iaGerar");
   if (g) g.addEventListener("click", gerarInsightAvancado);
+
+  montarPreviewIA();
 }
 
 function gerarInsightAvancado() {
@@ -988,6 +1186,7 @@ function gerarInsightAvancado() {
       }
       S.insight = d.insight;
       S.insightFonte = d.insight_meta || null;
+      guardarNotasInsight(d.notas);
       fecharSheet();
       abrirInsight("Insight do recorte");
     })

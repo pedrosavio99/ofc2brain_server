@@ -93,6 +93,31 @@ async function handlerInsight(req, res) {
 router.get("/insight", handlerInsight);
 router.post("/insight", handlerInsight);
 
+/**
+ * Preview do recorte: devolve as MESMAS notas que o insight usaria, sem gerar o
+ * insight (sem LLM). Com frase custa 1 embedding + busca vetorial; sem frase, nada.
+ * A UI chama isso ao vivo (com debounce) enquanto a pessoa mexe nos filtros.
+ * GET /insight/preview?q=...&area=...&periodo=7d&limite=20  (POST tambem serve)
+ */
+async function handlerPreview(req, res) {
+  try {
+    const src = req.method === "POST" ? (req.body || {}) : req.query;
+    const dados = await ideasService.previewRecorte({
+      q: src.q || null,
+      area: src.area || null,
+      periodo: src.periodo || null,
+      desde: src.desde || null,
+      ate: src.ate || null,
+      limite: src.limite != null ? Number(src.limite) : 20,
+    });
+    res.json(dados);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+}
+router.get("/insight/preview", handlerPreview);
+router.post("/insight/preview", handlerPreview);
+
 // Proximos eventos/lembretes
 router.get("/eventos/proximos", async (req, res) => {
   try {
