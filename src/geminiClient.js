@@ -161,9 +161,22 @@ async function umaTentativa(chave, modelo, instrucaoSistema, prompt, opcoes, com
 
 /**
  * Pede um JSON ao Gemini, percorrendo modelos e chaves ate conseguir.
+ * Devolve so os dados (compatibilidade). Use gerarJSONDetalhado quando precisar
+ * saber DE QUAL chave/modelo a resposta saiu.
  * Lanca erro so quando TODAS as combinacoes falharem.
  */
 export async function gerarJSON(instrucaoSistema, prompt, opcoes = {}) {
+  const { dados } = await gerarJSONDetalhado(instrucaoSistema, prompt, opcoes);
+  return dados;
+}
+
+/**
+ * Igual ao gerarJSON, mas devolve { dados, meta }. O "meta" diz qual provedor,
+ * modelo e chave produziram a resposta, pra gente poder mostrar isso na UI
+ * (util pra saber por que um insight saiu melhor ou pior).
+ * @returns {Promise<{ dados: any, meta: { provedor, modelo, chave, totalChaves, pensando } }>}
+ */
+export async function gerarJSONDetalhado(instrucaoSistema, prompt, opcoes = {}) {
   const chaves = listaChaves();
   if (!chaves.length) {
     throw new Error(
@@ -175,7 +188,7 @@ export async function gerarJSON(instrucaoSistema, prompt, opcoes = {}) {
 
   // 1a rodada: os modelos escolhidos no .env
   let r = await percorrer(chaves, listaModelos(), instrucaoSistema, prompt, opcoes, estado);
-  if (r.ok) return r.dados;
+  if (r.ok) return { dados: r.dados, meta: r.meta };
 
   // 2a rodada: se nenhum dos configurados serviu, pergunta a API o que existe
   // nesta conta. E o que salva quando o Google aposenta um modelo.
@@ -184,7 +197,7 @@ export async function gerarJSON(instrucaoSistema, prompt, opcoes = {}) {
     const doServidor = (await modelosDaChave(chave)).filter((m) => !semModelo.has(chaveDescanso(chave, m)));
     if (!doServidor.length) continue;
     r = await percorrer([chave], doServidor.slice(0, 4), instrucaoSistema, prompt, opcoes, estado);
-    if (r.ok) return r.dados;
+    if (r.ok) return { dados: r.dados, meta: r.meta };
   }
 
   const modelos = listaModelos();
@@ -213,10 +226,21 @@ async function percorrer(chaves, modelos, instrucaoSistema, prompt, opcoes, esta
           if (!texto) throw new Error("resposta vazia");
           const dados = JSON.parse(texto);
           ponteiro++;
+          const totalChaves = listaChaves().length;
           console.log(
-            `[gemini] ok com ${modelo} na chave ${indice}/${listaChaves().length}${comPensamento ? " (pensando)" : ""}`
+            `[gemini] ok com ${modelo} na chave ${indice}/${totalChaves}${comPensamento ? " (pensando)" : ""}`
           );
-          return { ok: true, dados };
+          return {
+            ok: true,
+            dados,
+            meta: {
+              provedor: "gemini",
+              modelo,
+              chave: indice,
+              totalChaves,
+              pensando: comPensamento,
+            },
+          };
         } catch (err) {
           const msg = err && err.message ? err.message : String(err);
           estado.ultimoErro = err;

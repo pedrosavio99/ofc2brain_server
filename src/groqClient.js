@@ -113,11 +113,23 @@ async function umaChamada(chave, modelo, systemPrompt, userPrompt) {
 
 /**
  * Chat da Groq com resposta em JSON.
- * Percorre as chaves: se uma bate no limite, ela descansa e a proxima assume.
- * So espera de verdade quando TODAS estao em descanso.
+ * Devolve so os dados (compatibilidade). Use chatJSONDetalhado quando precisar
+ * saber de qual chave/modelo a resposta saiu.
  * @param {object} [opcoes] { modelo, tentativas }
  */
 export async function chatJSON(systemPrompt, userPrompt, opcoes = {}) {
+  const { dados } = await chatJSONDetalhado(systemPrompt, userPrompt, opcoes);
+  return dados;
+}
+
+/**
+ * Igual ao chatJSON, mas devolve { dados, meta } com provedor/modelo/chave.
+ * Percorre as chaves: se uma bate no limite, ela descansa e a proxima assume.
+ * So espera de verdade quando TODAS estao em descanso.
+ * @param {object} [opcoes] { modelo, tentativas }
+ * @returns {Promise<{ dados: any, meta: { provedor, modelo, chave, totalChaves } }>}
+ */
+export async function chatJSONDetalhado(systemPrompt, userPrompt, opcoes = {}) {
   const chaves = exigirChaves();
   const modelo = opcoes.modelo || process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile";
   const maxRodadas = opcoes.tentativas ?? 3;
@@ -136,7 +148,10 @@ export async function chatJSON(systemPrompt, userPrompt, opcoes = {}) {
       try {
         const r = await umaChamada(chave, modelo, systemPrompt, userPrompt);
         ponteiro++;
-        return r;
+        return {
+          dados: r,
+          meta: { provedor: "groq", modelo, chave: indice, totalChaves: chaves.length },
+        };
       } catch (err) {
         ultimoErro = err;
         if (err.limiteAtingido) {

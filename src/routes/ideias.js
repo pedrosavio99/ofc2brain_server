@@ -64,6 +64,35 @@ router.get("/pesquisa", async (req, res) => {
   }
 });
 
+/**
+ * Insight avancado sobre um RECORTE da base (nao e busca semantica pura).
+ * Serve pros tres modos que a UI oferece:
+ *   - por area e/ou por periodo             (ex: ?area=negocios&periodo=30d)
+ *   - com uma frase/pergunta de base        (ex: ?q=o que priorizar&periodo=7d)
+ *   - sem nada, so o recorte                 (ex: ?periodo=tudo)
+ *
+ * Aceita GET (parametros na query) e POST (mesmos campos no corpo JSON, melhor
+ * pra frases longas). Campos: q, area, periodo, desde, ate, limite.
+ */
+async function handlerInsight(req, res) {
+  try {
+    const src = req.method === "POST" ? (req.body || {}) : req.query;
+    const dados = await ideasService.insightAvancado({
+      q: src.q || null,
+      area: src.area || null,
+      periodo: src.periodo || null,
+      desde: src.desde || null,
+      ate: src.ate || null,
+      limite: src.limite != null ? Number(src.limite) : 20,
+    });
+    res.json(dados);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+}
+router.get("/insight", handlerInsight);
+router.post("/insight", handlerInsight);
+
 // Proximos eventos/lembretes
 router.get("/eventos/proximos", async (req, res) => {
   try {

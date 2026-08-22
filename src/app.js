@@ -8,6 +8,7 @@ import express from "express";
 import cors from "cors";
 import ideiasRouter from "./routes/ideias.js";
 import backupRouter from "./routes/backup.js";
+import docsRouter from "./routes/docs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -37,6 +38,8 @@ app.get("/api", (_req, res) => {
       "GET    /ideias/:id",
       "DELETE /ideias/:id",
       "GET    /pesquisa           ?q=&insight=true&limite=5",
+      "GET    /insight            ?q=&area=&periodo=7d|30d|tudo&desde=&ate=&limite=20",
+      "POST   /insight            { q?, area?, periodo?, desde?, ate?, limite? }",
       "GET    /eventos/proximos   ?dias=30",
       "GET    /insight/sugestoes  ?ultimas=20",
       "GET    /insight/chaves",
@@ -44,12 +47,15 @@ app.get("/api", (_req, res) => {
       "GET    /backup             (export JSON)",
       "POST   /restore            ?modo=substituir|mesclar (envie o JSON)",
       "GET    /armazenamento",
+      "GET    /docs               (Swagger UI)",
+      "GET    /openapi.json       (especificacao OpenAPI 3)",
     ],
   });
 });
 
 app.use(ideiasRouter);
 app.use(backupRouter);
+app.use(docsRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

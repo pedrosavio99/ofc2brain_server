@@ -1,7 +1,7 @@
 import { v4 as uuid } from "uuid";
 import * as db from "./db.js";
-import { gerarJSON, temGemini } from "./geminiClient.js";
-import { chatJSON } from "./groqClient.js";
+import { gerarJSON, gerarJSONDetalhado, temGemini } from "./geminiClient.js";
+import { chatJSON, chatJSONDetalhado } from "./groqClient.js";
 import { gerarEmbedding, MODELO_EMBEDDING } from "./embeddings.js";
 
 const SYSTEM_PROMPT = `Voce e um assistente que organiza uma base pessoal de conhecimento (um "segundo cerebro").
@@ -191,15 +191,20 @@ export async function pesquisar(query, { comInsight = false, limite = 5 } = {}) 
   }
 
   if (resultados.length === 0) {
-    return { resultados: [], insight: null };
+    return { resultados: [], insight: null, insight_meta: null };
   }
 
   let insight = null;
+  let insightMeta = null;
   if (comInsight) {
-    insight = await gerarInsight(query, resultados);
+    const ins = await gerarInsight(query, resultados);
+    if (ins) {
+      insight = ins.texto;
+      insightMeta = ins.meta;
+    }
   }
 
-  return { resultados, insight };
+  return { resultados, insight, insight_meta: insightMeta };
 }
 
 /**
@@ -216,9 +221,28 @@ export async function pesquisar(query, { comInsight = false, limite = 5 } = {}) 
  */
 const LIMIAR_RELEVANTE = 0.42;
 
-async function gerarInsight(query, resultados) {
-  const fortes = resultados.filter((r) => (r.score ?? 0) >= LIMIAR_RELEVANTE);
-  const fracos = resultados.filter((r) => (r.score ?? 0) < LIMIAR_RELEVANTE);
+/**
+ * Gera o insight sobre um conjunto de notas.
+ * @param {string|null} query  tema/frase/pergunta de base. Pode ser null: nesse
+ *        caso o insight nao tem um tema, ele so le o conjunto de notas do recorte
+ *        (area/periodo) e diz o que elas revelam juntas.
+ * @param {object[]} resultados notas ja selecionadas (com ou sem score).
+ * @param {object} [opcoes] { escopoTexto } descricao do recorte (ex: "area:
+ *        negocios, ultimos 30 dias"), usada no prompt quando nao ha tema.
+ * @returns {Promise<{ texto: string, meta: object }|null>}
+ */
+async function gerarInsight(query, resultados, opcoes = {}) {
+  const temTema = !!(query && String(query).trim());
+  const escopoTexto = opcoes.escopoTexto || null;
+
+  // Sem tema (insight por area/periodo): todas as notas do recorte contam como
+  // material forte, porque foram escolhidas de proposito, nao por semelhanca.
+  const fortes = temTema
+    ? resultados.filter((r) => (r.score ?? 0) >= LIMIAR_RELEVANTE)
+    : resultados;
+  const fracos = temTema
+    ? resultados.filter((r) => (r.score ?? 0) < LIMIAR_RELEVANTE)
+    : [];
 
   // panorama da base, pra ele entender de quem esta falando
   let panorama = "";
@@ -266,10 +290,14 @@ Sua saida precisa ser util o suficiente para a pessoa AGIR depois de ler. Um tex
 o que ela ja escreveu, ou que diz "nao ha conexao clara", e considerado uma falha sua.
 
 Regras de qualidade, sem excecao:
-- NUNCA responda apenas que as notas nao se relacionam com o tema. Se a base for pobre no tema,
+- ${temTema
+    ? `NUNCA responda apenas que as notas nao se relacionam com o tema. Se a base for pobre no tema,
   seu trabalho passa a ser: usar o que as notas revelam sobre ESSA PESSOA (area de atuacao,
   interesses, momento de vida, jeito de pensar) para atacar o tema de forma sob medida,
-  com o seu proprio conhecimento do assunto. Seja concreto e especifico, com nomes, exemplos,
+  com o seu proprio conhecimento do assunto.`
+    : `NAO ha um tema definido: seu trabalho e ler este conjunto de notas e dizer o que elas
+  revelam juntas (padroes, direcao, o que esta amadurecendo, o que ficou parado). Cruze areas,
+  aponte o que a pessoa parece estar construindo.`} Seja concreto e especifico, com nomes, exemplos,
   numeros e escolhas reais, nao categorias vazias.
 - Proibido: frase generica que serviria para qualquer pessoa; conselho do tipo "identifique seus
   objetivos"; repetir o conteudo das notas; elogiar o usuario; encher linguica.
@@ -278,8 +306,8 @@ Regras de qualidade, sem excecao:
 
 Responda SOMENTE com JSON:
 {
-  "sintese": string,          // 4-8 frases densas. O que o cruzamento do tema com esta base revela.
-  "desenvolvimento": string,  // 6-12 frases. A parte principal: ataque o tema de verdade,
+  "sintese": string,          // 4-8 frases densas. O que ${temTema ? "o cruzamento do tema com esta base" : "este recorte de notas"} revela.
+  "desenvolvimento": string,  // 6-12 frases. A parte principal: ${temTema ? "ataque o tema de verdade" : "desenvolva o que emerge das notas"},
                               // sob medida para o perfil que emerge das notas. Traga opcoes
                               // concretas, criterios de escolha, exemplos nomeados, riscos.
   "tensao": string|null,      // contradicao ou trade-off real (entre notas, ou entre o tema e o perfil)
@@ -288,31 +316,67 @@ Responda SOMENTE com JSON:
   "proximos_passos": string[] // 2 a 4 acoes concretas, especificas, executaveis nesta semana
 }`;
 
-  const prompt = `${panorama}
+  // Cabecalho do prompt: com tema e uma pesquisa; sem tema e um recorte
+  // (area/periodo) que a pessoa mandou analisar por inteiro.
+  const cabecalho = temTema
+    ? `Tema pesquisado: "${query}"`
+    : `Recorte de notas para analisar${escopoTexto ? ` (${escopoTexto})` : ""}.
+Nao ha tema: leia o conjunto e diga o que ele revela.`;
 
-Tema pesquisado: "${query}"
-
-${temMaterial
-  ? `Notas REALMENTE relacionadas ao tema (use como materia-prima principal):
+  const blocoMaterial = temTema
+    ? (temMaterial
+        ? `Notas REALMENTE relacionadas ao tema (use como materia-prima principal):
 ${formatar(fortes)}`
-  : `A base NAO tem nenhuma nota realmente proxima deste tema.
+        : `A base NAO tem nenhuma nota realmente proxima deste tema.
 As notas abaixo apareceram na busca por eliminacao, com proximidade baixa: NAO force conexao
 entre elas e o tema, e NAO diga apenas que nao ha relacao. Use-as apenas para entender quem e
 esta pessoa (o que ela faz, o que a interessa, em que momento esta) e entao trabalhe o tema
-"${query}" de forma sob medida para ela, com profundidade e recomendacoes concretas suas.`}
+"${query}" de forma sob medida para ela, com profundidade e recomendacoes concretas suas.`)
+    : `Notas deste recorte (${resultados.length}), use todas como materia-prima:
+${formatar(resultados)}`;
 
-${temMaterial && fracos.length
-  ? `Notas de proximidade baixa (contexto de fundo, use com parcimonia):
+  const blocoContexto = temTema && temMaterial && fracos.length
+    ? `Notas de proximidade baixa (contexto de fundo, use com parcimonia):
 ${formatar(fracos.slice(0, 5))}`
-  : (!temMaterial ? `Notas para inferir o perfil da pessoa:
-${formatar(resultados.slice(0, 8))}` : "")}`;
+    : (temTema && !temMaterial
+        ? `Notas para inferir o perfil da pessoa:
+${formatar(resultados.slice(0, 8))}`
+        : "");
+
+  const prompt = `${panorama}
+
+${cabecalho}
+
+${blocoMaterial}
+
+${blocoContexto}`;
+
+  // Empacota a resposta do modelo junto com a fonte (provedor/modelo/chave) e
+  // quantas notas entraram, pra UI conseguir mostrar de onde saiu o insight.
+  const empacotar = (dados, metaLLM) => {
+    const texto = montarTextoInsight(dados);
+    if (!texto) return null;
+    return {
+      texto,
+      meta: {
+        ...(metaLLM || {}),
+        notasConsideradas: resultados.length,
+        notasFortes: fortes.length,
+        temTema,
+        escopo: escopoTexto,
+      },
+    };
+  };
 
   // 1) caminho principal: Gemini com raciocinio alto
   if (temGemini()) {
     try {
-      const d = await gerarJSON(instrucao, prompt, { temperatura: 0.85, maxTokens: 8192 });
-      console.log("[insight] gerado pelo Gemini.");
-      return montarTextoInsight(d);
+      const { dados, meta } = await gerarJSONDetalhado(instrucao, prompt, { temperatura: 0.85, maxTokens: 8192 });
+      const pronto = empacotar(dados, meta);
+      if (pronto) {
+        console.log(`[insight] gerado pelo Gemini (${meta.modelo}, chave ${meta.chave}/${meta.totalChaves}).`);
+        return pronto;
+      }
     } catch (err) {
       console.error("[insight] Gemini falhou, caindo no Groq:", err.message);
     }
@@ -326,13 +390,130 @@ ${formatar(resultados.slice(0, 8))}` : "")}`;
     return null;
   }
   try {
-    const r = await chatJSON(`${instrucao}\n\nSe nao conseguir preencher um campo, use null.`, prompt);
-    console.log("[insight] gerado pelo Groq (ultimo recurso).");
-    return montarTextoInsight(r);
+    const { dados, meta } = await chatJSONDetalhado(
+      `${instrucao}\n\nSe nao conseguir preencher um campo, use null.`,
+      prompt
+    );
+    const pronto = empacotar(dados, meta);
+    if (pronto) {
+      console.log(`[insight] gerado pelo Groq (${meta.modelo}, chave ${meta.chave}/${meta.totalChaves}).`);
+      return pronto;
+    }
+    return null;
   } catch (err) {
     console.error("[insight] Groq tambem falhou:", err.message);
     return null;
   }
+}
+
+/* ============================================================
+   Insight avancado: por area, por periodo, com frase/pergunta de base ou
+   sem nada. Diferente do /pesquisa, aqui o recorte das notas vem de FILTRO
+   (area + intervalo de datas), nao de similaridade. A frase de base (quando
+   existe) so reordena o recorte por relevancia; sem frase, entram as mais
+   recentes do recorte.
+   ============================================================ */
+
+// Traduz periodo curto (7d, 30d...) em data de corte. "tudo" = sem corte.
+function periodoParaDesde(periodo) {
+  const dias = { "1d": 1, "7d": 7, "30d": 30, "90d": 90, "365d": 365 }[periodo];
+  if (!dias) return null;
+  return new Date(Date.now() - dias * 86400000).toISOString();
+}
+
+// Monta a descricao humana do recorte, usada no prompt e devolvida pra UI.
+function montarEscopoTexto({ area, periodo, desde, ate, tema }) {
+  const partes = [];
+  partes.push(area ? `area: ${area}` : "todas as areas");
+  if (periodo && periodo !== "tudo") {
+    const rot = { "1d": "hoje", "7d": "ultimos 7 dias", "30d": "ultimos 30 dias", "90d": "ultimos 90 dias", "365d": "ultimo ano" }[periodo];
+    partes.push(rot || `periodo ${periodo}`);
+  } else if (desde || ate) {
+    if (desde && ate) partes.push(`de ${String(desde).slice(0, 10)} a ${String(ate).slice(0, 10)}`);
+    else if (desde) partes.push(`a partir de ${String(desde).slice(0, 10)}`);
+    else partes.push(`ate ${String(ate).slice(0, 10)}`);
+  } else {
+    partes.push("todo o periodo");
+  }
+  if (tema) partes.push(`foco: "${tema}"`);
+  return partes.join(", ");
+}
+
+/**
+ * Gera um insight sobre um recorte da base.
+ * @param {object} opts
+ *   q       frase/pergunta de base (opcional; vazio = insight livre do recorte)
+ *   area    filtra por area (opcional)
+ *   periodo atalho de intervalo: "1d" | "7d" | "30d" | "90d" | "365d" | "tudo"
+ *   desde   ISO/AAAA-MM-DD (usado quando nao ha "periodo")
+ *   ate     ISO/AAAA-MM-DD
+ *   limite  quantas notas no maximo entram no insight (padrao 20, teto 60)
+ */
+export async function insightAvancado({ q = null, area = null, periodo = null, desde = null, ate = null, limite = 20 } = {}) {
+  const tema = q && String(q).trim() ? String(q).trim() : null;
+  const lim = Math.max(1, Math.min(Number(limite) || 20, 60));
+
+  // periodo curto tem prioridade sobre desde/ate soltos
+  let desdeEfetivo = desde;
+  if (periodo && periodo !== "tudo") {
+    const d = periodoParaDesde(periodo);
+    if (d) desdeEfetivo = d;
+  }
+
+  const escopo = {
+    area: area || null,
+    periodo: periodo || null,
+    desde: desdeEfetivo || null,
+    ate: ate || null,
+    tema,
+    limite: lim,
+  };
+  const escopoTexto = montarEscopoTexto({ area, periodo, desde: desdeEfetivo, ate, tema });
+
+  // recorte por filtro (area + datas), reaproveitando a listagem existente
+  const base = await listarIdeias({
+    area: area || undefined,
+    desde: desdeEfetivo || undefined,
+    ate: ate || undefined,
+  });
+
+  if (base.length === 0) {
+    return { insight: null, insight_meta: null, usou: 0, escopo, escopoTexto, motivo: "nenhuma nota neste recorte" };
+  }
+
+  let selecionadas;
+  if (tema) {
+    // com frase de base: embeda a frase e reordena o recorte por relevancia
+    const emb = await gerarEmbedding(tema);
+    const ranking = await db.topKSimilares(emb, { k: Math.max(lim * 3, 30), piso: 0 });
+    const idsBase = new Set(base.map((n) => n.id));
+    const noBase = new Map(base.map((n) => [n.id, n]));
+    selecionadas = ranking
+      .filter((r) => idsBase.has(r.id))
+      .slice(0, lim)
+      .map((r) => ({ ...noBase.get(r.id), score: Number(r.score.toFixed(4)) }));
+    // se por algum motivo o ranking nao cobriu o recorte, cai nas mais recentes
+    if (selecionadas.length === 0) {
+      selecionadas = base.slice(-lim).reverse();
+    }
+  } else {
+    // sem frase: as mais recentes do recorte (listarIdeias vem crescente por data)
+    selecionadas = base.slice(-lim).reverse();
+  }
+
+  const ins = await gerarInsight(tema, selecionadas, { escopoTexto });
+  if (!ins) {
+    return { insight: null, insight_meta: null, usou: selecionadas.length, escopo, escopoTexto, motivo: "modelo indisponivel agora" };
+  }
+
+  return {
+    insight: ins.texto,
+    insight_meta: ins.meta,
+    usou: selecionadas.length,
+    escopo,
+    escopoTexto,
+    notas: selecionadas.map((n) => ({ id: n.id, resumo: n.resumo, area: n.area, score: n.score ?? null })),
+  };
 }
 
 /** Junta o JSON estruturado num texto legivel para o front. */

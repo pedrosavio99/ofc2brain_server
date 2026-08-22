@@ -8,7 +8,7 @@
    ============================================================ */
 var S = {
   notas: [], eventos: [], aba: "foco", quantosNoHall: 5,
-  recentes: [], busca: "", resultadosBusca: null, insight: null, insightCarregando: false, insightEscopo: null,
+  recentes: [], busca: "", resultadosBusca: null, insight: null, insightFonte: null, insightCarregando: false, insightEscopo: null,
   filtroArea: null, filtroTipo: null, carregando: true,
   areaAberta: null, periodo: '7d', dataDe: '', dataAte: '', limiteTempo: 40,
 };
@@ -154,27 +154,53 @@ function esqueletos(n) {
 /* ============================================================
    Dados
    ============================================================ */
+function esperar(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+/* Cold start do Supabase: na primeira carga (funcao serverless fria + banco
+   despertando) o /ideias as vezes volta vazio mesmo havendo notas, e a tela
+   mostrava "base vazia" a toa. Aqui a gente cruza com a contagem real de
+   /armazenamento: se o banco DIZ que tem notas mas a lista veio vazia, espera
+   um pouco e tenta de novo (backoff). Erro de rede tambem faz nova tentativa.
+   Base de verdade vazia (contagem 0) NAO entra em loop. */
+function obterNotasComRetry(tentativa) {
+  tentativa = tentativa || 0;
+  var MAX = 4;
+  return Promise.all([
+    api("/ideias").then(function (r) { if (!r.ok) throw new Error("ideias " + r.status); return r.json(); }),
+    api("/armazenamento").then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+  ]).then(function (res) {
+    var notas = Array.isArray(res[0]) ? res[0] : [];
+    var stats = res[1];
+    var esperado = stats && typeof stats.ideias === "number" ? stats.ideias : null;
+    var coldStart = notas.length === 0 && esperado > 0;
+    if (coldStart && tentativa < MAX) {
+      if (tentativa === 0) avisar("Acordando o banco…");
+      return esperar(600 * Math.pow(1.8, tentativa)).then(function () {
+        return obterNotasComRetry(tentativa + 1);
+      });
+    }
+    return notas;
+  }).catch(function (err) {
+    if (tentativa < MAX) {
+      return esperar(600 * Math.pow(1.8, tentativa)).then(function () {
+        return obterNotasComRetry(tentativa + 1);
+      });
+    }
+    throw err;
+  });
+}
+
 function carregar() {
   S.carregando = true;
   render();
-  // try/catch por fora: se o fetch falhar de forma SINCRONA (indisponivel,
-  // bloqueado por extensao/CSP), sem isso a tela ficaria presa no esqueleto.
-  var pedido;
-  try {
-    pedido = Promise.all([
-    api("/ideias").then(function (r) { return r.json(); }),
-    api("/eventos/proximos?dias=45").then(function (r) { return r.json(); }).catch(function () { return []; }),
-    ]);
-  } catch (e) {
-    pedido = Promise.reject(e);
-  }
-
-  return pedido.then(function (res) {
-    S.notas = Array.isArray(res[0]) ? res[0] : [];
-    S.eventos = Array.isArray(res[1]) ? res[1] : [];
+  return obterNotasComRetry(0).then(function (notas) {
+    S.notas = notas;
+    return api("/eventos/proximos?dias=45").then(function (r) { return r.json(); }).catch(function () { return []; });
+  }).then(function (evts) {
+    S.eventos = Array.isArray(evts) ? evts : [];
   }).catch(function () {
     avisar("Não deu pra carregar as notas.");
-    S.notas = [];
+    if (!Array.isArray(S.notas)) S.notas = [];
   }).then(function () {
     S.carregando = false;   // sai do esqueleto aconteca o que acontecer
     render();
@@ -208,9 +234,10 @@ function adicionar() {
 }
 
 function buscar(q) {
-  if (!q) { S.resultadosBusca = null; S.insight = null; S.insightCarregando = false; render(); return; }
+  if (!q) { S.resultadosBusca = null; S.insight = null; S.insightFonte = null; S.insightCarregando = false; render(); return; }
   S.resultadosBusca = "carregando";
   S.insight = null;
+  S.insightFonte = null;
   S.insightCarregando = false;
   render();
   api("/pesquisa?q=" + encodeURIComponent(q) + "&limite=10")
@@ -244,6 +271,7 @@ function gerarInsight(escopo) {
   api(url).then(function (r) { return r.json(); }).then(function (d) {
     if (d.erro) throw new Error(d.erro);
     S.insight = d.insight || null;
+    S.insightFonte = d.insight_meta || null;
     if (esc0.tipo === "busca" && d.resultados) S.resultadosBusca = d.resultados;
     if (!S.insight) { avisar("O modelo nao conseguiu gerar um insight agora."); return; }
     abrirInsight(esc0.tipo === "periodo" ? "Insight do período" : "Insight");
@@ -472,6 +500,32 @@ function acoesDaBusca() {
     "O que perguntar sobre elas</button></div>";
 }
 
+/* Faixa que mostra DE ONDE o insight saiu (provedor, modelo, qual chave do
+   rodizio e quantas notas entraram). Some quando nao ha metadados. */
+function descreverFonte(meta) {
+  if (!meta) return "";
+  var provedor = meta.provedor === "gemini" ? "Gemini"
+    : (meta.provedor === "groq" ? "Groq" : (meta.provedor || "modelo"));
+  var linha1 = [provedor];
+  if (meta.modelo) linha1.push(meta.modelo);
+  if (meta.chave && meta.totalChaves) linha1.push("chave " + meta.chave + "/" + meta.totalChaves);
+
+  var linha2 = [];
+  if (typeof meta.notasConsideradas === "number") {
+    linha2.push(meta.notasConsideradas + " nota" + (meta.notasConsideradas === 1 ? "" : "s"));
+  }
+  if (meta.temTema && typeof meta.notasFortes === "number") {
+    linha2.push(meta.notasFortes + " relevante" + (meta.notasFortes === 1 ? "" : "s") + " ao tema");
+  }
+  if (meta.pensando) linha2.push("modo pensamento");
+
+  return '<div class="insight-fonte">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="15" height="15">' +
+    '<path d="M12 3a6 6 0 00-3.5 10.9V16h7v-2.1A6 6 0 0012 3z"/><path d="M9.5 19h5M10 22h4"/></svg>' +
+    "<span><strong>" + esc(linha1.join(" · ")) + "</strong>" +
+    (linha2.length ? "<br>" + esc(linha2.join(" · ")) : "") + "</span></div>";
+}
+
 /* Insight agora vive num modal: fecha no X, no toque fora ou no Esc, e nao
    empurra mais a lista pra baixo. */
 function abrirInsight(titulo) {
@@ -484,6 +538,7 @@ function abrirInsight(titulo) {
     return "<p>" + esc(linha) + "</p>";
   }).join("");
   abrirSheet(titulo || "Insight",
+    descreverFonte(S.insightFonte) +
     '<div class="grupo texto-insight">' + paragrafos + "</div>" +
     '<button class="btn btn-suave btn-largo" id="btnInsightRefazer">Gerar de novo</button>');
   var b = $("#btnInsightRefazer");
@@ -835,6 +890,114 @@ function usarPergunta(q) {
 }
 
 /* ============================================================
+   Insight avancado (area / periodo / frase ou nada)
+   ============================================================ */
+// estado do formulario, preservado entre reaberturas do modal
+var IA = { area: "", periodo: "30d", q: "", limite: 20, de: "", ate: "" };
+
+function areasDisponiveis() {
+  var conta = {};
+  S.notas.forEach(function (n) { var a = n.area || ""; if (a) conta[a] = (conta[a] || 0) + 1; });
+  return Object.keys(conta).sort(function (a, b) { return conta[b] - conta[a]; });
+}
+
+var IA_PERIODOS = [
+  { id: "1d", rot: "Hoje" }, { id: "7d", rot: "7 dias" }, { id: "30d", rot: "30 dias" },
+  { id: "90d", rot: "90 dias" }, { id: "tudo", rot: "Tudo" }, { id: "custom", rot: "Escolher" },
+];
+var IA_QTDS = [10, 20, 30, 40];
+
+// pega o que o usuario ja digitou antes de um re-render do formulario
+function lerFormIA() {
+  var t = $("#iaQ"); if (t) IA.q = t.value;
+  var a = $("#iaArea"); if (a) IA.area = a.value;
+  var de = $("#iaDe"); if (de) IA.de = de.value;
+  var ate = $("#iaAte"); if (ate) IA.ate = ate.value;
+}
+
+function telaInsightAvancado() {
+  var opcoesArea = '<option value="">Todas as áreas</option>' + areasDisponiveis().map(function (a) {
+    return '<option value="' + esc(a) + '"' + (IA.area === a ? " selected" : "") + ">" + esc(a) + "</option>";
+  }).join("");
+
+  var chipsPeriodo = '<div class="chips periodo">' + IA_PERIODOS.map(function (p) {
+    return '<button type="button" class="chip' + (IA.periodo === p.id ? " ativo" : "") +
+      '" data-ia-periodo="' + p.id + '">' + p.rot + "</button>";
+  }).join("") + "</div>";
+
+  var intervalo = IA.periodo === "custom"
+    ? '<div class="intervalo"><label>De<input type="date" id="iaDe" value="' + esc(IA.de) + '" /></label>' +
+      '<label>Até<input type="date" id="iaAte" value="' + esc(IA.ate) + '" /></label></div>'
+    : "";
+
+  var chipsQtd = '<div class="chips" style="padding-bottom:6px">' + IA_QTDS.map(function (q) {
+    return '<button type="button" class="chip' + (IA.limite === q ? " ativo" : "") +
+      '" data-ia-qtd="' + q + '">' + q + " notas</button>";
+  }).join("") + "</div>";
+
+  abrirSheet("Gerar insight",
+    '<p class="grupo-titulo">Área</p>' +
+    '<div class="campo-linha"><select id="iaArea" class="campo">' + opcoesArea + "</select></div>" +
+    '<p class="grupo-titulo">Período</p>' + chipsPeriodo + intervalo +
+    '<p class="grupo-titulo">Frase ou pergunta de base</p>' +
+    '<div class="campo-linha"><textarea id="iaQ" class="campo" rows="2" ' +
+      'placeholder="Opcional. Deixe vazio pra o modelo ler o recorte livremente.">' + esc(IA.q) + "</textarea></div>" +
+    '<p class="dica-compositor" style="display:block;margin:0 2px 16px">Com uma frase, o insight foca nela. ' +
+      "Sem nada, ele resume o que as notas do recorte dizem juntas.</p>" +
+    '<p class="grupo-titulo">Quantas notas considerar</p>' + chipsQtd +
+    '<button class="btn btn-largo" id="iaGerar" style="margin-top:14px">Gerar insight</button>');
+
+  var corpo = $("#sheetCorpo");
+  corpo.querySelectorAll("[data-ia-periodo]").forEach(function (b) {
+    b.addEventListener("click", function () { lerFormIA(); IA.periodo = b.dataset.iaPeriodo; telaInsightAvancado(); });
+  });
+  corpo.querySelectorAll("[data-ia-qtd]").forEach(function (b) {
+    b.addEventListener("click", function () { lerFormIA(); IA.limite = Number(b.dataset.iaQtd); telaInsightAvancado(); });
+  });
+  var g = $("#iaGerar");
+  if (g) g.addEventListener("click", gerarInsightAvancado);
+}
+
+function gerarInsightAvancado() {
+  lerFormIA();
+  var q = (IA.q || "").trim();
+
+  var params = [];
+  if (q) params.push("q=" + encodeURIComponent(q));
+  if (IA.area) params.push("area=" + encodeURIComponent(IA.area));
+  if (IA.periodo === "custom") {
+    if (IA.de) params.push("desde=" + encodeURIComponent(IA.de));
+    if (IA.ate) params.push("ate=" + encodeURIComponent(IA.ate));
+  } else if (IA.periodo && IA.periodo !== "tudo") {
+    params.push("periodo=" + encodeURIComponent(IA.periodo));
+  }
+  params.push("limite=" + IA.limite);
+
+  var g = $("#iaGerar");
+  if (g) { g.disabled = true; g.textContent = "Gerando…"; }
+
+  S.insightEscopo = { tipo: "avancado" };
+  api("/insight?" + params.join("&"))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d.erro) throw new Error(d.erro);
+      if (!d.insight) {
+        avisar(d.motivo ? "Sem insight: " + d.motivo : "O modelo não gerou insight agora.");
+        if (g) { g.disabled = false; g.textContent = "Gerar insight"; }
+        return;
+      }
+      S.insight = d.insight;
+      S.insightFonte = d.insight_meta || null;
+      fecharSheet();
+      abrirInsight("Insight do recorte");
+    })
+    .catch(function (e) {
+      avisar(e.message || "Não deu pra gerar o insight.");
+      if (g) { g.disabled = false; g.textContent = "Gerar insight"; }
+    });
+}
+
+/* ============================================================
    Menu
    ============================================================ */
 function abrirMenu() {
@@ -851,6 +1014,9 @@ function abrirMenu() {
       '<button class="item" id="mSinapse">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="7" r="2.4"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="13" r="2.6"/><circle cx="5" cy="18" r="2"/><path d="M7.9 8.4l2.4 3M14.2 12.2l2.4-4.5M10.4 14.6L6.6 16.6" stroke-linecap="round" opacity=".6"/></svg>' +
       '<div class="item-txt"><strong>Visão sináptica</strong><span>O mapa 3D das ligações</span></div></button>' +
+      '<button class="item" id="mInsightAvancado">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v1.5M5.2 5.2l1 1M3 12h1.5M18.8 5.2l-1 1M21 12h-1.5"/><path d="M9.2 17.5h5.6M10 21h4"/><path d="M12 7a5 5 0 00-2.8 9.1V17.5h5.6V16.1A5 5 0 0012 7z"/></svg>' +
+      '<div class="item-txt"><strong>Gerar insight</strong><span>Por área, por período, com uma frase ou sem nada</span></div></button>' +
       '<button class="item" id="mSugestoes">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9.5 17.5h5M10 21h4"/><path d="M12 3a6 6 0 00-3.5 10.9V17.5h7V13.9A6 6 0 0012 3z"/></svg>' +
       '<div class="item-txt"><strong>O que perguntar</strong><span>10 perguntas tiradas das suas notas</span></div></button>' +
@@ -874,6 +1040,11 @@ function abrirMenu() {
     b.addEventListener("click", function () { aplicarTema(b.dataset.tema); abrirMenu(); });
   });
   $("#mSinapse").addEventListener("click", function () { fecharSheet(); abrirSinapse(); });
+  $("#mInsightAvancado").addEventListener("click", function () {
+    // se ja tem uma area filtrada na tela, o modal ja abre com ela escolhida
+    if (S.filtroArea) IA.area = S.filtroArea;
+    fecharSheet(); telaInsightAvancado();
+  });
   $("#mSugestoes").addEventListener("click", function () { fecharSheet(); telaSugestoes(false); });
   $("#mRelink").addEventListener("click", relink);
   $("#mBaixar").addEventListener("click", baixarBackup);
