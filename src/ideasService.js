@@ -3,6 +3,15 @@ import * as db from "./db.js";
 import { gerarJSON, gerarJSONDetalhado, temGemini } from "./geminiClient.js";
 import { chatJSON, chatJSONDetalhado } from "./groqClient.js";
 import { gerarEmbedding, MODELO_EMBEDDING } from "./embeddings.js";
+import {
+  instrucaoDoFormato,
+  montarBlocos,
+  textoDosBlocos,
+  resolverAngulo,
+  resolverTamanho,
+  resolverAtalho,
+  INSTRUCAO_CONTINUAR,
+} from "./insightFormatos.js";
 
 const SYSTEM_PROMPT = `Voce e um assistente que organiza uma base pessoal de conhecimento (um "segundo cerebro").
 Para cada texto enviado pelo usuario, voce deve:
@@ -180,7 +189,7 @@ export async function removerIdeia(id) {
  * Busca semantica (modo pesquisa): embeda a query e ranqueia por similaridade
  * usando a mesma varredura rapida do banco.
  */
-export async function pesquisar(query, { comInsight = false, limite = 5 } = {}) {
+export async function pesquisar(query, { comInsight = false, limite = 5, angulo = null, tamanho = null } = {}) {
   const embeddingQuery = await gerarEmbedding(query);
 
   const ranking = await db.topKSimilares(embeddingQuery, { k: limite, piso: 0 });
@@ -191,20 +200,22 @@ export async function pesquisar(query, { comInsight = false, limite = 5 } = {}) 
   }
 
   if (resultados.length === 0) {
-    return { resultados: [], insight: null, insight_meta: null };
+    return { resultados: [], insight: null, insight_blocos: null, insight_meta: null };
   }
 
   let insight = null;
+  let insightBlocos = null;
   let insightMeta = null;
   if (comInsight) {
-    const ins = await gerarInsight(query, resultados);
+    const ins = await gerarInsight(query, resultados, { angulo, tamanho });
     if (ins) {
       insight = ins.texto;
+      insightBlocos = ins.blocos;
       insightMeta = ins.meta;
     }
   }
 
-  return { resultados, insight, insight_meta: insightMeta };
+  return { resultados, insight, insight_blocos: insightBlocos, insight_meta: insightMeta };
 }
 
 /**
@@ -285,36 +296,12 @@ Tags mais usadas: ${tags || "nenhuma"}.`;
 
   const temMaterial = fortes.length > 0;
 
-  const instrucao = `Voce e um pensador que trabalha sobre a base de conhecimento pessoal de alguem.
-Sua saida precisa ser util o suficiente para a pessoa AGIR depois de ler. Um texto que so descreve
-o que ela ja escreveu, ou que diz "nao ha conexao clara", e considerado uma falha sua.
-
-Regras de qualidade, sem excecao:
-- ${temTema
-    ? `NUNCA responda apenas que as notas nao se relacionam com o tema. Se a base for pobre no tema,
-  seu trabalho passa a ser: usar o que as notas revelam sobre ESSA PESSOA (area de atuacao,
-  interesses, momento de vida, jeito de pensar) para atacar o tema de forma sob medida,
-  com o seu proprio conhecimento do assunto.`
-    : `NAO ha um tema definido: seu trabalho e ler este conjunto de notas e dizer o que elas
-  revelam juntas (padroes, direcao, o que esta amadurecendo, o que ficou parado). Cruze areas,
-  aponte o que a pessoa parece estar construindo.`} Seja concreto e especifico, com nomes, exemplos,
-  numeros e escolhas reais, nao categorias vazias.
-- Proibido: frase generica que serviria para qualquer pessoa; conselho do tipo "identifique seus
-  objetivos"; repetir o conteudo das notas; elogiar o usuario; encher linguica.
-- Densidade: cada frase precisa carregar informacao nova. Prefira afirmar a sugerir.
-- Escreva em portugues do Brasil, direto, tom de quem pensa junto e nao de consultor.
-
-Responda SOMENTE com JSON:
-{
-  "sintese": string,          // 4-8 frases densas. O que ${temTema ? "o cruzamento do tema com esta base" : "este recorte de notas"} revela.
-  "desenvolvimento": string,  // 6-12 frases. A parte principal: ${temTema ? "ataque o tema de verdade" : "desenvolva o que emerge das notas"},
-                              // sob medida para o perfil que emerge das notas. Traga opcoes
-                              // concretas, criterios de escolha, exemplos nomeados, riscos.
-  "tensao": string|null,      // contradicao ou trade-off real (entre notas, ou entre o tema e o perfil)
-  "ponto_cego": string|null,  // o que falta e que muda o resultado se for considerado
-  "cruzamentos": [ { "notas": string[], "ideia": string } ], // ate 3, cada um com o porque E o que fazer
-  "proximos_passos": string[] // 2 a 4 acoes concretas, especificas, executaveis nesta semana
-}`;
+  // O formato (angulo x tamanho) decide o esqueleto do JSON, o papel do modelo
+  // e o orcamento de frases. Ver src/insightFormatos.js.
+  const formato = { angulo: opcoes.angulo, tamanho: opcoes.tamanho, temTema };
+  const tam = resolverTamanho(opcoes.tamanho);
+  const ang = resolverAngulo(opcoes.angulo);
+  const instrucao = instrucaoDoFormato({ ...formato, temMaterial });
 
   // Cabecalho do prompt: com tema e uma pesquisa; sem tema e um recorte
   // (area/periodo) que a pessoa mandou analisar por inteiro.
@@ -354,56 +341,76 @@ ${blocoContexto}`;
   // Empacota a resposta do modelo junto com a fonte (provedor/modelo/chave) e
   // quantas notas entraram, pra UI conseguir mostrar de onde saiu o insight.
   const empacotar = (dados, metaLLM) => {
-    const texto = montarTextoInsight(dados);
+    const blocos = montarBlocos(formato, dados);
+    const texto = textoDosBlocos(blocos);
     if (!texto) return null;
     return {
       texto,
+      blocos,
       meta: {
         ...(metaLLM || {}),
         notasConsideradas: resultados.length,
         notasFortes: fortes.length,
         temTema,
         escopo: escopoTexto,
+        angulo: ang.id,
+        anguloRotulo: ang.rotulo,
+        tamanho: tam.id,
       },
     };
   };
 
-  // 1) caminho principal: Gemini com raciocinio alto
-  if (temGemini()) {
+  const viaGemini = async () => {
+    if (!temGemini()) return null;
     try {
-      const { dados, meta } = await gerarJSONDetalhado(instrucao, prompt, { temperatura: 0.85, maxTokens: 8192 });
+      const { dados, meta } = await gerarJSONDetalhado(instrucao, prompt, {
+        temperatura: tam.temperatura,
+        maxTokens: tam.maxTokens,
+      });
       const pronto = empacotar(dados, meta);
       if (pronto) {
-        console.log(`[insight] gerado pelo Gemini (${meta.modelo}, chave ${meta.chave}/${meta.totalChaves}).`);
+        console.log(`[insight] ${ang.id}/${tam.id} pelo Gemini (${meta.modelo}, chave ${meta.chave}/${meta.totalChaves}).`);
         return pronto;
       }
     } catch (err) {
-      console.error("[insight] Gemini falhou, caindo no Groq:", err.message);
+      console.error("[insight] Gemini falhou:", err.message);
     }
-  }
+    return null;
+  };
 
-  // 2) ultimo recurso: Groq. Da pra desligar com GROQ_FALLBACK_INSIGHT=false:
-  // as vezes e melhor a tela dizer "tente em 1 minuto" do que entregar um
-  // insight fraco e queimar a confianca na ferramenta.
-  if (process.env.GROQ_FALLBACK_INSIGHT === "false") {
-    console.warn("[insight] Gemini indisponivel e o fallback do Groq esta desligado.");
-    return null;
-  }
-  try {
-    const { dados, meta } = await chatJSONDetalhado(
-      `${instrucao}\n\nSe nao conseguir preencher um campo, use null.`,
-      prompt
-    );
-    const pronto = empacotar(dados, meta);
-    if (pronto) {
-      console.log(`[insight] gerado pelo Groq (${meta.modelo}, chave ${meta.chave}/${meta.totalChaves}).`);
-      return pronto;
+  const viaGroq = async () => {
+    // Da pra desligar o Groq como reserva com GROQ_FALLBACK_INSIGHT=false: as
+    // vezes e melhor a tela dizer "tente em 1 minuto" do que entregar um insight
+    // fraco e queimar a confianca na ferramenta. No tamanho CURTO o Groq nao e
+    // reserva, e a escolha principal, entao a chave nao vale.
+    if (!tam.preferirGroq && process.env.GROQ_FALLBACK_INSIGHT === "false") {
+      console.warn("[insight] Gemini indisponivel e o fallback do Groq esta desligado.");
+      return null;
+    }
+    try {
+      const { dados, meta } = await chatJSONDetalhado(
+        `${instrucao}\n\nSe nao conseguir preencher um campo, use null.`,
+        prompt
+      );
+      const pronto = empacotar(dados, meta);
+      if (pronto) {
+        console.log(`[insight] ${ang.id}/${tam.id} pelo Groq (${meta.modelo}, chave ${meta.chave}/${meta.totalChaves}).`);
+        return pronto;
+      }
+    } catch (err) {
+      console.error("[insight] Groq falhou:", err.message);
     }
     return null;
-  } catch (err) {
-    console.error("[insight] Groq tambem falhou:", err.message);
-    return null;
+  };
+
+  // A ordem depende do tamanho: no curto o que importa e responder rapido
+  // (Groq primeiro); no medio e no longo importa a qualidade do raciocinio.
+  const ordem = tam.preferirGroq ? [viaGroq, viaGemini] : [viaGemini, viaGroq];
+  for (const tentar of ordem) {
+    const pronto = await tentar();
+    if (pronto) return pronto;
   }
+  return null;
 }
 
 /* ============================================================
@@ -510,22 +517,139 @@ export async function insightAvancado(args = {}) {
   const { tema, escopo, escopoTexto, base, selecionadas } = await selecionarRecorte(args);
 
   if (base.length === 0) {
-    return { insight: null, insight_meta: null, usou: 0, escopo, escopoTexto, motivo: "nenhuma nota neste recorte" };
+    return { insight: null, insight_blocos: null, insight_meta: null, usou: 0, escopo, escopoTexto, motivo: "nenhuma nota neste recorte" };
   }
 
-  const ins = await gerarInsight(tema, selecionadas, { escopoTexto });
+  const ins = await gerarInsight(tema, selecionadas, {
+    escopoTexto,
+    angulo: args.angulo || null,
+    tamanho: args.tamanho || null,
+  });
   if (!ins) {
-    return { insight: null, insight_meta: null, usou: selecionadas.length, escopo, escopoTexto, motivo: "modelo indisponivel agora" };
+    return { insight: null, insight_blocos: null, insight_meta: null, usou: selecionadas.length, escopo, escopoTexto, motivo: "modelo indisponivel agora" };
   }
 
   return {
     insight: ins.texto,
+    insight_blocos: ins.blocos,
     insight_meta: ins.meta,
     usou: selecionadas.length,
     escopo,
     escopoTexto,
     notas: selecionadas.map((n) => ({ id: n.id, resumo: n.resumo, area: n.area, score: n.score ?? null })),
   };
+}
+
+/* ============================================================
+   Continuidade: um pedido em cima de um insight ja gerado
+   ============================================================
+   Sem estado no servidor. O front devolve o insight anterior e os ids das notas
+   que o alimentaram; aqui a gente RECARREGA essas notas do banco, porque deixar
+   o modelo continuar so em cima do proprio texto e o caminho curto pra ele
+   inventar. Custo: 1 chamada de LLM, zero embedding. */
+
+export async function continuarInsight({
+  pedido = null,
+  atalho = null,
+  anterior = null,
+  historico = [],
+  ids = [],
+  foco = null,
+  tamanho = null,
+} = {}) {
+  const atalhoObj = resolverAtalho(atalho);
+  const oQueFazer = (pedido && String(pedido).trim()) || (atalhoObj && atalhoObj.pedido) || null;
+  if (!oQueFazer) throw new Error("Diga o que voce quer que eu faca com esse insight.");
+  if (!anterior || !String(anterior).trim()) {
+    throw new Error("Nao ha insight anterior pra continuar.");
+  }
+
+  const tam = resolverTamanho(tamanho);
+
+  const notas = [];
+  for (const id of (Array.isArray(ids) ? ids : []).slice(0, 40)) {
+    const n = await db.buscarPorId(id);
+    if (n) notas.push(n);
+  }
+
+  const corta = (t, n) => {
+    const s = String(t || "");
+    return s.length > n ? s.slice(0, n) + "…" : s;
+  };
+
+  const blocoNotas = notas.length
+    ? `Notas que sustentam este insight (${notas.length}):
+${notas.map((n, i) => `${i + 1}. [${n.area || "sem area"}] ${n.resumo || "(sem resumo)"}
+   texto: ${corta(n.texto_original, 400)}`).join("\n")}`
+    : "As notas originais nao foram informadas: trabalhe apenas sobre o insight anterior e diga quando algo for conhecimento seu.";
+
+  // So as 2 ultimas rodadas: sem esse teto o prompt cresce sem limite a cada
+  // follow-up, e o custo junto.
+  const blocoHistorico = Array.isArray(historico) && historico.length
+    ? `\nRodadas anteriores desta conversa:
+${historico.slice(-2).map((h) => `- pediram: ${corta(h.pedido, 200)}
+  voce respondeu: ${corta(h.resposta, 700)}`).join("\n")}`
+    : "";
+
+  const blocoFoco = foco && String(foco).trim()
+    ? `\nO pedido e sobre ESTE ponto especifico do insight, ignore o resto:
+"""
+${corta(foco, 600)}
+"""`
+    : "";
+
+  const prompt = `${blocoNotas}
+
+Insight anterior (nao repita, trabalhe em cima dele):
+"""
+${corta(anterior, 6000)}
+"""${blocoHistorico}${blocoFoco}
+
+Pedido da pessoa:
+"""
+${corta(oQueFazer, 800)}
+"""`;
+
+  const empacotar = (dados, metaLLM) => {
+    const resposta = typeof dados === "string" ? dados : (dados && (dados.resposta || dados.texto));
+    const limpo = resposta ? String(resposta).trim() : "";
+    if (!limpo) return null;
+    return {
+      resposta: limpo,
+      meta: { ...(metaLLM || {}), notasConsideradas: notas.length, tamanho: tam.id, atalho: atalhoObj ? atalhoObj.id : null },
+    };
+  };
+
+  const viaGemini = async () => {
+    if (!temGemini()) return null;
+    try {
+      const { dados, meta } = await gerarJSONDetalhado(INSTRUCAO_CONTINUAR, prompt, {
+        temperatura: 0.8,
+        maxTokens: tam.maxTokens,
+      });
+      return empacotar(dados, meta);
+    } catch (err) {
+      console.error("[continuar] Gemini falhou:", err.message);
+      return null;
+    }
+  };
+
+  const viaGroq = async () => {
+    try {
+      const { dados, meta } = await chatJSONDetalhado(INSTRUCAO_CONTINUAR, prompt);
+      return empacotar(dados, meta);
+    } catch (err) {
+      console.error("[continuar] Groq falhou:", err.message);
+      return null;
+    }
+  };
+
+  const ordem = tam.preferirGroq ? [viaGroq, viaGemini] : [viaGemini, viaGroq];
+  for (const tentar of ordem) {
+    const pronto = await tentar();
+    if (pronto) return pronto;
+  }
+  throw new Error("Nao consegui continuar agora. Tente de novo em um minuto.");
 }
 
 /* Preview do recorte: mesmas notas que o insight usaria, SEM chamar o LLM.
@@ -540,37 +664,6 @@ export async function previewRecorte(args = {}) {
     escopoTexto,
     notas: selecionadas.map((n) => ({ id: n.id, resumo: n.resumo, area: n.area, score: n.score ?? null })),
   };
-}
-
-/** Junta o JSON estruturado num texto legivel para o front. */
-function montarTextoInsight(d) {
-  if (!d) return null;
-  if (typeof d === "string") return d;
-  if (d.insight && !d.sintese) return d.insight; // formato antigo
-
-  const partes = [];
-  if (d.sintese) partes.push(d.sintese);
-  if (d.desenvolvimento) partes.push(d.desenvolvimento);
-  if (d.tensao) partes.push(`Tensão: ${d.tensao}`);
-  if (d.ponto_cego) partes.push(`Ponto cego: ${d.ponto_cego}`);
-
-  const cruz = d.cruzamentos || d.conexoes || [];
-  if (Array.isArray(cruz)) {
-    for (const c of cruz.slice(0, 3)) {
-      if (c && c.ideia) {
-        const quais = Array.isArray(c.notas) && c.notas.length ? `${c.notas.join(" + ")}: ` : "";
-        partes.push(`Cruzamento: ${quais}${c.ideia}`);
-      }
-    }
-  }
-
-  const passos = d.proximos_passos || (d.proximo_passo ? [d.proximo_passo] : []);
-  if (Array.isArray(passos) && passos.length) {
-    partes.push("Próximos passos: " + passos.filter(Boolean).map((p, i) => `${i + 1}) ${p}`).join("  "));
-  }
-
-  const texto = partes.filter(Boolean).join("\n\n").trim();
-  return texto || null;
 }
 
 export async function proximosEventos({ dias = 30 } = {}) {

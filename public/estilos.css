@@ -485,5 +485,40 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
   font-size: 13px; line-height: 1.5; color: var(--texto-2); }
 .gm-sem-trecho { margin: 10px 0 0; font-size: 11px; color: var(--texto-3); }
 
+/* ===================== Insight: formato e continuidade ===================== */
+.ins-titulo { margin: 18px 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--acento); }
+.texto-insight > .ins-titulo:first-child { margin-top: 0; }
+.ins-lista { margin: 0 0 12px; padding-left: 22px; }
+.ins-lista li { margin: 0 0 8px; font-size: 15.5px; line-height: 1.55; }
+.ins-lista li::marker { color: var(--acento); font-weight: 700; }
+
+.ins-cruz { margin: 0 0 12px; padding: 12px 13px; border-radius: var(--r-card);
+  background: var(--superficie-2); }
+.ins-cruz .ins-titulo { margin-top: 0; }
+.ins-cruz-notas { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--texto); }
+.ins-cruz p { margin: 0 0 8px; font-size: 15px; line-height: 1.55; }
+.ins-mini { font-size: 12.5px; font-weight: 600; color: var(--acento); padding: 4px 0; }
+
+.ins-formato { display: grid; gap: 7px; margin-bottom: 18px; }
+.ins-linha { display: flex; gap: 6px; align-items: center; overflow-x: auto;
+  scrollbar-width: none; padding-bottom: 2px; }
+.ins-linha::-webkit-scrollbar { display: none; }
+.ins-rot { flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--texto-3); margin-right: 2px; }
+.ins-chip { flex: none; height: 30px; padding: 0 12px; border-radius: var(--r-pill);
+  background: var(--superficie); color: var(--texto-2); font-size: 13px; font-weight: 600;
+  border: 1.5px solid var(--separador); }
+.ins-chip.on { background: var(--acento); border-color: var(--acento); color: #fff; }
+.ins-atalhos { flex-wrap: nowrap; margin-bottom: 12px; }
+
+.ins-thread { display: grid; gap: 14px; margin: 4px 0 18px; }
+.ins-thread:empty { margin: 0; }
+.ins-turno { border-left: 3px solid var(--acento); padding-left: 12px; }
+.ins-pedido { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--acento); }
+.ins-resposta p { margin: 0 0 10px; font-size: 15.5px; line-height: 1.6; }
+.ins-resposta p:last-child { margin-bottom: 0; }
+.ins-pensando { margin: 0; font-size: 14px; color: var(--texto-3); }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 @media (max-width: 380px) { .titulao { font-size: 30px; } .envolucro { padding: 0 12px 64px; } }

@@ -157,6 +157,18 @@ const openapi = {
             description: "Se true, gera tambem um insight sobre os resultados",
           },
           { name: "limite", in: "query", schema: { type: "integer", default: 5 } },
+          {
+            name: "angulo",
+            in: "query",
+            schema: { type: "string", enum: ["panorama", "contraponto", "plano", "conexoes"], default: "panorama" },
+            description: "Esqueleto do insight: quais secoes existem",
+          },
+          {
+            name: "tamanho",
+            in: "query",
+            schema: { type: "string", enum: ["curto", "medio", "longo"], default: "medio" },
+            description: "Orcamento de frases por secao. 'curto' responde pelo Groq, mais rapido",
+          },
         ],
         responses: {
           200: {
@@ -187,6 +199,18 @@ const openapi = {
           { name: "desde", in: "query", schema: { type: "string" }, description: "ISO ou AAAA-MM-DD" },
           { name: "ate", in: "query", schema: { type: "string" } },
           { name: "limite", in: "query", schema: { type: "integer", default: 20, maximum: 60 } },
+          {
+            name: "angulo",
+            in: "query",
+            schema: { type: "string", enum: ["panorama", "contraponto", "plano", "conexoes"], default: "panorama" },
+            description: "Esqueleto do insight: quais secoes existem",
+          },
+          {
+            name: "tamanho",
+            in: "query",
+            schema: { type: "string", enum: ["curto", "medio", "longo"], default: "medio" },
+            description: "Orcamento de frases por secao. 'curto' responde pelo Groq, mais rapido",
+          },
         ],
         responses: {
           200: {
@@ -211,6 +235,8 @@ const openapi = {
                   desde: { type: "string" },
                   ate: { type: "string" },
                   limite: { type: "integer", default: 20, maximum: 60 },
+                  angulo: { type: "string", enum: ["panorama", "contraponto", "plano", "conexoes"] },
+                  tamanho: { type: "string", enum: ["curto", "medio", "longo"] },
                 },
               },
               example: { q: "o que eu deveria priorizar essa semana", periodo: "7d", limite: 20 },
@@ -277,6 +303,74 @@ const openapi = {
         tags: ["Manutencao"],
         summary: "Diagnostico das chaves de LLM (Gemini e Groq)",
         responses: { 200: { description: "Estado das chaves por modelo" } },
+      },
+    },
+    "/insight/formatos": {
+      get: {
+        tags: ["Busca e insight"],
+        summary: "Angulos, tamanhos e atalhos de continuidade disponiveis",
+        description:
+          "Catalogo que a UI usa pra montar os chips. Angulo novo cadastrado em " +
+          "src/insightFormatos.js aparece aqui sem mexer no front.",
+        responses: { 200: { description: "Catalogo de formatos" } },
+      },
+    },
+    "/insight/continuar": {
+      post: {
+        tags: ["Busca e insight"],
+        summary: "Pede algo em cima de um insight ja gerado",
+        description:
+          "Sem estado no servidor: o cliente devolve o insight anterior e os ids das " +
+          "notas que o alimentaram, e essas notas sao recarregadas do banco pra ancorar " +
+          "a resposta. Use 'atalho' pros pedidos prontos ou 'pedido' pra texto livre.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["anterior"],
+                properties: {
+                  anterior: { type: "string", description: "O texto do insight ja gerado" },
+                  pedido: { type: "string", description: "Pedido em texto livre" },
+                  atalho: {
+                    type: "string",
+                    enum: ["explicar", "exemplos", "encurtar", "plano", "discordar", "aprofundar"],
+                    description: "Pedido pronto; ignorado se 'pedido' vier preenchido",
+                  },
+                  ids: { type: "array", items: { type: "string", format: "uuid" }, description: "Notas que alimentaram o insight" },
+                  foco: { type: "string", description: "Trecho especifico do insight sobre o qual e o pedido" },
+                  historico: {
+                    type: "array",
+                    description: "Rodadas anteriores; so as 2 ultimas sao enviadas ao modelo",
+                    items: {
+                      type: "object",
+                      properties: { pedido: { type: "string" }, resposta: { type: "string" } },
+                    },
+                  },
+                  tamanho: { type: "string", enum: ["curto", "medio", "longo"] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Resposta da continuidade",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    resposta: { type: "string" },
+                    meta: { type: "object" },
+                  },
+                },
+              },
+            },
+          },
+          400: { $ref: "#/components/responses/Erro" },
+        },
       },
     },
     "/eventos/proximos": {
@@ -475,6 +569,21 @@ const openapi = {
           notasFortes: { type: "integer", description: "Quantas eram realmente relevantes ao tema" },
           temTema: { type: "boolean" },
           escopo: { type: "string", nullable: true },
+          angulo: { type: "string", description: "Angulo usado" },
+          anguloRotulo: { type: "string" },
+          tamanho: { type: "string", enum: ["curto", "medio", "longo"] },
+        },
+      },
+      BlocoInsight: {
+        type: "object",
+        description: "Uma secao do insight. 'titulo' null = corpo principal, sem cabecalho.",
+        properties: {
+          chave: { type: "string" },
+          tipo: { type: "string", enum: ["texto", "lista", "cruzamento"] },
+          titulo: { type: "string", nullable: true },
+          texto: { type: "string" },
+          itens: { type: "array", items: { type: "string" }, description: "Apenas em tipo=lista" },
+          notas: { type: "string", nullable: true, description: "Apenas em tipo=cruzamento" },
         },
       },
       ResultadoPesquisa: {
@@ -490,6 +599,12 @@ const openapi = {
             },
           },
           insight: { type: "string", nullable: true, description: "Texto do insight (se insight=true)" },
+          insight_blocos: {
+            type: "array",
+            nullable: true,
+            description: "O mesmo insight quebrado em secoes, na ordem de exibicao",
+            items: { $ref: "#/components/schemas/BlocoInsight" },
+          },
           insight_meta: { $ref: "#/components/schemas/InsightMeta" },
         },
       },
@@ -497,6 +612,12 @@ const openapi = {
         type: "object",
         properties: {
           insight: { type: "string", nullable: true },
+          insight_blocos: {
+            type: "array",
+            nullable: true,
+            description: "O mesmo insight quebrado em secoes, na ordem de exibicao",
+            items: { $ref: "#/components/schemas/BlocoInsight" },
+          },
           insight_meta: { $ref: "#/components/schemas/InsightMeta" },
           usou: { type: "integer", description: "Quantas notas do recorte entraram" },
           escopoTexto: { type: "string", description: "Descricao humana do recorte" },

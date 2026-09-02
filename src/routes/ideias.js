@@ -4,6 +4,7 @@ import * as ideasService from "../ideasService.js";
 import * as extracaoService from "../extracaoService.js";
 import { estadoChaves } from "../geminiClient.js";
 import { estadoChavesGroq } from "../groqClient.js";
+import { listaAngulos, listaTamanhos, listaAtalhos } from "../insightFormatos.js";
 
 const router = Router();
 
@@ -77,6 +78,8 @@ router.get("/pesquisa", async (req, res) => {
     const resultado = await ideasService.pesquisar(q, {
       comInsight: insight === "true",
       limite: limite ? Number(limite) : 5,
+      angulo: req.query.angulo || null,
+      tamanho: req.query.tamanho || null,
     });
     res.json(resultado);
   } catch (err) {
@@ -104,6 +107,8 @@ async function handlerInsight(req, res) {
       desde: src.desde || null,
       ate: src.ate || null,
       limite: src.limite != null ? Number(src.limite) : 20,
+      angulo: src.angulo || null,
+      tamanho: src.tamanho || null,
     });
     res.json(dados);
   } catch (err) {
@@ -112,6 +117,38 @@ async function handlerInsight(req, res) {
 }
 router.get("/insight", handlerInsight);
 router.post("/insight", handlerInsight);
+
+/**
+ * Catalogo de formatos: angulos, tamanhos e atalhos de continuidade.
+ * A UI monta os chips a partir daqui, entao adicionar um angulo novo no
+ * insightFormatos.js ja aparece na tela sem mexer no front.
+ */
+router.get("/insight/formatos", (_req, res) => {
+  res.json({ angulos: listaAngulos(), tamanhos: listaTamanhos(), atalhos: listaAtalhos() });
+});
+
+/**
+ * Continuidade: um pedido em cima de um insight ja gerado ("explique melhor",
+ * "mais exemplos", "discorde disso" ou texto livre).
+ * POST /insight/continuar { anterior, pedido?|atalho?, ids?, historico?, foco?, tamanho? }
+ */
+router.post("/insight/continuar", async (req, res) => {
+  try {
+    const b = req.body || {};
+    const dados = await ideasService.continuarInsight({
+      pedido: b.pedido || null,
+      atalho: b.atalho || null,
+      anterior: b.anterior || null,
+      historico: Array.isArray(b.historico) ? b.historico : [],
+      ids: Array.isArray(b.ids) ? b.ids : [],
+      foco: b.foco || null,
+      tamanho: b.tamanho || null,
+    });
+    res.json(dados);
+  } catch (err) {
+    res.status(400).json({ erro: err.message });
+  }
+});
 
 /**
  * Preview do recorte: devolve as MESMAS notas que o insight usaria, sem gerar o

@@ -8,7 +8,12 @@
    ============================================================ */
 var S = {
   notas: [], eventos: [], aba: "foco", quantosNoHall: 5,
-  recentes: [], busca: "", resultadosBusca: null, insight: null, insightFonte: null, insightNotas: null, insightCarregando: false, insightEscopo: null,
+  recentes: [], busca: "", resultadosBusca: null,
+  // insight: texto pronto, blocos (secoes), fonte (provedor/modelo), notas usadas,
+  // formato escolhido (angulo/tamanho), url base pra refazer e a thread de follow-ups
+  insight: null, insightBlocos: null, insightFonte: null, insightNotas: null,
+  insightCarregando: false, insightEscopo: null, insightUrl: null,
+  insightAngulo: "panorama", insightTamanho: "medio", insightThread: [],
   filtroArea: null, filtroTipo: null, carregando: true,
   areaAberta: null, periodo: '7d', dataDe: '', dataAte: '', limiteTempo: 40,
 };
@@ -234,11 +239,9 @@ function adicionar() {
 }
 
 function buscar(q) {
-  if (!q) { S.resultadosBusca = null; S.insight = null; S.insightFonte = null; S.insightNotas = null; S.insightCarregando = false; render(); return; }
+  if (!q) { S.resultadosBusca = null; limparInsight(); S.insightCarregando = false; render(); return; }
   S.resultadosBusca = "carregando";
-  S.insight = null;
-  S.insightFonte = null;
-  S.insightNotas = null;
+  limparInsight();
   S.insightCarregando = false;
   render();
   api("/pesquisa?q=" + encodeURIComponent(q) + "&limite=10")
@@ -263,39 +266,6 @@ function guardarNotasInsight(lista) {
       score: (typeof n.score === "number" ? n.score : null),
     };
   });
-}
-
-function gerarInsight(escopo) {
-  if (S.insightCarregando) return;
-  var esc0 = escopo || S.insightEscopo || (S.busca ? { tipo: "busca", q: S.busca } : null);
-  if (!esc0) return;
-  S.insightEscopo = esc0;
-  S.insightCarregando = true;
-  S.insight = null;
-  S.insightNotas = null;
-  render();
-
-  var url;
-  if (esc0.tipo === "periodo") {
-    // no periodo, o "tema" e o proprio recorte de tempo: mandamos os resumos
-    // como consulta pra busca semantica achar o miolo do que foi guardado.
-    var termos = esc0.notas.slice(0, 12).map(function (n) { return n.resumo || n.texto_original; }).join(". ");
-    url = "/pesquisa?q=" + encodeURIComponent(termos.slice(0, 900)) + "&limite=12&insight=true";
-  } else {
-    url = "/pesquisa?q=" + encodeURIComponent(esc0.q) + "&limite=10&insight=true";
-  }
-
-  api(url).then(function (r) { return r.json(); }).then(function (d) {
-    if (d.erro) throw new Error(d.erro);
-    S.insight = d.insight || null;
-    S.insightFonte = d.insight_meta || null;
-    if (esc0.tipo === "busca" && d.resultados) S.resultadosBusca = d.resultados;
-    // acordeon: mostra o que o modelo realmente leu (busca e periodo mandam em d.resultados)
-    guardarNotasInsight(d.resultados);
-    if (!S.insight) { avisar("O modelo nao conseguiu gerar um insight agora."); return; }
-    abrirInsight(esc0.tipo === "periodo" ? "Insight do período" : "Insight");
-  }).catch(function (e) { avisar(e.message || "Não deu pra gerar o insight."); })
-    .then(function () { S.insightCarregando = false; render(); });
 }
 
 /* ============================================================
@@ -517,74 +487,6 @@ function acoesDaBusca() {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">' +
     '<path d="M9.2 9a2.8 2.8 0 115.6.6c0 1.9-2.8 2.4-2.8 4.4"/><circle cx="12" cy="18" r=".6" fill="currentColor"/></svg>' +
     "O que perguntar sobre elas</button></div>";
-}
-
-/* Faixa que mostra DE ONDE o insight saiu (provedor, modelo, qual chave do
-   rodizio e quantas notas entraram). Some quando nao ha metadados. */
-function descreverFonte(meta) {
-  if (!meta) return "";
-  var provedor = meta.provedor === "gemini" ? "Gemini"
-    : (meta.provedor === "groq" ? "Groq" : (meta.provedor || "modelo"));
-  var linha1 = [provedor];
-  if (meta.modelo) linha1.push(meta.modelo);
-  if (meta.chave && meta.totalChaves) linha1.push("chave " + meta.chave + "/" + meta.totalChaves);
-
-  var linha2 = [];
-  if (typeof meta.notasConsideradas === "number") {
-    linha2.push(meta.notasConsideradas + " nota" + (meta.notasConsideradas === 1 ? "" : "s"));
-  }
-  if (meta.temTema && typeof meta.notasFortes === "number") {
-    linha2.push(meta.notasFortes + " relevante" + (meta.notasFortes === 1 ? "" : "s") + " ao tema");
-  }
-  if (meta.pensando) linha2.push("modo pensamento");
-
-  return '<div class="insight-fonte">' +
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" width="15" height="15">' +
-    '<path d="M12 3a6 6 0 00-3.5 10.9V16h7v-2.1A6 6 0 0012 3z"/><path d="M9.5 19h5M10 22h4"/></svg>' +
-    "<span><strong>" + esc(linha1.join(" · ")) + "</strong>" +
-    (linha2.length ? "<br>" + esc(linha2.join(" · ")) : "") + "</span></div>";
-}
-
-/* Acordeon com as notas que alimentaram o insight. Reusa o cardNota, entao
-   fica igual a home (e o clique ja abre a nota pelo handler global do .nota).
-   Prefere a nota completa de S.notas; se nao achar, cai no que veio do backend. */
-function blocoNotasInsight() {
-  var lista = S.insightNotas;
-  if (!Array.isArray(lista) || lista.length === 0) return "";
-  var cards = lista.map(function (ref) {
-    var full = S.notas.filter(function (x) { return x.id === ref.id; })[0];
-    var nota = full || { id: ref.id, resumo: ref.resumo, area: ref.area, texto_original: "" };
-    return cardNota(nota, { score: ref.score });
-  }).join("");
-  var n = lista.length;
-  return '<details class="notas-insight">' +
-    '<summary>' +
-      '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 6l6 6-6 6"/></svg>' +
-      "<span>Notas usadas no insight</span>" +
-      '<span class="conta">' + n + "</span>" +
-    "</summary>" +
-    '<div class="lista duas">' + cards + "</div>" +
-  "</details>";
-}
-
-/* Insight agora vive num modal: fecha no X, no toque fora ou no Esc, e nao
-   empurra mais a lista pra baixo. */
-function abrirInsight(titulo) {
-  if (!S.insight) return;
-  var paragrafos = String(S.insight).split(/\n{2,}/).map(function (t) {
-    var linha = t.trim();
-    if (!linha) return "";
-    var m = linha.match(/^([A-Za-zÀ-ÿ ]{3,20}):\s*([\s\S]+)$/);
-    if (m) return "<p><strong>" + esc(m[1]) + ":</strong> " + esc(m[2]) + "</p>";
-    return "<p>" + esc(linha) + "</p>";
-  }).join("");
-  abrirSheet(titulo || "Insight",
-    descreverFonte(S.insightFonte) +
-    '<div class="grupo texto-insight">' + paragrafos + "</div>" +
-    blocoNotasInsight() +
-    '<button class="btn btn-suave btn-largo" id="btnInsightRefazer">Gerar de novo</button>');
-  var b = $("#btnInsightRefazer");
-  if (b) b.addEventListener("click", function () { fecharSheet(); gerarInsight(S.insightEscopo); });
 }
 
 /* --- Em foco: o hall --- */
@@ -923,7 +825,7 @@ function usarPergunta(q) {
   S.busca = q;
   $("#caixaBusca").classList.add("tem-texto");
   S.resultadosBusca = "carregando";
-  S.insight = null;
+  limparInsight();
   render();
   api("/pesquisa?q=" + encodeURIComponent(q) + "&limite=10")
     .then(function (r) { return r.json(); })
@@ -1121,6 +1023,9 @@ function telaInsightAvancado() {
     '<p class="dica-compositor" style="display:block;margin:0 2px 16px">Com uma frase, o insight foca nela. ' +
       "Sem nada, ele resume o que as notas do recorte dizem juntas.</p>" +
     '<p class="grupo-titulo">Quantas notas considerar</p>' + chipsQtd +
+    '<p class="grupo-titulo">Formato da resposta</p>' + chipsFormato() +
+    '<p class="dica-compositor" id="iaFormatoDica" style="display:block;margin:-10px 2px 16px">' +
+      esc(descricaoDoFormato()) + "</p>" +
     '<button class="btn btn-largo" id="iaGerar" style="margin-top:14px">Gerar insight</button>' +
     '<p class="grupo-titulo" style="margin-top:20px">Notas selecionadas</p>' +
     '<div id="iaPreview"></div>');
@@ -1150,50 +1055,16 @@ function telaInsightAvancado() {
   var campoAte = $("#iaAte");
   if (campoAte) campoAte.addEventListener("change", function () { IA.ate = campoAte.value; montarPreviewIA(); });
 
+  // definido em insight.js: mesma escolha vale aqui e no modal do insight
+  ligarChipsFormato(corpo, function () {
+    var dica = $("#iaFormatoDica");
+    if (dica) dica.textContent = descricaoDoFormato();
+  });
+
   var g = $("#iaGerar");
   if (g) g.addEventListener("click", gerarInsightAvancado);
 
   montarPreviewIA();
-}
-
-function gerarInsightAvancado() {
-  lerFormIA();
-  var q = (IA.q || "").trim();
-
-  var params = [];
-  if (q) params.push("q=" + encodeURIComponent(q));
-  if (IA.area) params.push("area=" + encodeURIComponent(IA.area));
-  if (IA.periodo === "custom") {
-    if (IA.de) params.push("desde=" + encodeURIComponent(IA.de));
-    if (IA.ate) params.push("ate=" + encodeURIComponent(IA.ate));
-  } else if (IA.periodo && IA.periodo !== "tudo") {
-    params.push("periodo=" + encodeURIComponent(IA.periodo));
-  }
-  params.push("limite=" + IA.limite);
-
-  var g = $("#iaGerar");
-  if (g) { g.disabled = true; g.textContent = "Gerando…"; }
-
-  S.insightEscopo = { tipo: "avancado" };
-  api("/insight?" + params.join("&"))
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      if (d.erro) throw new Error(d.erro);
-      if (!d.insight) {
-        avisar(d.motivo ? "Sem insight: " + d.motivo : "O modelo não gerou insight agora.");
-        if (g) { g.disabled = false; g.textContent = "Gerar insight"; }
-        return;
-      }
-      S.insight = d.insight;
-      S.insightFonte = d.insight_meta || null;
-      guardarNotasInsight(d.notas);
-      fecharSheet();
-      abrirInsight("Insight do recorte");
-    })
-    .catch(function (e) {
-      avisar(e.message || "Não deu pra gerar o insight.");
-      if (g) { g.disabled = false; g.textContent = "Gerar insight"; }
-    });
 }
 
 /* ============================================================
@@ -1457,7 +1328,7 @@ $("#campoBusca").addEventListener("input", function (e) {
 });
 $("#btnLimpar").addEventListener("click", function () {
   $("#campoBusca").value = "";
-  S.busca = ""; S.resultadosBusca = null; S.insight = null;
+  S.busca = ""; S.resultadosBusca = null; limparInsight();
   $("#caixaBusca").classList.remove("tem-texto");
   render();
 });
