@@ -61,6 +61,7 @@ const ANGULOS = {
     id: "panorama",
     rotulo: "Panorama",
     descricao: "Lê o conjunto e diz o que ele revela",
+    criterio: "Escolha quando nao ha pergunta clara, quando a pessoa quer entender o conjunto, ou quando o recorte mistura assuntos sem um pedido especifico. E a escolha segura quando nenhuma outra se encaixa bem.",
     papel: (temTema) =>
       temTema
         ? `Voce e um pensador que cruza um tema com a base de conhecimento pessoal de alguem.`
@@ -117,6 +118,7 @@ const ANGULOS = {
     id: "contraponto",
     rotulo: "Contraponto",
     descricao: "Ataca as premissas em vez de concordar",
+    criterio: "Escolha quando a frase AFIRMA uma decisao ja tomada ou uma conviccao, quando a pessoa pede opiniao sobre algo que ela ja escolheu, ou quando as notas repetem a mesma intencao ha tempo sem sinal de execucao.",
     papel: () =>
       `Voce e um critico rigoroso e leal. Seu trabalho NAO e concordar nem elogiar: e achar onde o
 pensamento desta pessoa esta frouxo. Voce e duro com as ideias e respeitoso com a pessoa. Concordar
@@ -150,6 +152,7 @@ por educacao, suavizar uma critica real ou terminar com um afago sao falhas suas
     id: "plano",
     rotulo: "Plano",
     descricao: "Quase só ação, na ordem de fazer",
+    criterio: "Escolha quando a frase pergunta o que fazer, como comecar, por onde ir ou o que priorizar, ou quando as notas estao cheias de intencao e faltando ordem.",
     papel: () =>
       `Voce transforma o material em execucao. Nada de contextualizar, filosofar ou resumir o que a
 pessoa ja escreveu: ela quer saber o que fazer, em que ordem, e como saber que terminou.`,
@@ -177,6 +180,7 @@ pessoa ja escreveu: ela quer saber o que fazer, em que ordem, e como saber que t
     id: "conexoes",
     rotulo: "Conexões",
     descricao: "Só as ligações entre as notas, sem opinião",
+    criterio: "Escolha quando ha muitas notas de areas diferentes e nenhuma pergunta, ou quando a frase pede relacao, padrao ou o que uma coisa tem a ver com outra.",
     papel: () =>
       `Voce liga pontos. Seu trabalho e mostrar o que so aparece quando duas ou mais notas sao lidas
 juntas. Nao opine, nao aconselhe, nao resuma nota isolada: se um item pode ser dito com uma nota so,
@@ -336,6 +340,54 @@ export function textoDosBlocos(blocos) {
   const partes = blocos.map((b) => (b.titulo ? `${b.titulo}: ${b.texto}` : b.texto));
   const texto = partes.filter(Boolean).join("\n\n").trim();
   return texto || null;
+}
+
+/* ============================================================
+   Sugestao automatica de formato
+   ============================================================
+   Um modelo pequeno decide angulo e tamanho ANTES de gerar. O criterio nao pode
+   ficar implicito: um 8b nao adivinha quando usar cada angulo, entao a regra de
+   cada um vai escrita no prompt, tirada do proprio catalogo. Angulo novo
+   cadastrado la em cima ja entra aqui sozinho.
+   ============================================================ */
+
+export function instrucaoSugerirFormato() {
+  const angulos = Object.keys(ANGULOS)
+    .map((id) => `- ${id}: ${ANGULOS[id].descricao}. ${ANGULOS[id].criterio}`)
+    .join("\n");
+
+  return `Voce escolhe COMO um insight deve ser gerado sobre um recorte de notas pessoais.
+Voce NAO gera o insight: so decide o formato e explica a escolha em uma frase.
+
+Angulos disponiveis:
+${angulos}
+
+Tamanhos disponiveis:
+- curto: frase objetiva, pergunta fechada, ou recorte pequeno (ate 6 notas).
+- medio: o padrao. Use quando nao houver motivo claro pro curto nem pro longo.
+- longo: recorte grande (25 notas ou mais), tema aberto, ou pedido explicito de profundidade.
+
+Regras:
+- Decida pelo que ESTA no recorte e na frase, nao pelo que seria interessante.
+- Na duvida entre dois angulos, prefira panorama. Na duvida entre dois tamanhos, prefira medio.
+- "motivo" e UMA frase curta, em portugues do Brasil, dizendo o que na frase ou nas notas levou
+  a essa escolha. Nada de generico ("para dar uma visao completa"): cite o que voce viu.
+
+Responda SOMENTE com JSON: { "angulo": string, "tamanho": string, "motivo": string }`;
+}
+
+/** Valida a resposta do modelo contra o catalogo. Nada de id inventado passar. */
+export function normalizarSugestao(dados) {
+  const ang = ANGULOS[String(dados?.angulo || "").toLowerCase()] ? String(dados.angulo).toLowerCase() : ANGULO_PADRAO;
+  const tam = TAMANHOS[String(dados?.tamanho || "").toLowerCase()] ? String(dados.tamanho).toLowerCase() : TAMANHO_PADRAO;
+  const motivo = dados && dados.motivo ? String(dados.motivo).trim().slice(0, 400) : null;
+  return {
+    angulo: ang,
+    anguloRotulo: ANGULOS[ang].rotulo,
+    tamanho: tam,
+    tamanhoRotulo: TAMANHOS[tam].rotulo,
+    motivo,
+  };
 }
 
 /* ============================================================

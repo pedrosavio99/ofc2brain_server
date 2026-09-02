@@ -13,7 +13,7 @@ var S = {
   // formato escolhido (angulo/tamanho), url base pra refazer e a thread de follow-ups
   insight: null, insightBlocos: null, insightFonte: null, insightNotas: null,
   insightCarregando: false, insightEscopo: null, insightUrl: null,
-  insightAngulo: "panorama", insightTamanho: "medio", insightThread: [],
+  insightAngulo: "panorama", insightTamanho: "medio", insightThread: [], insightAuto: true,
   filtroArea: null, filtroTipo: null, carregando: true,
   areaAberta: null, periodo: '7d', dataDe: '', dataAte: '', limiteTempo: 40,
 };
@@ -909,17 +909,25 @@ function cardsPreviewIA(lista) {
 }
 
 function vazioPreviewIA() {
+  guardarIdsPreviewIA([]);
   return '<div class="dica-compositor" style="display:block;text-align:center;margin:2px 2px 4px">' +
     "Nenhuma nota nesse recorte. Afrouxe a área ou o período.</div>";
 }
 
 // sem frase: exato e instantaneo (as mais recentes do recorte)
+/* Os ids do que esta no preview ficam guardados: o sugeridor de formato manda
+   eles em vez de refazer a selecao no servidor (economiza 1 embedding). */
+function guardarIdsPreviewIA(lista) {
+  IA_PREVIEW.ids = (lista || []).map(function (n) { return n && n.id; }).filter(Boolean);
+}
+
 function previewLocalHtmlIA() {
   var pool = recorteIA();
   var total = pool.length;
   if (total === 0) return vazioPreviewIA();
   var usadas = Math.min(IA.limite, total);
   var titulo = "As " + usadas + " mais recentes" + (total > usadas ? " de " + total : "");
+  guardarIdsPreviewIA(pool.slice(0, IA.limite));
   return envelopePreviewIA(titulo, usadas, cardsPreviewIA(pool.slice(0, IA.limite)), "");
 }
 
@@ -929,6 +937,7 @@ function previewServidorHtmlIA(d) {
   if (lista.length === 0) return vazioPreviewIA();
   var total = d.total || lista.length;
   var titulo = "As " + lista.length + " mais próximas da frase" + (total > lista.length ? " de " + total : "");
+  guardarIdsPreviewIA(lista);
   return envelopePreviewIA(titulo, lista.length, cardsPreviewIA(lista), "");
 }
 
@@ -943,7 +952,7 @@ function erroPreviewIA() {
 }
 
 // estado do debounce + guarda de corrida (respostas fora de ordem)
-var IA_PREVIEW = { seq: 0, timer: null };
+var IA_PREVIEW = { seq: 0, timer: null, ids: [] };
 
 function montarPreviewIA() {
   lerFormIA();
@@ -1023,9 +1032,7 @@ function telaInsightAvancado() {
     '<p class="dica-compositor" style="display:block;margin:0 2px 16px">Com uma frase, o insight foca nela. ' +
       "Sem nada, ele resume o que as notas do recorte dizem juntas.</p>" +
     '<p class="grupo-titulo">Quantas notas considerar</p>' + chipsQtd +
-    '<p class="grupo-titulo">Formato da resposta</p>' + chipsFormato() +
-    '<p class="dica-compositor" id="iaFormatoDica" style="display:block;margin:-10px 2px 16px">' +
-      esc(descricaoDoFormato()) + "</p>" +
+    secaoFormatoIA() +
     '<button class="btn btn-largo" id="iaGerar" style="margin-top:14px">Gerar insight</button>' +
     '<p class="grupo-titulo" style="margin-top:20px">Notas selecionadas</p>' +
     '<div id="iaPreview"></div>');
@@ -1055,11 +1062,7 @@ function telaInsightAvancado() {
   var campoAte = $("#iaAte");
   if (campoAte) campoAte.addEventListener("change", function () { IA.ate = campoAte.value; montarPreviewIA(); });
 
-  // definido em insight.js: mesma escolha vale aqui e no modal do insight
-  ligarChipsFormato(corpo, function () {
-    var dica = $("#iaFormatoDica");
-    if (dica) dica.textContent = descricaoDoFormato();
-  });
+  ligarSecaoFormatoIA(corpo); // definido em insight.js
 
   var g = $("#iaGerar");
   if (g) g.addEventListener("click", gerarInsightAvancado);

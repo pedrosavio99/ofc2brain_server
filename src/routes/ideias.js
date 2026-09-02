@@ -128,6 +128,31 @@ router.get("/insight/formatos", (_req, res) => {
 });
 
 /**
+ * Sugestao automatica de formato, antes de gerar.
+ * Mande os ids das notas do recorte (barato) ou os filtros (o servidor resolve).
+ * Nunca devolve erro por falha do modelo: cai no padrao com fallback: true,
+ * porque um ajudante nao pode impedir a geracao do insight.
+ * POST /insight/sugerir-formato { ids?, q?, area?, periodo?, desde?, ate?, limite? }
+ */
+router.post("/insight/sugerir-formato", async (req, res) => {
+  try {
+    const b = req.body || {};
+    const dados = await ideasService.sugerirFormato({
+      ids: Array.isArray(b.ids) ? b.ids : [],
+      q: b.q || null,
+      area: b.area || null,
+      periodo: b.periodo || null,
+      desde: b.desde || null,
+      ate: b.ate || null,
+      limite: b.limite != null ? Number(b.limite) : 20,
+    });
+    res.json(dados);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+/**
  * Continuidade: um pedido em cima de um insight ja gerado ("explique melhor",
  * "mais exemplos", "discorde disso" ou texto livre).
  * POST /insight/continuar { anterior, pedido?|atalho?, ids?, historico?, foco?, tamanho? }

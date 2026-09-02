@@ -46,6 +46,13 @@ function buscarFormatos() {
 
 var INS = { titulo: "Insight", continuando: false };
 
+/* O automatico e o padrao, e a escolha atravessa sessoes (como o tema). */
+try { S.insightAuto = localStorage.getItem("2brain-formato-auto") !== "0"; } catch (e) { S.insightAuto = true; }
+function definirAuto(ligado) {
+  S.insightAuto = !!ligado;
+  try { localStorage.setItem("2brain-formato-auto", ligado ? "1" : "0"); } catch (e) {}
+}
+
 function limparInsight() {
   S.insight = null;
   S.insightBlocos = null;
@@ -96,14 +103,112 @@ function gerarInsightAvancado() {
   params.push("limite=" + IA.limite);
 
   var g = $("#iaGerar");
-  if (g) { g.disabled = true; g.textContent = "Gerando…"; }
 
   S.insightEscopo = { tipo: "avancado" };
   S.insightUrl = "/insight?" + params.join("&");
   INS.titulo = "Insight do recorte";
-  pedirInsight(function () {
+
+  var gerar = function () {
+    if (g) { g.disabled = true; g.textContent = "Gerando…"; }
+    pedirInsight(function () {
+      if (g) { g.disabled = false; g.textContent = "Gerar insight"; }
+      telaInsightAvancado(); // volta o formulario com os filtros preservados
+    });
+  };
+
+  if (!S.insightAuto) { gerar(); return; }
+
+  // Automatico: uma chamada curta decide o formato, e a pessoa confirma.
+  if (g) { g.disabled = true; g.textContent = "Escolhendo o formato…"; }
+  sugerirFormatoIA().then(function (sug) {
     if (g) { g.disabled = false; g.textContent = "Gerar insight"; }
-    telaInsightAvancado(); // volta o formulario com os filtros preservados
+    if (!sug || sug.fallback) {
+      // o sugeridor e um ajudante: se ele falhou, nao segura a geracao
+      if (sug && sug.motivo === "nenhuma nota neste recorte") {
+        avisar("Nenhuma nota neste recorte.");
+        return;
+      }
+      gerar();
+      return;
+    }
+    S.insightAngulo = sug.angulo;
+    S.insightTamanho = sug.tamanho;
+    telaConfirmarFormato(sug, gerar);
+  });
+}
+
+/* Manda os ids que o preview ja calculou. Sem eles o servidor refaria a
+   selecao e, com frase de base, pagaria um embedding a toa. */
+function sugerirFormatoIA() {
+  var corpo = {
+    ids: (IA_PREVIEW && IA_PREVIEW.ids) || [],
+    q: (IA.q || "").trim() || null,
+    area: IA.area || null,
+    limite: IA.limite,
+  };
+  if (IA.periodo === "custom") {
+    corpo.desde = IA.de || null;
+    corpo.ate = IA.ate || null;
+  } else if (IA.periodo && IA.periodo !== "tudo") {
+    corpo.periodo = IA.periodo;
+  }
+
+  return api("/insight/sugerir-formato", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(corpo),
+  }).then(function (r) { return r.json(); })
+    // qualquer resposta que nao traga um angulo (erro do banco, 500, corpo
+    // estranho) conta como fallback: o fluxo segue gerando no padrao
+    .then(function (d) { return d && d.angulo ? d : { fallback: true }; })
+    .catch(function () { return { fallback: true }; });
+}
+
+/* Confirmacao: mostra a escolha e o porque. "Gerar" e um toque; quem quiser
+   discordar troca ali mesmo, sem voltar pra tela anterior. */
+function telaConfirmarFormato(sug, gerar) {
+  abrirSheet("Formato escolhido",
+    '<div class="ins-sugestao">' +
+      '<p class="ins-sug-rot">o app escolheu</p>' +
+      "<h4>" + esc(sug.anguloRotulo) + " · " + esc(String(sug.tamanhoRotulo).toLowerCase()) + "</h4>" +
+      (sug.motivo ? "<p>" + esc(sug.motivo) + "</p>" : "") +
+      (typeof sug.notasConsideradas === "number"
+        ? '<p class="ins-sug-notas">olhando ' + sug.notasConsideradas +
+          (sug.notasConsideradas === 1 ? " nota" : " notas") + " do recorte</p>"
+        : "") +
+    "</div>" +
+    '<button class="btn btn-largo" id="insConfirmar">Gerar assim</button>' +
+    '<button class="btn btn-suave btn-largo" id="insTrocar" style="margin-top:10px">Escolher eu mesmo</button>' +
+    '<p class="dica-compositor" style="display:block;text-align:center;margin-top:12px">' +
+      "Depois de ler, dá pra reformular com outro ângulo sem perder nada.</p>");
+
+  $("#insConfirmar").addEventListener("click", function () {
+    var b = $("#insConfirmar");
+    b.disabled = true;
+    b.textContent = "Gerando…";
+    gerar();
+  });
+  $("#insTrocar").addEventListener("click", function () { telaEscolherFormato(gerar); });
+}
+
+/* Escolha manual dentro do proprio fluxo, sem voltar pros filtros. */
+function telaEscolherFormato(gerar) {
+  abrirSheet("Escolher o formato",
+    chipsFormato() +
+    '<p class="dica-compositor" id="iaFormatoDica" style="display:block;margin:-4px 2px 18px">' +
+      esc(descricaoDoFormato()) + "</p>" +
+    '<button class="btn btn-largo" id="insConfirmar">Gerar assim</button>');
+
+  var corpo = $("#sheetCorpo");
+  ligarChipsFormato(corpo, function () {
+    var dica = corpo.querySelector("#iaFormatoDica");
+    if (dica) dica.textContent = descricaoDoFormato();
+  });
+  $("#insConfirmar").addEventListener("click", function () {
+    var b = $("#insConfirmar");
+    b.disabled = true;
+    b.textContent = "Gerando…";
+    gerar();
   });
 }
 
@@ -345,6 +450,35 @@ function descricaoDoFormato() {
   if (t && t.descricao) partes.push(t.descricao.charAt(0).toLowerCase() + t.descricao.slice(1));
   if (S.insightTamanho === "curto") partes.push("responde em segundos");
   return partes.join(" · ");
+}
+
+/* Secao "Formato da resposta" da tela de configuracao.
+   Com o automatico ligado os chips somem: quem escolhe e o app, e mostrar
+   controle que nao manda em nada so confunde. Desligado, e o de sempre. */
+function secaoFormatoIA() {
+  var auto = S.insightAuto;
+  return '<p class="grupo-titulo">Formato da resposta</p>' +
+    '<label class="ins-auto"><span class="ins-auto-txt"><strong>Automático</strong>' +
+      "<span>O app escolhe o ângulo e o tamanho, e confirma antes de gerar</span></span>" +
+      '<input type="checkbox" id="iaAuto"' + (auto ? " checked" : "") + " /></label>" +
+    (auto
+      ? ""
+      : chipsFormato() +
+        '<p class="dica-compositor" id="iaFormatoDica" style="display:block;margin:-4px 2px 16px">' +
+        esc(descricaoDoFormato()) + "</p>");
+}
+
+function ligarSecaoFormatoIA(corpo) {
+  var cx = corpo.querySelector("#iaAuto");
+  if (cx) cx.addEventListener("change", function () {
+    lerFormIA();               // nao perder o que ja foi digitado no re-render
+    definirAuto(cx.checked);
+    telaInsightAvancado();
+  });
+  ligarChipsFormato(corpo, function () {
+    var dica = corpo.querySelector("#iaFormatoDica");
+    if (dica) dica.textContent = descricaoDoFormato();
+  });
 }
 
 function htmlThread() {

@@ -520,5 +520,21 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
 .ins-resposta p:last-child { margin-bottom: 0; }
 .ins-pensando { margin: 0; font-size: 14px; color: var(--texto-3); }
 
+/* Interruptor do formato automatico + tela de confirmacao */
+.ins-auto { display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  padding: 12px 14px; background: var(--superficie); border-radius: var(--r-card); cursor: pointer; }
+.ins-auto-txt { flex: 1; min-width: 0; }
+.ins-auto-txt strong { display: block; font-size: 16px; font-weight: 500; }
+.ins-auto-txt span { font-size: 13px; color: var(--texto-2); line-height: 1.4; }
+.ins-auto input { accent-color: var(--acento); width: 22px; height: 22px; flex: none; }
+
+.ins-sugestao { padding: 16px; margin-bottom: 16px; border-radius: var(--r-card);
+  background: var(--acento-eco); border: 1.5px solid var(--acento); }
+.ins-sug-rot { margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--acento); }
+.ins-sugestao h4 { margin: 0 0 8px; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.ins-sugestao p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--texto); }
+.ins-sug-notas { margin-top: 8px !important; font-size: 12.5px !important; color: var(--texto-2) !important; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 @media (max-width: 380px) { .titulao { font-size: 30px; } .envolucro { padding: 0 12px 64px; } }

@@ -315,6 +315,58 @@ const openapi = {
         responses: { 200: { description: "Catalogo de formatos" } },
       },
     },
+    "/insight/sugerir-formato": {
+      post: {
+        tags: ["Busca e insight"],
+        summary: "Escolhe angulo e tamanho automaticamente, antes de gerar",
+        description:
+          "Um modelo pequeno le os resumos do recorte e decide o formato, explicando a " +
+          "escolha em uma frase. Mande 'ids' (barato: reaproveita a selecao que a tela ja " +
+          "tem) ou os filtros do recorte. Nunca falha por erro do modelo: nesse caso volta " +
+          "o padrao com fallback: true, porque a sugestao nao pode impedir a geracao.",
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  ids: { type: "array", items: { type: "string", format: "uuid" } },
+                  q: { type: "string", description: "Frase/pergunta de base, se houver" },
+                  area: { type: "string" },
+                  periodo: { type: "string", enum: ["1d", "7d", "30d", "90d", "365d", "tudo"] },
+                  desde: { type: "string" },
+                  ate: { type: "string" },
+                  limite: { type: "integer", default: 20 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Formato sugerido",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    angulo: { type: "string" },
+                    anguloRotulo: { type: "string" },
+                    tamanho: { type: "string" },
+                    tamanhoRotulo: { type: "string" },
+                    motivo: { type: "string", nullable: true },
+                    fallback: { type: "boolean", description: "true = veio do padrao, o modelo nao decidiu" },
+                    notasConsideradas: { type: "integer" },
+                    doCache: { type: "boolean" },
+                  },
+                },
+              },
+            },
+          },
+          500: { $ref: "#/components/responses/Erro" },
+        },
+      },
+    },
     "/insight/continuar": {
       post: {
         tags: ["Busca e insight"],

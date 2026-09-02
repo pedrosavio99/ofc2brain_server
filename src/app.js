@@ -42,6 +42,7 @@ app.get("/api", (_req, res) => {
       "GET    /insight            ?q=&area=&periodo=7d|30d|tudo&desde=&ate=&limite=20&angulo=&tamanho=",
       "POST   /insight            { q?, area?, periodo?, desde?, ate?, limite?, angulo?, tamanho? }",
       "GET    /insight/formatos   (angulos, tamanhos e atalhos disponiveis)",
+      "POST   /insight/sugerir-formato { ids?|filtros } (escolhe angulo/tamanho antes de gerar)",
       "POST   /insight/continuar  { anterior, pedido?|atalho?, ids?, historico?, foco? }",
       "GET    /eventos/proximos   ?dias=30",
       "GET    /insight/sugestoes  ?ultimas=20",

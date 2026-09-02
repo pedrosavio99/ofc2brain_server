@@ -10,7 +10,11 @@ import {
   resolverAngulo,
   resolverTamanho,
   resolverAtalho,
+  instrucaoSugerirFormato,
+  normalizarSugestao,
   INSTRUCAO_CONTINUAR,
+  ANGULO_PADRAO,
+  TAMANHO_PADRAO,
 } from "./insightFormatos.js";
 
 const SYSTEM_PROMPT = `Voce e um assistente que organiza uma base pessoal de conhecimento (um "segundo cerebro").
@@ -538,6 +542,89 @@ export async function insightAvancado(args = {}) {
     escopoTexto,
     notas: selecionadas.map((n) => ({ id: n.id, resumo: n.resumo, area: n.area, score: n.score ?? null })),
   };
+}
+
+/* ============================================================
+   Sugestao automatica de formato
+   ============================================================
+   Roda ANTES da geracao e custa uma chamada de LLM pequena, zero embedding:
+   reaproveita os ids que a tela ja tem em mao em vez de refazer a selecao.
+   Regra de ouro: isto e um ajudante. Se falhar, NUNCA derruba a geracao;
+   devolve o padrao marcado como fallback e a vida segue.
+   ============================================================ */
+
+// Cache em memoria por recorte: ir e voltar na mesma tela nao paga duas vezes.
+const cacheFormato = new Map();
+
+export async function sugerirFormato({
+  ids = [],
+  q = null,
+  area = null,
+  periodo = null,
+  desde = null,
+  ate = null,
+  limite = 20,
+} = {}) {
+  const tema = q && String(q).trim() ? String(q).trim() : null;
+
+  let notas = [];
+  let escopoTexto = null;
+  if (Array.isArray(ids) && ids.length) {
+    // caminho barato: a tela ja sabe quais notas entram
+    for (const id of ids.slice(0, 40)) {
+      const n = await db.buscarPorId(id);
+      if (n) notas.push(n);
+    }
+  } else {
+    const r = await selecionarRecorte({ q, area, periodo, desde, ate, limite });
+    notas = r.selecionadas;
+    escopoTexto = r.escopoTexto;
+  }
+
+  const padrao = {
+    angulo: ANGULO_PADRAO,
+    anguloRotulo: "Panorama",
+    tamanho: TAMANHO_PADRAO,
+    tamanhoRotulo: "Médio",
+    motivo: null,
+    fallback: true,
+    notasConsideradas: notas.length,
+  };
+
+  if (!notas.length) return { ...padrao, motivo: "nenhuma nota neste recorte" };
+
+  const chave = (tema || "") + "|" + notas.map((n) => n.id).join(",");
+  if (cacheFormato.has(chave)) return { ...cacheFormato.get(chave), doCache: true };
+
+  const areas = [...new Set(notas.map((n) => n.area || "sem area"))];
+  const linhas = notas
+    .slice(0, 30)
+    .map((n, i) => `${i + 1}. [${n.area || "sem area"}] ${n.resumo || String(n.texto_original || "").slice(0, 140)}`)
+    .join("\n");
+
+  const prompt = `Frase/pergunta de base: ${tema ? `"${tema}"` : "(nenhuma, a pessoa nao escreveu nada)"}
+Recorte: ${escopoTexto || "sem descricao"}
+Quantidade de notas: ${notas.length}
+Areas presentes (${areas.length}): ${areas.join(", ")}
+
+Resumos das notas:
+${linhas}`;
+
+  try {
+    // Modelo PEQUENO de proposito: isto e classificacao, nao raciocinio. Gastar
+    // um modelo grande aqui atrasaria justamente a parte que precisa ser rapida.
+    const dados = await chatJSON(instrucaoSugerirFormato(), prompt, {
+      modelo: process.env.GROQ_MODEL_FORMATO || "llama-3.1-8b-instant",
+    });
+    const sug = { ...normalizarSugestao(dados), fallback: false, notasConsideradas: notas.length };
+    cacheFormato.set(chave, sug);
+    if (cacheFormato.size > 40) cacheFormato.delete(cacheFormato.keys().next().value);
+    console.log(`[formato] sugerido ${sug.angulo}/${sug.tamanho} para ${notas.length} nota(s).`);
+    return sug;
+  } catch (err) {
+    console.error("[formato] nao consegui sugerir, seguindo no padrao:", err.message);
+    return padrao;
+  }
 }
 
 /* ============================================================
