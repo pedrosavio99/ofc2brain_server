@@ -89,8 +89,19 @@
     </button>
   </div>
   <div class="sinapse-controles" id="sinapseControles"></div>
+  <div class="sinapse-zoom" id="sinapseZoom">
+    <button id="btnZoomMais" aria-label="Aproximar" title="Aproximar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg>
+    </button>
+    <button id="btnZoomMenos" aria-label="Afastar" title="Afastar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 12h12"/></svg>
+    </button>
+    <button id="btnEnquadrar" aria-label="Ver tudo" title="Ver tudo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg>
+    </button>
+  </div>
   <div class="legenda" id="legendaAreas"></div>
-  <div class="sinapse-dica" id="sinapseDica">arraste para girar · role para aproximar · toque num neurônio</div>
+  <div class="sinapse-dica" id="sinapseDica">um dedo gira · pince para aproximar · dois dedos movem · toque num neurônio</div>
   <div class="sinapse-carregando oculto" id="sinapseCarregando">calibrando sinapses…</div>
 </div>
 
@@ -100,6 +111,7 @@
 <!-- app.js primeiro: define $, esc, o estado e as telas.
      sinapse.js depois: usa o que o app.js expoe. -->
 <script src="/app.js"></script>
+<script src="/garimpo.js"></script>
 <script src="/sinapse.js"></script>
 </body>
 </html>

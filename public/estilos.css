@@ -439,5 +439,51 @@ textarea.campo { height: auto; min-height: 62px; padding: 10px 12px; resize: ver
 .op-radio .txt strong { display: block; font-size: 16px; font-weight: 500; }
 .op-radio .txt span { font-size: 13px; color: var(--texto-2); }
 
+/* ===================== Zoom da visao sinaptica =====================
+   Coluna na lateral direita, no meio da tela: assim nunca briga com a ficha
+   do neuronio nem com a legenda, que vivem no rodape. */
+.sinapse-zoom { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 8px; }
+.sinapse-zoom button { width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--sin-btn); color: var(--sin-txt);
+  border: 1px solid var(--sin-borda); backdrop-filter: blur(10px); }
+.sinapse-zoom button:active { transform: scale(.92); }
+.sinapse-zoom svg { width: 20px; height: 20px; }
+
+/* ===================== Garimpo de ideias ===================== */
+.gm-fonte { min-height: 190px; }
+.gm-medidor { margin-top: 6px; text-align: right; font-size: 12px; color: var(--texto-3); }
+.gm-medidor .alerta, #gmConta.alerta { color: var(--alerta); }
+.gm-chip { background: var(--superficie-2); color: var(--texto-2); }
+.gm-acoes { margin-bottom: 12px; }
+.gm-aviso { margin: 0 0 14px; padding: 11px 13px; border-radius: var(--r-card);
+  background: rgba(255,149,0,.12); color: var(--alerta); font-size: 13px; line-height: 1.45; }
+
+.gm-lista { display: grid; gap: 10px; margin-bottom: 16px; }
+.gm-card { background: var(--superficie); border-radius: var(--r-card); padding: 12px 14px 14px;
+  border: 1.5px solid transparent; transition: border-color .16s ease, opacity .16s ease; }
+.gm-card.marcada { border-color: var(--acento); }
+.gm-card.repetida:not(.marcada) { opacity: .68; }
+.gm-topo { display: flex; align-items: flex-start; gap: 11px; cursor: pointer; }
+.gm-topo input { accent-color: var(--acento); width: 21px; height: 21px; flex: none; margin: 1px 0 0; }
+.gm-tit { display: block; min-width: 0; }
+.gm-tit strong { display: block; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.gm-meta { display: block; margin-top: 2px; font-size: 12px; color: var(--texto-2); }
+.gm-dup { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 9px 11px;
+  border-radius: 10px; background: rgba(255,149,0,.12); color: var(--alerta);
+  font-size: 12.5px; line-height: 1.4; }
+.gm-dup svg { flex: none; margin-top: 1px; }
+.gm-dup strong { font-weight: 600; }
+textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
+.gm-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.gm-tag { font-size: 11px; padding: 3px 9px; border-radius: var(--r-pill);
+  background: var(--superficie-2); color: var(--texto-2); }
+.gm-trecho { margin-top: 10px; }
+.gm-trecho > summary { list-style: none; cursor: pointer; font-size: 12px; color: var(--texto-2); }
+.gm-trecho > summary::-webkit-details-marker { display: none; }
+.gm-trecho p { margin: 8px 0 0; padding-left: 11px; border-left: 3px solid var(--separador);
+  font-size: 13px; line-height: 1.5; color: var(--texto-2); }
+.gm-sem-trecho { margin: 10px 0 0; font-size: 11px; color: var(--texto-3); }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 @media (max-width: 380px) { .titulao { font-size: 30px; } .envolucro { padding: 0 12px 64px; } }

@@ -34,6 +34,7 @@ app.get("/api", (_req, res) => {
     endpoints: [
       "GET    /health",
       "POST   /ideias             { texto: string }",
+      "POST   /extrair            { texto: string, maximo? } (garimpo: candidatas, nao salva)",
       "GET    /ideias             ?area=&tipo=&desde=&ate=",
       "GET    /ideias/:id",
       "DELETE /ideias/:id",

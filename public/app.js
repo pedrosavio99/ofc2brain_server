@@ -1210,6 +1210,9 @@ function abrirMenu() {
   abrirSheet("Opções",
     '<p class="grupo-titulo">Aparência</p><div class="grupo">' + opcoesTema + "</div>" +
     '<p class="grupo-titulo">Suas notas</p><div class="grupo">' +
+      '<button class="item" id="mGarimpo">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h11M4 9.5h8M4 14h6"/><path d="M14.5 14.5l5 5"/><circle cx="12.8" cy="12.8" r="3.4"/></svg>' +
+      '<div class="item-txt"><strong>Garimpar ideias</strong><span>Extrai várias notas de um texto e você escolhe</span></div></button>' +
       '<button class="item" id="mSinapse">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="7" r="2.4"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="13" r="2.6"/><circle cx="5" cy="18" r="2"/><path d="M7.9 8.4l2.4 3M14.2 12.2l2.4-4.5M10.4 14.6L6.6 16.6" stroke-linecap="round" opacity=".6"/></svg>' +
       '<div class="item-txt"><strong>Visão sináptica</strong><span>O mapa 3D das ligações</span></div></button>' +
@@ -1238,6 +1241,8 @@ function abrirMenu() {
   $("#sheetCorpo").querySelectorAll("[data-tema]").forEach(function (b) {
     b.addEventListener("click", function () { aplicarTema(b.dataset.tema); abrirMenu(); });
   });
+  // definido em garimpo.js, carregado depois deste arquivo
+  $("#mGarimpo").addEventListener("click", function () { telaGarimpo(); });
   $("#mSinapse").addEventListener("click", function () { fecharSheet(); abrirSinapse(); });
   $("#mInsightAvancado").addEventListener("click", function () {
     // se ja tem uma area filtrada na tela, o modal ja abre com ela escolhida

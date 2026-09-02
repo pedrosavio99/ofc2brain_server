@@ -44,6 +44,34 @@ const openapi = {
         responses: { 200: { description: "Metadados" } },
       },
     },
+    "/extrair": {
+      post: {
+        tags: ["Notas"],
+        summary: "Garimpa candidatas a nota dentro de um texto bruto (nao salva)",
+        description:
+          "Quebra um texto longo (artigo, transcricao, despejo mental) em ideias " +
+          "atomicas e autossuficientes. Cada candidata vem com o trecho literal do " +
+          "original de onde saiu e, se houver, a nota que voce ja tem sobre aquilo " +
+          "(deteccao de duplicata por similaridade). Nada e gravado: para criar de " +
+          "fato, mande cada texto escolhido para POST /ideias.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ExtracaoEntrada" },
+              example: { texto: "cole aqui o artigo ou a transcricao...", maximo: 12 },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Candidatas encontradas",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/ExtracaoSaida" } } },
+          },
+          400: { $ref: "#/components/responses/Erro" },
+        },
+      },
+    },
     "/ideias": {
       post: {
         tags: ["Notas"],
@@ -363,6 +391,53 @@ const openapi = {
         type: "object",
         required: ["texto"],
         properties: { texto: { type: "string", description: "O que voce quer guardar" } },
+      },
+      ExtracaoEntrada: {
+        type: "object",
+        required: ["texto"],
+        properties: {
+          texto: { type: "string", description: "Texto bruto (ate 20000 caracteres; o excedente e cortado)" },
+          maximo: { type: "integer", default: 12, description: "Teto de candidatas (1 a 25)" },
+        },
+      },
+      Candidata: {
+        type: "object",
+        properties: {
+          indice: { type: "integer" },
+          resumo: { type: "string", description: "Titulo de uma linha" },
+          texto: { type: "string", description: "A nota proposta, autossuficiente" },
+          area: { type: "string", nullable: true },
+          tags: { type: "array", items: { type: "string" } },
+          tipo: { type: "string", enum: ["ideia", "conceito", "lembrete_evento"] },
+          data_evento: { type: "string", nullable: true },
+          trecho: {
+            type: "string",
+            nullable: true,
+            description: "Pedaco literal do texto original. null quando nao foi possivel conferir.",
+          },
+          forca: { type: "integer", description: "1 a 5: o quanto vale virar nota permanente" },
+          duplicata: {
+            type: "object",
+            nullable: true,
+            description: "Nota que voce ja tem sobre isso (similaridade >= 0.75)",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              resumo: { type: "string" },
+              area: { type: "string", nullable: true },
+              score: { type: "number" },
+            },
+          },
+        },
+      },
+      ExtracaoSaida: {
+        type: "object",
+        properties: {
+          candidatas: { type: "array", items: { $ref: "#/components/schemas/Candidata" } },
+          truncado: { type: "boolean", description: "true se o texto passou do limite e foi cortado" },
+          caracteres: { type: "integer" },
+          limite: { type: "integer" },
+          maximo: { type: "integer" },
+        },
       },
       Relacionado: {
         type: "object",

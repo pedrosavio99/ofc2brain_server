@@ -1,6 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import * as ideasService from "../ideasService.js";
+import * as extracaoService from "../extracaoService.js";
 import { estadoChaves } from "../geminiClient.js";
 import { estadoChavesGroq } from "../groqClient.js";
 
@@ -12,6 +13,25 @@ router.post("/ideias", async (req, res) => {
     const { texto } = req.body;
     const ideia = await ideasService.criarIdeiaAutomaticamente(texto);
     res.status(201).json(ideia);
+  } catch (err) {
+    res.status(400).json({ erro: err.message });
+  }
+});
+
+/**
+ * Garimpo: quebra um texto bruto em candidatas a nota. NAO salva nada.
+ * O front mostra a lista, a pessoa escolhe, e o que for escolhido volta pelo
+ * POST /ideias normal (uma requisicao por nota), que e quem cria de verdade.
+ *
+ * POST /extrair { texto: string, maximo?: number }
+ */
+router.post("/extrair", async (req, res) => {
+  try {
+    const { texto, maximo } = req.body || {};
+    const dados = await extracaoService.extrairIdeias(texto, {
+      maximo: maximo != null ? Number(maximo) : 12,
+    });
+    res.json(dados);
   } catch (err) {
     res.status(400).json({ erro: err.message });
   }

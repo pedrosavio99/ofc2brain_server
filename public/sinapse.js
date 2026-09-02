@@ -13,8 +13,15 @@ var G = {
   iniciado: false, carregandoLib: false,
   cena: null, cam: null, renderizador: null, raycaster: null, mouse: null,
   nos: {}, arestas: [], selecionado: null,
-  camTheta: 0.6, camPhi: 1.2, camDist: 520,
-  arrastando: false, moveu: false, ultimoX: 0, ultimoY: 0,
+  // camDist e a distancia ATUAL; camDistDesejada e pra onde ela esta indo.
+  // A diferenca entre as duas e o que da a suavidade do zoom.
+  camTheta: 0.6, camPhi: 1.2, camDist: 520, camDistDesejada: 520,
+  // A camera deixou de olhar sempre pra (0,0,0): "alvo" e o centro que ela
+  // observa, e e ele que se move quando voce arrasta com dois dedos.
+  alvo: null, alvoDesejado: null,
+  raioGrafo: 400, jaEnquadrou: false,
+  arrastando: false, panejando: false, moveu: false, gestoMulti: false,
+  ultimoX: 0, ultimoY: 0,
   texGlow: {}, texPulso: null, rodando: false, ultimoT: 0,
   // filtros e densidade da propria visao
   area: null, periodo: "tudo", densidade: 60, vizinhos: {},
@@ -109,10 +116,13 @@ function iniciarSinapse() {
   G.renderizador.setClearColor(fundoDoGrafo(temaEscuro()), 1);
   G.raycaster = new THREE.Raycaster();
   G.mouse = new THREE.Vector2(-2, -2);
+  G.alvo = new THREE.Vector3();
+  G.alvoDesejado = new THREE.Vector3();
 
   ajustarTamanho();
   window.addEventListener("resize", ajustarTamanho);
   ligarControles(canvas);
+  ligarBotoesZoom();
   G.iniciado = true;
   G.rodando = true;
   G.ultimoT = performance.now();
@@ -194,6 +204,7 @@ function reconstruirGrafo() {
   G.nos = {};
   G.arestas = [];
   G.selecionado = null;
+  G.jaEnquadrou = false; // grafo novo: reenquadra sozinho quando assentar
   fichaNeuronio(null);
 
   var escuro = temaEscuro();
@@ -453,15 +464,42 @@ function animar() {
   if (G.energia > 0.02) {
     var mov = passoSimulacao();
     G.energia = mov;
+    // o raio muda enquanto a nuvem se organiza; remede de vez em quando pra
+    // manter o teto do zoom coerente sem pagar O(n) todo quadro
+    if ((G.quadro++ % 45) === 0) medirGrafo();
+  } else if (!G.jaEnquadrou && Object.keys(G.nos).length) {
+    // assentou e a pessoa ainda nao mexeu na camera: mostra o grafo inteiro,
+    // seja ele de 20 ou de 500 neuronios
+    enquadrar();
+    G.jaEnquadrou = true;
   }
   G.arestas.forEach(function (a) { atualizarPulso(a, dt); });
 
-  // camera orbital
-  var x = G.camDist * Math.sin(G.camPhi) * Math.cos(G.camTheta);
-  var y = G.camDist * Math.cos(G.camPhi);
-  var z = G.camDist * Math.sin(G.camPhi) * Math.sin(G.camTheta);
+  // zoom e pan chegam ao valor final por aproximacao: fica suave sem precisar
+  // de biblioteca de animacao
+  G.camDist += (G.camDistDesejada - G.camDist) * 0.18;
+  if (G.alvo && G.alvoDesejado) G.alvo.lerp(G.alvoDesejado, 0.22);
+
+  // O plano de corte era fixo em 4000: passando disso, afastar a camera fazia
+  // a cena inteira sumir. Agora ele acompanha a distancia.
+  var precisa = G.camDist + G.raioGrafo * 2 + 600;
+  if (Math.abs(G.cam.far - precisa) > 250) {
+    G.cam.far = precisa;
+    G.cam.updateProjectionMatrix();
+  }
+
+  // A neblina era constante e lavava tudo quando a camera se afasta. Agora ela
+  // afrouxa na mesma medida em que voce recua: perto continua igual, longe o
+  // mapa segue legivel.
+  if (G.cena.fog) G.cena.fog.density = Math.min(0.00028, 0.40 / Math.max(1, G.camDist));
+
+  // camera orbital em torno do alvo (nao mais fixa em 0,0,0)
+  var cx = G.alvo ? G.alvo.x : 0, cy = G.alvo ? G.alvo.y : 0, cz = G.alvo ? G.alvo.z : 0;
+  var x = cx + G.camDist * Math.sin(G.camPhi) * Math.cos(G.camTheta);
+  var y = cy + G.camDist * Math.cos(G.camPhi);
+  var z = cz + G.camDist * Math.sin(G.camPhi) * Math.sin(G.camTheta);
   G.cam.position.set(x, y, z);
-  G.cam.lookAt(0, 0, 0);
+  G.cam.lookAt(cx, cy, cz);
 
   // modo foco: selecionado grande e aceso, vizinhos acesos, o resto apagado
   var focando = !!G.selecionado;
@@ -488,30 +526,186 @@ function animar() {
   G.renderizador.render(G.cena, G.cam);
 }
 
+/* ============================================================
+   Camera: zoom, pan e enquadramento
+   ============================================================ */
+
+/* O teto do zoom nao pode ser fixo: a nuvem de neuronios cresce junto com a
+   base (a simulacao empurra tudo com DIST_IDEAL), entao um limite de 1400
+   servia pra 30 notas e deixava 300 notas sem caber na tela. Aqui o teto
+   acompanha o raio real do grafo. */
+function limiteMin() { return 60; }
+function limiteMax() { return Math.max(1400, G.raioGrafo * 4.5); }
+
+function aplicarZoom(fator) {
+  G.camDistDesejada = Math.max(limiteMin(), Math.min(limiteMax(), G.camDistDesejada * fator));
+}
+
+/* Mede o centro e o raio da nuvem. Usado pelo enquadrar e pelo teto do zoom. */
+function medirGrafo() {
+  var ids = Object.keys(G.nos);
+  if (!ids.length) return null;
+  var centro = new THREE.Vector3();
+  ids.forEach(function (id) { centro.add(G.nos[id].grupo.position); });
+  centro.multiplyScalar(1 / ids.length);
+  var raio = 1;
+  ids.forEach(function (id) {
+    var n = G.nos[id];
+    raio = Math.max(raio, n.grupo.position.distanceTo(centro) + n.tamanho);
+  });
+  G.raioGrafo = raio;
+  return { centro: centro, raio: raio };
+}
+
+/* Encaixa o grafo inteiro na tela. Leva em conta o campo de visao vertical E o
+   horizontal: no celular (tela estreita) quem corta e a largura, entao usar so
+   o fov vertical deixaria os lobulos das pontas de fora. */
+function enquadrar() {
+  var m = medirGrafo();
+  if (!m) return;
+  var fovV = G.cam.fov * Math.PI / 180;
+  var fovH = 2 * Math.atan(Math.tan(fovV / 2) * G.cam.aspect);
+  var dist = m.raio / Math.sin(Math.max(0.2, Math.min(fovV, fovH)) / 2);
+  G.alvoDesejado.copy(m.centro);
+  G.camDistDesejada = Math.max(limiteMin(), Math.min(limiteMax(), dist * 1.12));
+}
+
+/* Move o centro observado no plano da tela. Sem isso, mesmo com o zoom
+   resolvido voce nunca chega perto de um lobulo especifico: a camera orbita
+   sempre o mesmo ponto e o alvo escapa da tela. */
+function panear(dx, dy) {
+  if (!G.alvoDesejado) return;
+  var escala = G.camDist * 0.0018;
+  var frente = new THREE.Vector3().subVectors(G.alvo, G.cam.position).normalize();
+  var direita = new THREE.Vector3().crossVectors(frente, G.cam.up).normalize();
+  var cima = new THREE.Vector3().crossVectors(direita, frente).normalize();
+  G.alvoDesejado.addScaledVector(direita, -dx * escala);
+  G.alvoDesejado.addScaledVector(cima, dy * escala);
+  G.jaEnquadrou = true; // voce assumiu a camera: nao reenquadro por cima
+}
+
+function ligarBotoesZoom() {
+  var mais = document.getElementById("btnZoomMais");
+  var menos = document.getElementById("btnZoomMenos");
+  var enq = document.getElementById("btnEnquadrar");
+  if (mais) mais.addEventListener("click", function () { aplicarZoom(0.72); G.jaEnquadrou = true; });
+  if (menos) menos.addEventListener("click", function () { aplicarZoom(1 / 0.72); G.jaEnquadrou = true; });
+  if (enq) enq.addEventListener("click", function () { enquadrar(); });
+}
+
 function ligarControles(canvas) {
-  function aoDown(x, y) { G.arrastando = true; G.moveu = false; G.ultimoX = x; G.ultimoY = y; }
+  var pinca = null; // { dist, cx, cy } enquanto ha dois dedos na tela
+
+  function distancia(a, b) {
+    var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+    return Math.sqrt(dx * dx + dy * dy) || 1;
+  }
+
+  function aoDown(x, y, modoPan) {
+    G.arrastando = true;
+    G.panejando = !!modoPan;
+    G.moveu = false;
+    G.ultimoX = x; G.ultimoY = y;
+  }
   function aoMove(x, y) {
     if (!G.arrastando) return;
     var dx = x - G.ultimoX, dy = y - G.ultimoY;
     if (Math.abs(dx) + Math.abs(dy) > 2) G.moveu = true;
-    aquecer();
-    G.camTheta -= dx * 0.006;
-    G.camPhi = Math.min(Math.PI - 0.15, Math.max(0.15, G.camPhi - dy * 0.006));
+    if (G.panejando) {
+      panear(dx, dy);
+    } else {
+      aquecer();
+      G.camTheta -= dx * 0.006;
+      G.camPhi = Math.min(Math.PI - 0.15, Math.max(0.15, G.camPhi - dy * 0.006));
+    }
     G.ultimoX = x; G.ultimoY = y;
   }
   function aoUp(x, y) {
+    var eraPan = G.panejando;
     G.arrastando = false;
-    if (!G.moveu) aoClique(x, y, canvas);
+    G.panejando = false;
+    // gesto de dois dedos nunca vira selecao de neuronio
+    if (!G.moveu && !eraPan && !G.gestoMulti) aoClique(x, y, canvas);
   }
-  canvas.addEventListener("mousedown", function (e) { aoDown(e.clientX, e.clientY); });
+
+  /* ---------- mouse ---------- */
+  canvas.addEventListener("mousedown", function (e) {
+    // botao do meio, botao direito ou shift arrastam o mapa em vez de girar
+    var pan = e.button === 1 || e.button === 2 || e.shiftKey;
+    if (pan) e.preventDefault();
+    aoDown(e.clientX, e.clientY, pan);
+  });
   window.addEventListener("mousemove", function (e) { aoMove(e.clientX, e.clientY); });
   window.addEventListener("mouseup", function (e) { if (G.arrastando) aoUp(e.clientX, e.clientY); });
-  canvas.addEventListener("touchstart", function (e) { var t = e.touches[0]; aoDown(t.clientX, t.clientY); }, { passive: true });
-  canvas.addEventListener("touchmove", function (e) { var t = e.touches[0]; aoMove(t.clientX, t.clientY); }, { passive: true });
-  canvas.addEventListener("touchend", function (e) { var t = e.changedTouches[0]; aoUp(t.clientX, t.clientY); });
+  canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  canvas.addEventListener("dblclick", function (e) { e.preventDefault(); enquadrar(); });
+
+  /* ---------- toque ----------
+     Antes so existia touches[0]: pinca nao fazia nada (ou o navegador dava
+     zoom na pagina inteira). Agora dois dedos aproximam e movem ao mesmo
+     tempo, que e como todo mapa funciona no celular. */
+  canvas.addEventListener("touchstart", function (e) {
+    if (e.touches.length >= 2) {
+      G.gestoMulti = true;
+      G.arrastando = false;
+      var a = e.touches[0], b = e.touches[1];
+      pinca = {
+        dist: distancia(a, b),
+        cx: (a.clientX + b.clientX) / 2,
+        cy: (a.clientY + b.clientY) / 2,
+      };
+      return;
+    }
+    G.gestoMulti = false;
+    pinca = null;
+    var t = e.touches[0];
+    aoDown(t.clientX, t.clientY, false);
+  }, { passive: false });
+
+  canvas.addEventListener("touchmove", function (e) {
+    if (e.touches.length >= 2 && pinca) {
+      e.preventDefault();
+      var a = e.touches[0], b = e.touches[1];
+      var d = distancia(a, b);
+      var cx = (a.clientX + b.clientX) / 2, cy = (a.clientY + b.clientY) / 2;
+      aplicarZoom(pinca.dist / d);       // afastou os dedos = aproxima a camera
+      panear(cx - pinca.cx, cy - pinca.cy); // e o centro dos dedos arrasta o mapa
+      G.jaEnquadrou = true;
+      pinca = { dist: d, cx: cx, cy: cy };
+      return;
+    }
+    if (!e.touches.length) return;
+    var t = e.touches[0];
+    aoMove(t.clientX, t.clientY);
+  }, { passive: false });
+
+  canvas.addEventListener("touchend", function (e) {
+    if (e.touches.length >= 2) return;
+    if (e.touches.length === 1) {
+      // soltou um dedo da pinca: recomeca o giro do dedo que ficou, sem pulo
+      pinca = null;
+      var t = e.touches[0];
+      aoDown(t.clientX, t.clientY, false);
+      G.moveu = true; // nao conta como toque de selecao
+      return;
+    }
+    pinca = null;
+    var f = e.changedTouches[0];
+    aoUp(f.clientX, f.clientY);
+    setTimeout(function () { G.gestoMulti = false; }, 60);
+  });
+  canvas.addEventListener("touchcancel", function () {
+    pinca = null; G.arrastando = false; G.panejando = false; G.gestoMulti = false;
+  });
+
+  /* ---------- roda / trackpad ----------
+     Multiplicativo, nao aditivo: um passo linear e lento perto e violento
+     longe. deltaMode existe porque Firefox manda linhas, nao pixels. */
   canvas.addEventListener("wheel", function (e) {
     e.preventDefault();
-    G.camDist = Math.min(1400, Math.max(120, G.camDist + e.deltaY * 0.4));
+    var passo = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
+    aplicarZoom(Math.exp(Math.max(-120, Math.min(120, passo)) * 0.0016));
+    G.jaEnquadrou = true;
   }, { passive: false });
 }
 
