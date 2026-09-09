@@ -1,0 +1,116 @@
+/* Modulo TRABALHO - so o que o estilos.css do Segundo Cerebro nao cobre.
+   Todas as cores saem dos tokens dele (--acento, --superficie, --texto-2...),
+   entao o modulo acompanha claro, escuro e qualquer mudanca de identidade
+   sem precisar de manutencao paralela. */
+
+/* ===================== Barra ===================== */
+/* .voltar ja existe no app; dentro da barra ele nao pode ter a margem
+   negativa de baixo que serve pro fluxo normal da pagina. */
+.barra .voltar-barra { margin: 0; text-decoration: none; padding: 6px 8px 6px 4px; }
+.barra .voltar-barra svg { width: 19px; height: 19px; }
+.barra-int { position: relative; }
+/* O titulo da barra aparece no scroll, centralizado, como no app principal. */
+.barra .barra-titulo { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; }
+
+/* ===================== Filtros ===================== */
+.tr-rot-filtro { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--texto-3); margin: 2px 0 7px 2px; }
+.chip .n { font-variant-numeric: tabular-nums; opacity: .65; font-weight: 600; }
+.chip.ativo .n { opacity: .85; }
+.chip.perigo:not(.ativo) { color: var(--perigo); }
+.chip.perigo.ativo { background: var(--perigo); }
+/* Chips de liga/desliga (concluidas, subtarefas): mesma pastilha, com check. */
+.chip .marca { width: 15px; height: 15px; flex: none; opacity: .9; }
+
+/* ===================== Cartao de tarefa ===================== */
+/* Reusa .nota do app: mesmo raio, mesma sombra, mesma faixa lateral colorida.
+   A faixa aqui carrega a cor do prazo em vez da cor da area. */
+.tr-tarefa { display: grid; grid-template-columns: auto 1fr; gap: 0 11px; align-items: start; padding: 12px 14px; }
+.tr-tarefa.marcada { box-shadow: 0 0 0 2px var(--acento), var(--sombra); }
+
+.tr-marcar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  border: 1.7px solid var(--separador); color: transparent; margin-top: 2px;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .06s ease; }
+.tr-marcar:active { transform: scale(.9); }
+.tr-marcar svg { width: 14px; height: 14px; }
+.tr-marcar[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: #fff; }
+
+.tr-corpo { text-align: left; width: 100%; display: grid; gap: 6px; min-width: 0; background: none; padding: 0; }
+.tr-titulo { font-size: 16px; font-weight: 600; letter-spacing: -.01em; margin: 0;
+  overflow-wrap: anywhere; }
+.tr-caminho { font-size: 13px; color: var(--texto-2); margin: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.tr-caminho span + span::before { content: " › "; opacity: .6; }
+
+.tr-selos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.selo-prazo { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: var(--r-pill); white-space: nowrap;
+  color: var(--texto-2); background: var(--superficie-2); }
+.selo-prazo.vencida { color: var(--perigo); background: rgba(255,59,48,.13); }
+.selo-prazo.hoje { color: var(--alerta); background: rgba(255,149,0,.14); }
+.selo-prazo.prio { color: var(--perigo); background: rgba(255,59,48,.12); }
+.tr-pe { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--texto-3); }
+.tr-pe .tag { font-size: 12px; padding: 2px 8px; }
+
+/* Cabecalho de grupo: mesma pegada de .dia-rot da linha do tempo. */
+.tr-grupo { margin-bottom: 22px; }
+.tr-grupo-rot { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+  color: var(--texto-2); text-transform: uppercase; letter-spacing: .04em; margin: 18px 2px 9px; }
+.tr-grupo:first-child .tr-grupo-rot { margin-top: 4px; }
+.tr-grupo-rot .bolinha { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.tr-grupo-rot .conta { margin-left: auto; font-weight: 600; color: var(--texto-3); letter-spacing: 0; }
+
+/* ===================== Barra da selecao ===================== */
+.tr-barra-plano { position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 45;
+  display: flex; align-items: center; gap: 9px; max-width: calc(100vw - 24px);
+  padding: 9px 10px 9px 16px; border-radius: var(--r-pill);
+  background: var(--elevado); backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid var(--separador); box-shadow: 0 10px 34px rgba(0,0,0,.18);
+  animation: trSubir .28s cubic-bezier(.32,.72,0,1) both; }
+.tr-barra-plano[hidden] { display: none; }
+.tr-contagem { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.tr-barra-plano .btn { height: 34px; font-size: 14px; padding: 0 14px; flex: none; }
+@keyframes trSubir { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (max-width: 420px) {
+  .tr-barra-plano { left: 12px; right: 12px; transform: none; max-width: none; justify-content: space-between; }
+  @keyframes trSubir { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+}
+
+/* ===================== Detalhe no sheet ===================== */
+.tr-desc { font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.tr-desc code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13.5px;
+  background: var(--superficie-2); padding: 1px 5px; border-radius: 5px; }
+.tr-desc a { color: var(--acento); }
+.tr-desc strong { font-weight: 700; }
+.tr-vazio-txt { color: var(--texto-3); font-style: italic; }
+.tr-filhas { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.tr-filhas li { font-size: 14px; color: var(--texto-2); display: flex; gap: 8px; align-items: baseline; }
+.tr-filhas li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; flex: none;
+  background: var(--separador); transform: translateY(-2px); }
+.tr-filhas li.feita { text-decoration: line-through; color: var(--texto-3); }
+.tr-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.tr-acoes .btn { height: 34px; font-size: 14px; padding: 0 14px; }
+.tr-acoes a.btn { text-decoration: none; }
+.tr-recado { font-size: 13px; color: var(--texto-2); margin: 8px 0 0; min-height: 18px; }
+.tr-recado.bom { color: var(--sucesso); }
+.tr-recado.ruim { color: var(--perigo); }
+.tr-linha-acao { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.tr-linha-acao .campo { flex: 1 1 160px; height: 38px; }
+
+/* Ordem de execucao */
+.tr-plano { list-style: none; counter-reset: passo; margin: 0; padding: 0; display: grid; gap: 12px; }
+.tr-plano li { counter-increment: passo; display: grid; grid-template-columns: auto 1fr; gap: 11px; }
+.tr-plano li::before { content: counter(passo); width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--acento-eco); color: var(--acento);
+  font-size: 12px; font-weight: 700; margin-top: 1px; }
+.tr-plano strong { display: block; font-size: 15px; font-weight: 600; }
+.tr-plano a { color: inherit; text-decoration: none; }
+.tr-plano .motivo { display: block; font-size: 13.5px; color: var(--texto-2); margin-top: 2px; line-height: 1.45; }
+
+/* Aviso de erro de configuracao: mesma linguagem do .vazio do app. */
+.tr-aviso { background: var(--superficie); border-radius: var(--r-card); box-shadow: var(--sombra);
+  padding: 18px; display: grid; gap: 6px; border-left: 3px solid var(--perigo); }
+.tr-aviso strong { font-size: 16px; }
+.tr-aviso p { margin: 0; font-size: 14px; color: var(--texto-2); }
