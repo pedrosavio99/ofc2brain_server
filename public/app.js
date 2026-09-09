@@ -13,7 +13,7 @@ var S = {
   // formato escolhido (angulo/tamanho), url base pra refazer e a thread de follow-ups
   insight: null, insightBlocos: null, insightFonte: null, insightNotas: null,
   insightCarregando: false, insightEscopo: null, insightUrl: null,
-  insightAngulo: "panorama", insightTamanho: "medio", insightThread: [], insightAuto: true,
+  insightAngulo: "panorama", insightTamanho: "curto", insightThread: [], insightAuto: true,
   filtroArea: null, filtroTipo: null, carregando: true,
   areaAberta: null, periodo: '7d', dataDe: '', dataAte: '', limiteTempo: 40,
 };

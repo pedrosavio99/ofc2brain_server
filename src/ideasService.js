@@ -77,6 +77,31 @@ ${lista}`;
 const MAX_CANDIDATOS = Number(process.env.MAX_CANDIDATOS || 10);
 const PISO_SIMILARIDADE = Number(process.env.PISO_SIMILARIDADE || 0.3);
 
+const DIA_MS = 86400000;
+
+/* Quando a nota foi escrita. Sem isto o modelo trata uma nota de marco e uma
+   de ontem como se fossem do mesmo dia, e pior: repete literalmente expressoes
+   relativas do texto ("ha 2 meses") que congelaram na data da escrita. */
+function quandoNota(n) {
+  const t = new Date(n.criado_em).getTime();
+  if (!Number.isFinite(t)) return "";
+  const dias = Math.round((Date.now() - t) / DIA_MS);
+  const idade = dias <= 0 ? "hoje" : dias === 1 ? "ontem" : `ha ${dias} dias`;
+  return `guardada em ${String(n.criado_em).slice(0, 10)} (${idade})`;
+}
+
+/* Lembrete de evento: saber se a data ja passou muda o sentido da frase. */
+function quandoEvento(n) {
+  if (n.tipo !== "lembrete_evento" || !n.data_evento) return "";
+  const t = new Date(n.data_evento).getTime();
+  if (!Number.isFinite(t)) return `evento marcado para ${n.data_evento}`;
+  const dias = Math.round((t - Date.now()) / DIA_MS);
+  const situacao = dias < 0 ? `JA PASSOU ha ${Math.abs(dias)} dias`
+    : dias === 0 ? "E HOJE"
+    : `faltam ${dias} dias`;
+  return `evento marcado para ${String(n.data_evento).slice(0, 10)} (${situacao})`;
+}
+
 async function hidratarCandidatas(cands) {
   const out = [];
   for (const c of cands) {
@@ -275,7 +300,14 @@ async function gerarInsight(query, resultados, opcoes = {}) {
       .map(([a, c]) => `${a} (${c})`).join(", ");
     const tags = Object.entries(porTag).sort((a, b) => b[1] - a[1]).slice(0, 25)
       .map(([t, c]) => `${t} (${c})`).join(", ");
+    // listarResumidas vem em ordem de criacao crescente, entao primeira e
+    // ultima ja sao os extremos. Sem isto o modelo nao sabe se a base cobre
+    // uma semana ou dois anos, e trata tudo como se fosse do mesmo momento.
+    const primeira = String(todas[0]?.criado_em || "").slice(0, 10);
+    const ultima = String(todas[todas.length - 1]?.criado_em || "").slice(0, 10);
+    const periodo = primeira && ultima ? `Periodo coberto: de ${primeira} a ${ultima}.` : "";
     panorama = `Base completa: ${todas.length} nota(s).
+${periodo}
 Areas: ${areas || "nenhuma"}.
 Tags mais usadas: ${tags || "nenhuma"}.`;
   } catch {
@@ -289,11 +321,17 @@ Tags mais usadas: ${tags || "nenhuma"}.`;
     return s.length > n ? s.slice(0, n) + "…" : s;
   };
 
+  // A data de cada nota nunca chegava no prompt: criado_em era lido do banco e
+  // descartado aqui. Sem ela o modelo trata uma nota de marco e uma de ontem
+  // como se fossem do mesmo dia.
   const formatar = (lista) => lista.map((r, i) => {
     const rels = (r.relacionados || [])
       .map((x) => (x && x.motivo) ? `${x.motivo}` : null)
       .filter(Boolean).slice(0, 3);
+    const evento = quandoEvento(r);
     return `${i + 1}. [${r.area || "sem area"}] ${r.resumo || "(sem resumo)"}
+   ${quandoNota(r)}${evento ? `
+   ${evento}` : ""}
    texto: ${corta(r.texto_original, 600)}
    tags: ${(r.tags || []).join(", ") || "-"}
    proximidade com o tema: ${Math.round((r.score ?? 0) * 100)}%${rels.length ? `
@@ -336,13 +374,26 @@ ${formatar(fracos.slice(0, 5))}`
 ${formatar(resultados.slice(0, 8))}`
         : "");
 
-  const prompt = `${panorama}
+  // Mesma peca que o montarUserPrompt ja usa na criacao da nota. Sem ela o
+  // modelo nao tem como calcular "isso foi ha tres meses" nem "isso ja passou".
+  const hojeISO = new Date().toISOString().slice(0, 10);
+
+  const prompt = `Data de hoje: ${hojeISO}
+
+${panorama}
 
 ${cabecalho}
 
 ${blocoMaterial}
 
 ${blocoContexto}`;
+
+  // INSIGHT_DEBUG_PROMPT=1 imprime no terminal o prompt exato enviado ao
+  // modelo. Serve pra conferir o que ele recebe, sem adivinhar. Desligado por
+  // padrao: em producao isso encheria o log.
+  if (process.env.INSIGHT_DEBUG_PROMPT === "1") {
+    console.log("\n===== PROMPT DO INSIGHT =====\n" + prompt + "\n===== FIM =====\n");
+  }
 
   // Empacota a resposta do modelo junto com a fonte (provedor/modelo/chave) e
   // quantas notas entraram, pra UI conseguir mostrar de onde saiu o insight.
@@ -668,8 +719,13 @@ export async function continuarInsight({
 
   const blocoNotas = notas.length
     ? `Notas que sustentam este insight (${notas.length}):
-${notas.map((n, i) => `${i + 1}. [${n.area || "sem area"}] ${n.resumo || "(sem resumo)"}
-   texto: ${corta(n.texto_original, 400)}`).join("\n")}`
+${notas.map((n, i) => {
+  const evento = quandoEvento(n);
+  return `${i + 1}. [${n.area || "sem area"}] ${n.resumo || "(sem resumo)"}
+   ${quandoNota(n)}${evento ? `
+   ${evento}` : ""}
+   texto: ${corta(n.texto_original, 400)}`;
+}).join("\n")}`
     : "As notas originais nao foram informadas: trabalhe apenas sobre o insight anterior e diga quando algo for conhecimento seu.";
 
   // So as 2 ultimas rodadas: sem esse teto o prompt cresce sem limite a cada
@@ -687,7 +743,9 @@ ${corta(foco, 600)}
 """`
     : "";
 
-  const prompt = `${blocoNotas}
+  const prompt = `Data de hoje: ${new Date().toISOString().slice(0, 10)}
+
+${blocoNotas}
 
 Insight anterior (nao repita, trabalhe em cima dele):
 """
@@ -939,6 +997,11 @@ Regras:
   pergunta que projeta uma decisao pra frente, pergunta que procura o que esta faltando.
 - Cada pergunta deve caber numa linha e ser especifica o bastante pra render uma resposta densa.
 - Portugues do Brasil, direto, sem enrolacao.
+- Cada nota vem com a data em que foi guardada, e o prompt comeca com a data de hoje.
+  Expressao relativa DENTRO da nota ("ha 2 meses", "semana passada") esta congelada na data
+  da escrita, nao em hoje: refaca a conta antes de usar o numero numa pergunta.
+- Vale perguntar sobre o que envelheceu: nota antiga que talvez ja tenha mudado, decisao
+  que ficou parada, evento que passou sem desfecho registrado.
 
 Responda SOMENTE com JSON:
 { "perguntas": [ { "pergunta": string, "porque": string } ] }   // exatamente 10 itens
@@ -949,8 +1012,10 @@ Responda SOMENTE com JSON:
   // texto (cortado) quando a nota nao tem resumo.
   const linha = (n, i) => {
     const miolo = n.resumo || String(n.texto_original || "").slice(0, 200);
+    const evento = quandoEvento(n);
     return `${i + 1}. [${n.area || "sem area"}] ${miolo}` +
-      ((n.tags || []).length ? ` (tags: ${n.tags.join(", ")})` : "");
+      ((n.tags || []).length ? ` (tags: ${n.tags.join(", ")})` : "") +
+      `\n   ${quandoNota(n)}${evento ? " | " + evento : ""}`;
   };
 
   const cabecalho = escopo === "selecao"
@@ -958,7 +1023,9 @@ Responda SOMENTE com JSON:
 pesquisa por tema. As perguntas devem sair DESTE recorte, nao da base inteira:`
     : `Notas mais recentes desta pessoa (${recentes.length}):`;
 
-  const prompt = `${cabecalho}
+  const prompt = `Data de hoje: ${new Date().toISOString().slice(0, 10)}
+
+${cabecalho}
 ${recentes.map(linha).join("\n")}
 
 Areas presentes: ${[...new Set(recentes.map((n) => n.area || "sem area"))].join(", ")}`;

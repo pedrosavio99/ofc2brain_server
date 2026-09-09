@@ -41,7 +41,9 @@ export const TAMANHOS = {
   },
 };
 
-export const TAMANHO_PADRAO = "medio";
+// Padrao conciso: sintese curta mais uma acao. Medio e Longo continuam a um
+// toque na tela quando o assunto pedir profundidade.
+export const TAMANHO_PADRAO = "curto";
 export const ANGULO_PADRAO = "panorama";
 
 /** Escolhe um valor conforme o tamanho pedido. */
@@ -245,7 +247,26 @@ const REGRAS_BASE = `Regras de qualidade, sem excecao:
 - Densidade: cada frase precisa carregar informacao nova. Prefira afirmar a sugerir.
 - Escreva em portugues do Brasil, direto, tom de quem pensa junto e nao de consultor.
 - Nunca invente fato que nao esta nas notas. Quando for conhecimento seu, e nao delas, assuma isso na frase.
-- Um campo sem conteudo honesto vira null (ou lista vazia). Encher campo e falha.`;
+- Um campo sem conteudo honesto vira null (ou lista vazia). Encher campo e falha.
+
+Tempo:
+- Cada nota vem com a data em que foi guardada, e o prompt comeca com a data de hoje. Use isso.
+- ATENCAO: expressao relativa DENTRO do texto da nota ("ha 2 meses", "semana passada", "ontem",
+  "mes que vem") esta congelada na data em que a nota foi escrita, nao em hoje. Refaca a conta a
+  partir da data da nota antes de repetir o numero. Uma nota de 30 dias atras que dizia "ha 2 meses"
+  hoje quer dizer 3 meses. Repetir "2 meses" e erro.
+- Quando a conta for aproximada, diga que e aproximada, sem fingir precisao que nao existe.
+- Nota antiga e nota de ontem nao valem o mesmo. Considere o que pode ter mudado desde entao.
+- Evento com data que ja passou nao vira sugestao de preparacao.
+- Comente o tempo so quando ele mudar o sentido da coisa. Marcar a idade de cada nota em toda frase cansa.
+
+Interpretacao:
+- Separe o que ESTA escrito nas notas do que voce esta deduzindo. Fato da nota pode ser afirmado.
+  Deducao sua precisa vir marcada como sua ("me parece", "isso sugere"), e nunca com mais confianca
+  do que o material sustenta.
+- Proibido diagnostico psicologico apresentado como observacao ("voce tem padrao X", "seu historico
+  revela Y") quando isso nao esta escrito nas notas. Descreva o que voce viu e deixe a leitura em
+  aberto.`;
 
 /**
  * Instrucao completa (system prompt) do insight, ja com angulo, tamanho e esquema.
@@ -363,13 +384,14 @@ Angulos disponiveis:
 ${angulos}
 
 Tamanhos disponiveis:
-- curto: frase objetiva, pergunta fechada, ou recorte pequeno (ate 6 notas).
-- medio: o padrao. Use quando nao houver motivo claro pro curto nem pro longo.
-- longo: recorte grande (25 notas ou mais), tema aberto, ou pedido explicito de profundidade.
+- curto: o padrao. Use sempre que o recorte ou a pergunta couberem numa resposta enxuta.
+- medio: use quando o recorte tiver varios fios distintos que se perderiam num texto curto.
+- longo: so com recorte grande (25 notas ou mais) E tema aberto, ou pedido explicito de profundidade.
 
 Regras:
 - Decida pelo que ESTA no recorte e na frase, nao pelo que seria interessante.
-- Na duvida entre dois angulos, prefira panorama. Na duvida entre dois tamanhos, prefira medio.
+- Na duvida entre dois angulos, prefira panorama. Na duvida entre dois tamanhos, prefira o MENOR.
+- Tamanho maior precisa ser justificado pelo material. Na ausencia de motivo forte, curto.
 - "motivo" e UMA frase curta, em portugues do Brasil, dizendo o que na frase ou nas notas levou
   a essa escolha. Nada de generico ("para dar uma visao completa"): cite o que voce viu.
 
