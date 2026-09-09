@@ -213,6 +213,45 @@ function carregar() {
   });
 }
 
+/* Depois de guardar UMA nota, atualiza o estado local em vez de reler a base
+   inteira. Numa base de algumas centenas de notas isso e a diferenca entre
+   guardar levar o tempo do LLM e levar o tempo do LLM mais uma varredura.
+   O garimpo continua usando carregar(): la sao varias notas de uma vez. */
+function absorverNota(nova) {
+  // ordem de criacao crescente, igual ao que vem do servidor. Quem precisa de
+  // outra ordem (por ligacoes, por data) ja ordena por conta propria.
+  var existe = S.notas.some(function (n) { return n.id === nova.id; });
+  if (!existe) S.notas.push(nova);
+
+  // Espelho da referencia de volta. O servidor, ao criar a nota, acrescenta
+  // { id da nova, motivo, score } no relacionados de cada nota citada (ver
+  // criarIdeiaAutomaticamente no ideasService.js). Sem repetir isso aqui, o
+  // medidor de ligacoes desses cards ficaria uma unidade atras ate o proximo
+  // carregamento. Se a regra mudar la, ela precisa mudar aqui tambem.
+  var porId = {};
+  S.notas.forEach(function (n) { porId[n.id] = n; });
+  relsDe(nova).forEach(function (rel) {
+    var antiga = porId[rel.id];
+    if (!antiga) return;
+    antiga.relacionados = relsDe(antiga).filter(function (r) { return r.id !== nova.id; });
+    antiga.relacionados.push({ id: nova.id, motivo: rel.motivo, score: rel.score });
+  });
+
+  render();
+  if ($("#sinapse").classList.contains("aberta") && typeof reconstruirGrafo === "function") reconstruirGrafo();
+
+  // Lembrete de evento so aparece na aba Eventos depois que o servidor aplica
+  // a janela de dias. Essa rota ficou barata, entao vale a ida. Qualquer outro
+  // tipo de nota nao mexe em S.eventos e nao precisa de rede nenhuma.
+  if (nova.tipo === "lembrete_evento" && nova.data_evento) {
+    return api("/eventos/proximos?dias=45")
+      .then(function (r) { return r.json(); })
+      .then(function (evts) { S.eventos = Array.isArray(evts) ? evts : []; render(); })
+      .catch(function () {});
+  }
+  return Promise.resolve();
+}
+
 function adicionar() {
   var texto = $("#campoNota").value.trim();
   if (!texto) return Promise.resolve();
@@ -229,7 +268,7 @@ function adicionar() {
       ajustarAltura();
       S.recentes = [nova.id].concat(S.recentes.filter(function (i) { return i !== nova.id; })).slice(0, 5);
       trocarAba("foco");
-      return carregar().then(function () { avisar("Nota guardada."); });
+      return absorverNota(nova).then(function () { avisar("Nota guardada."); });
     });
   }).catch(function (e) { avisar(e.message); })
     .then(function () {

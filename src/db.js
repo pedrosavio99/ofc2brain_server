@@ -3,6 +3,8 @@
 // referencia/uso local, mas nao e mais usado pela API.
 export {
   listarTodas,
+  listarResumidas,
+  listarEventos,
   buscarPorId,
   salvar,
   atualizar,

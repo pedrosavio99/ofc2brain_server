@@ -136,6 +136,8 @@ export async function criarIdeiaAutomaticamente(texto) {
   await db.salvar(novaIdeia);
 
   // referencia de volta: a ideia antiga tambem passa a "saber" da nova (relacao nao fica de mao unica)
+  // ATENCAO: o front repete esta regra em absorverNota (public/app.js) pra
+  // nao precisar reler a base depois de guardar. Mudou aqui, muda la.
   for (const rel of relacionados) {
     await db.atualizar(rel.id, (ideiaAntiga) => ({
       ...ideiaAntiga,
@@ -155,7 +157,7 @@ export async function criarIdeiaAutomaticamente(texto) {
  * fim do dia, senao um intervalo de um dia so nao pegaria nada.
  */
 export async function listarIdeias({ area, tipo, desde, ate } = {}) {
-  const todas = await db.listarTodas();
+  const todas = await db.listarResumidas();
 
   const limiteInicio = desde ? new Date(desde).getTime() : null;
   let limiteFim = null;
@@ -262,7 +264,7 @@ async function gerarInsight(query, resultados, opcoes = {}) {
   // panorama da base, pra ele entender de quem esta falando
   let panorama = "";
   try {
-    const todas = await db.listarTodas();
+    const todas = await db.listarResumidas();
     const porArea = {}, porTag = {};
     for (const n of todas) {
       const a = n.area || "sem area";
@@ -754,7 +756,7 @@ export async function previewRecorte(args = {}) {
 }
 
 export async function proximosEventos({ dias = 30 } = {}) {
-  const todas = await db.listarTodas();
+  const todas = await db.listarEventos();
   const agora = new Date();
   const limite = new Date(agora.getTime() + dias * 24 * 60 * 60 * 1000);
 
@@ -791,7 +793,7 @@ export async function reindexarTudo(onProgress) {
   const intervalo = Number(process.env.RELINK_INTERVALO_MS || 2100);
   const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const todas = await db.listarTodas(); // ordem de criacao
+  const todas = await db.listarResumidas(); // ordem de criacao
   const total = todas.length;
   let falhas = 0;
 
@@ -810,6 +812,10 @@ export async function reindexarTudo(onProgress) {
   }
 
   // 2. reconstroi relacoes de forma simetrica e sem duplicar pares
+  // ATENCAO: aqui tem que ser listarTodas mesmo. A linha do topKSimilares
+  // logo abaixo le ideia.embedding. Com listarResumidas o vetor vem nulo, a
+  // busca devolve vazio, e como a etapa 1 ja zerou os relacionados, o relink
+  // apagaria o grafo inteiro e ainda reportaria sucesso.
   const atualizadas = await db.listarTodas();
   const relPorId = new Map(atualizadas.map((t) => [t.id, []]));
   const paresVistos = new Set();
@@ -893,7 +899,7 @@ let cacheSugestoes = { chave: null, dados: null, em: null };
  * @param {object} opts { ultimas = 20, forcar = false }
  */
 export async function sugerirPerguntas({ ultimas = 20, ids = null, forcar = false } = {}) {
-  const todas = await db.listarTodas();
+  const todas = await db.listarResumidas();
   if (todas.length === 0) {
     return { perguntas: [], baseadoEm: 0, motivo: "sem notas ainda" };
   }

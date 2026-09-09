@@ -89,13 +89,57 @@ function paraRow(ideia) {
 
 // ---------- interface publica (igual ao motor antigo) ----------
 
+// Colunas da ideia sem o vetor. O embedding sao 768 floats, cerca de 8 KB por
+// nota em texto, e a maior parte do app nunca olha pra ele: a listagem joga
+// fora com semExpoerEmbedding antes de responder. Trazer so isto e a diferenca
+// entre 8 MB e 0,5 MB numa base de mil notas.
+const COLUNAS_LEVES =
+  "id,texto_original,resumo,area,tags,tipo,data_evento,relacionados,criado_em,atualizado_em";
+
+// O PostgREST tem teto de linhas por resposta (o padrao costuma ser 1000) e
+// nao avisa quando corta: a lista simplesmente volta incompleta. Aqui a gente
+// pagina ate acabar. O desempate por id e obrigatorio: sem ele, duas notas com
+// o mesmo criado_em podem cair na mesma pagina duas vezes, ou em nenhuma.
+const PAGINA = 1000;
+
+async function buscarPaginado(colunas, aplicarFiltros) {
+  const linhas = [];
+  for (let pagina = 0; ; pagina++) {
+    let consulta = sb.from(TABELA).select(colunas);
+    if (aplicarFiltros) consulta = aplicarFiltros(consulta);
+    const { data, error } = await consulta
+      .order("criado_em", { ascending: true })
+      .order("id", { ascending: true })
+      .range(pagina * PAGINA, pagina * PAGINA + PAGINA - 1);
+    if (error) throw new Error(`buscarPaginado: ${error.message}`);
+    const lote = data || [];
+    linhas.push(...lote);
+    if (lote.length < PAGINA) break;
+  }
+  return linhas;
+}
+
+// Mantida como estava: traz a linha inteira, INCLUSIVE o embedding. O relink e
+// o exportarBackup dependem do vetor; trocar isto por listarResumidas apagaria
+// o grafo no relink e geraria backup sem vetor. So a paginacao foi acrescentada.
 export async function listarTodas() {
-  const { data, error } = await sb
-    .from(TABELA)
-    .select("*")
-    .order("criado_em", { ascending: true });
-  if (error) throw new Error(`listarTodas: ${error.message}`);
-  return (data || []).map(linhaParaIdeia);
+  return (await buscarPaginado("*")).map(linhaParaIdeia);
+}
+
+// Mesma coisa, sem o vetor. Use onde o embedding nao e lido.
+// O campo embedding volta como null nos objetos.
+export async function listarResumidas() {
+  return (await buscarPaginado(COLUNAS_LEVES)).map(linhaParaIdeia);
+}
+
+// Eventos: o filtro por tipo desce pro Postgres, que e onde ele deveria estar.
+// A janela de dias NAO desce junto de proposito: data_evento e text no schema,
+// e comparar data como texto depende do formato gravado. Quem decide a janela
+// continua sendo o ideasService, exatamente como hoje.
+export async function listarEventos() {
+  const linhas = await buscarPaginado(COLUNAS_LEVES, (q) =>
+    q.eq("tipo", "lembrete_evento").not("data_evento", "is", null));
+  return linhas.map(linhaParaIdeia);
 }
 
 export async function buscarPorId(id) {
