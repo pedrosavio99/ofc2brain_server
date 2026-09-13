@@ -351,3 +351,143 @@ export const mock = {
     },
   ],
 };
+
+
+/* ------------------------- comentarios e daily -------------------------
+   A API v2 do ClickUp nao tem endpoint de "meus comentarios". Comentario so
+   existe por tarefa. Entao o caminho e: descobrir as tarefas que mexeram na
+   janela, buscar os comentarios de cada uma e filtrar pelo dono do token.
+
+   Custo: uma requisicao por tarefa. Por isso o teto de tarefas e o lote
+   pequeno; o limite do ClickUp e 100 requisicoes por minuto. */
+
+export const MAX_TASKS_DAILY = 40;
+const LOTE_COMENTARIOS = 4;
+
+/** Tarefas minhas que mudaram desde `desde`, fechadas incluidas.
+    Fechadas entram de proposito: tarefa que eu comentei e conclui ontem e
+    justamente o que a daily precisa contar. */
+export async function buscarTasksAtualizadasDesde(desde, { max = MAX_TASKS_DAILY } = {}) {
+  if (cfg.mock) {
+    return mock.tasks
+      .filter((t) => (t.updated || 0) >= desde)
+      .map((t) => ({ ...t, prazo: classificarPrazo(t.dueDate) }))
+      .slice(0, max);
+  }
+
+  const usuario = await buscarUsuario();
+  const workspaces = await buscarWorkspaces();
+  const tasks = [];
+  const vistos = new Set();
+
+  for (const ws of workspaces) {
+    for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
+      const qs = new URLSearchParams({
+        "assignees[]": String(usuario.id),
+        include_closed: "true",
+        subtasks: "true",
+        order_by: "updated",
+        date_updated_gt: String(desde),
+        page: String(pagina),
+      });
+      const dados = await cu("/team/" + ws.id + "/task?" + qs.toString());
+      const lote = dados?.tasks || [];
+      for (const t of lote) {
+        if (vistos.has(t.id)) continue;
+        vistos.add(t.id);
+        tasks.push(limparTask(t, ws.nome));
+      }
+      if (!lote.length || dados?.last_page || tasks.length >= max) break;
+    }
+    if (tasks.length >= max) break;
+  }
+  return tasks.slice(0, max);
+}
+
+/** Comentarios de uma tarefa, ja normalizados. Pagina unica, os mais recentes. */
+export async function buscarComentariosDaTask(id) {
+  if (cfg.mock) {
+    return (mock.comentarios[id] || []).map((c, i) => ({
+      id: "mock-" + id + "-" + i,
+      texto: c.texto,
+      em: c.em,
+      userId: mock.usuario.id,
+      userNome: mock.usuario.nome,
+    }));
+  }
+  const dados = await cu("/task/" + encodeURIComponent(id) + "/comment");
+  return (dados?.comments || []).map((c) => ({
+    id: String(c.id || ""),
+    // comment_text vem pronto; o array comment e o formato em blocos
+    texto: c.comment_text || (Array.isArray(c.comment) ? c.comment.map((p) => p.text || "").join("") : ""),
+    em: Number(c.date || 0),
+    userId: c.user?.id ?? null,
+    userNome: c.user?.username || c.user?.email || "",
+  }));
+}
+
+/**
+ * Meus comentarios na janela, ja com o contexto da tarefa junto.
+ * `extras` serve de rede: se o date_updated de alguma tarefa nao tiver mexido
+ * com o comentario, quem chama passa as tarefas abertas que ja tem em cache e
+ * elas entram na varredura do mesmo jeito.
+ */
+export async function coletarMeusComentarios({ horas = 48, extras = [], max = MAX_TASKS_DAILY } = {}) {
+  const corte = Date.now() - horas * 3600000;
+  const usuario = await buscarUsuario();
+
+  const candidatas = await buscarTasksAtualizadasDesde(corte, { max });
+  const porId = new Map(candidatas.map((t) => [String(t.id), t]));
+  for (const t of extras) {
+    if (porId.size >= max) break;
+    if (!porId.has(String(t.id))) porId.set(String(t.id), t);
+  }
+
+  const lista = [...porId.values()];
+  const comentarios = [];
+  let falhas = 0;
+
+  for (let i = 0; i < lista.length; i += LOTE_COMENTARIOS) {
+    const lote = lista.slice(i, i + LOTE_COMENTARIOS);
+    const respostas = await Promise.all(lote.map(async (t) => {
+      try {
+        return { t, cs: await buscarComentariosDaTask(t.id) };
+      } catch {
+        falhas++;  // tarefa sem permissao ou erro pontual nao derruba a daily
+        return { t, cs: [] };
+      }
+    }));
+    for (const { t, cs } of respostas) {
+      for (const c of cs) {
+        if (c.em < corte) continue;
+        if (String(c.userId) !== String(usuario.id)) continue;
+        const texto = String(c.texto || "").trim();
+        if (!texto) continue;
+        comentarios.push({
+          taskId: t.id,
+          taskName: t.name,
+          list: t.list || "",
+          status: t.status || "",
+          url: t.url || "",
+          texto,
+          em: c.em,
+        });
+      }
+    }
+  }
+
+  comentarios.sort((a, b) => a.em - b.em);  // ordem cronologica, a daily le melhor
+  return { usuario, corte, comentarios, tarefasVarridas: lista.length, falhas };
+}
+
+/* Comentarios de exemplo pro modo MOCK, senao a daily sobe vazia. */
+if (cfg.mock && !Object.keys(mock.comentarios).length) {
+  const agora = Date.now();
+  mock.comentarios["86ak74kz7"] = [
+    { texto: "Contador de CPF em Redis funcionando, TTL amarrado na data do evento.", em: agora - 30 * 3600000 },
+    { texto: "Falta cobrir o caso de resgate duplicado quando o totem perde a rede no meio.", em: agora - 5 * 3600000 },
+  ];
+  mock.comentarios["86ak74kz9"] = [
+    { texto: "Copy nova escrita, mandei pra revisao da Clara.", em: agora - 20 * 3600000 },
+  ];
+}

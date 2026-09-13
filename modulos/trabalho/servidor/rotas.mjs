@@ -13,8 +13,9 @@ import {
   buscarUsuario, buscarWorkspaces, buscarTasks, buscarTask, statusesDaLista,
   comentar, mudarStatus, contarPrazos, ordenarPorPrazo, PRAZOS,
   dentroDaAtividade, contarAtividade, ATIVIDADES,
+  coletarMeusComentarios, MAX_TASKS_DAILY,
 } from "./clickup.mjs";
-import { ordenarTarefas, temGroq, groq } from "./groq.mjs";
+import { ordenarTarefas, gerarDaily, temGroq, quantasChaves, groq } from "./groq.mjs";
 
 export { ErroHttp };
 
@@ -28,6 +29,18 @@ export const limparCache = () => cache.clear();
 async function comCache(chave, produzir) {
   const guardado = cache.get(chave);
   if (guardado && Date.now() - guardado.em < cfg.cacheMs) return { ...guardado.valor, cache: true };
+  const valor = await produzir();
+  cache.set(chave, { em: Date.now(), valor });
+  return { ...valor, cache: false };
+}
+
+// A daily custa ate uma requisicao por tarefa varrida, entao ela tem TTL
+// proprio e maior. Reabrir o modal nao pode refazer a varredura inteira.
+const DAILY_TTL_MS = Number(process.env.DAILY_TTL_MS || 300000);
+
+async function comCacheTtl(chave, ttl, produzir) {
+  const guardado = cache.get(chave);
+  if (guardado && Date.now() - guardado.em < ttl) return { ...guardado.valor, cache: true };
   const valor = await produzir();
   cache.set(chave, { em: Date.now(), valor });
   return { ...valor, cache: false };
@@ -155,7 +168,9 @@ export async function rotear(req, url) {
       cacheTtlMs: cfg.cacheMs,
       groq: temGroq(),
       groqModelo: temGroq() ? groq.modelo : "",
-      versao: 1,
+      groqChaves: quantasChaves(),
+      dailyTtlMs: DAILY_TTL_MS,
+      versao: 2,
     };
   }
 
@@ -210,6 +225,64 @@ export async function rotear(req, url) {
     };
   }
 
+  if (metodo === "GET" && rota === "/api/daily") {
+    exigirToken();
+    const horas = Number(url.searchParams.get("horas") || 48);
+    if (![24, 48, 72].includes(horas)) {
+      throw new ErroHttp(400, "Janela invalida: " + horas, "Use horas=24, 48 ou 72.");
+    }
+    if (url.searchParams.get("atualizar") === "1") cache.delete("daily:" + horas);
+
+    return await comCacheTtl("daily:" + horas, DAILY_TTL_MS, async () => {
+      // mesma chave de cache da listagem, pra reaproveitar o que a tela ja puxou
+      const lista = await comCache("tasks:false:true", async () => ({
+        usuario: await buscarUsuario(),
+        tasks: await buscarTasks({ fechadas: false, subtarefas: true }),
+        carregadoEm: Date.now(),
+      }));
+      const abertas = lista.tasks.filter((t) => t.statusType !== "closed" && t.statusType !== "done");
+
+      // as abertas entram como rede: se o date_updated de alguma nao mexeu com
+      // o comentario, ela e varrida do mesmo jeito
+      const coleta = await coletarMeusComentarios({
+        horas,
+        extras: abertas,
+        max: MAX_TASKS_DAILY,
+      });
+
+      const daily = await gerarDaily({ horas, comentarios: coleta.comentarios, abertas });
+      const porId = new Map(abertas.map((t) => [String(t.id), t]));
+
+      log("daily de " + horas + "h: " + coleta.comentarios.length + " comentario(s) em " +
+        coleta.tarefasVarridas + " tarefa(s) varrida(s), via " + daily.fonte);
+
+      return {
+        fonte: daily.fonte,
+        modelo: daily.modelo,
+        horas,
+        resumo: daily.resumo,
+        feito: daily.feito,
+        proximas: daily.proximas.map((p) => {
+          const t = porId.get(String(p.id)) || {};
+          return {
+            id: p.id,
+            motivo: p.motivo,
+            name: t.name || p.id,
+            url: t.url || "",
+            status: t.status || "",
+            prazo: t.prazo || "",
+            dueDate: t.dueDate || null,
+            list: t.list || "",
+          };
+        }),
+        comentarios: coleta.comentarios.length,
+        tarefasVarridas: coleta.tarefasVarridas,
+        falhas: coleta.falhas,
+        geradoEm: Date.now(),
+      };
+    });
+  }
+
   const statuses = rota.match(/^\/api\/tasks\/([^/]+)\/statuses$/);
   if (statuses && metodo === "GET") {
     exigirToken();
@@ -247,5 +320,5 @@ export async function rotear(req, url) {
   }
 
   throw new ErroHttp(404, metodo + " /trabalho" + rota + " nao existe",
-    "Rotas: /trabalho/api/health, /me, /tasks, /tasks/:id, /tasks/:id/statuses, /tasks/:id/comment, /tasks/:id/status, /plano");
+    "Rotas: /trabalho/api/health, /me, /tasks, /tasks/:id, /tasks/:id/statuses, /tasks/:id/comment, /tasks/:id/status, /plano, /daily");
 }

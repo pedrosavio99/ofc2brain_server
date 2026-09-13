@@ -15,6 +15,7 @@ var S = {
   selecionadas: new Set(), visiveis: [],
   detalhes: new Map(), somenteLeitura: false, temGroq: false,
   carregando: true, carregadoEm: 0, doCache: false, erro: null,
+  dailyHoras: 48, dailyUltima: null,
 };
 
 var $ = function (s) { return document.querySelector(s); };
@@ -110,6 +111,33 @@ function toast(msg) {
   t.classList.add("visivel");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function () { t.classList.remove("visivel"); }, 2600);
+}
+
+/* Copia com reserva.
+   navigator.clipboard so existe em contexto seguro, https ou localhost. Aberto
+   pelo celular no IP da maquina o objeto nem existe, e a chamada morria calada.
+   Entao: tenta a API moderna, cai no execCommand, e em qualquer caso avisa. */
+function copiar(texto, aviso) {
+  function reserva() {
+    var area = document.createElement("textarea");
+    area.value = texto;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.top = "0";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    area.setSelectionRange(0, texto.length);  // iOS ignora select() sozinho
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(area);
+    toast(ok ? aviso : "Nao consegui copiar aqui. Abra por https ou localhost.");
+    return ok;
+  }
+  if (!navigator.clipboard || !navigator.clipboard.writeText) return reserva();
+  navigator.clipboard.writeText(texto)
+    .then(function () { toast(aviso); })
+    .catch(reserva);
 }
 
 /* ============================================================
@@ -476,16 +504,112 @@ function gerarPlano() {
 }
 
 /* ============================================================
+   Daily
+   ============================================================ */
+var JANELAS = [24, 48, 72];
+
+/* Texto puro pro botao copiar. O que vai pro Slack nao pode ter tag. */
+function dailyEmTexto(d) {
+  var linhas = ["Daily - ultimas " + d.horas + "h", ""];
+  if (d.resumo) linhas.push(d.resumo, "");
+  if (d.feito && d.feito.length) {
+    linhas.push("Feito:");
+    d.feito.forEach(function (f) {
+      linhas.push("- " + f.task);
+      (f.pontos || []).forEach(function (p) { linhas.push("  . " + p); });
+    });
+    linhas.push("");
+  }
+  if (d.proximas && d.proximas.length) {
+    linhas.push("Proximas:");
+    d.proximas.forEach(function (p) {
+      linhas.push("- " + p.name + (p.list ? " [" + p.list + "]" : ""));
+      if (p.motivo) linhas.push("  por que: " + p.motivo);
+      if (p.url) linhas.push("  " + p.url);
+    });
+  }
+  return linhas.join("\n").trim();
+}
+
+function corpoDaily(d) {
+  var fonte = d.fonte === "groq"
+    ? "Daily escrita pela Groq, modelo " + d.modelo
+    : "Groq indisponivel, daily montada localmente";
+
+  var seletor = '<div class="faixa-chips"><div class="chips">' +
+    JANELAS.map(function (h) {
+      return '<button class="chip' + (d.horas === h ? " ativo" : "") + '" data-daily-horas="' + h + '">' + h + "h</button>";
+    }).join("") + "</div></div>";
+
+  var feito = (d.feito && d.feito.length)
+    ? '<ul class="tr-daily-feito">' + d.feito.map(function (f) {
+        return "<li><strong>" + esc(f.task) + "</strong>" +
+          ((f.pontos && f.pontos.length)
+            ? "<ul>" + f.pontos.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>"
+            : "") + "</li>";
+      }).join("") + "</ul>"
+    : '<p class="tr-desc tr-vazio-txt">Nenhum comentario seu nessa janela. Nada para relatar.</p>';
+
+  var proximas = (d.proximas && d.proximas.length)
+    ? '<ol class="tr-plano">' + d.proximas.map(function (p) {
+        var titulo = p.url
+          ? '<a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + esc(p.name) + "</a>"
+          : esc(p.name);
+        return "<li><div><strong>" + titulo + "</strong>" +
+          (p.list ? '<span class="motivo">' + esc(p.list) + "</span>" : "") +
+          '<span class="motivo">' + esc(p.motivo) + "</span></div></li>";
+      }).join("") + "</ol>"
+    : '<p class="tr-desc tr-vazio-txt">Nenhuma tarefa aberta para sugerir.</p>';
+
+  return '<div class="insight-fonte"><span>' + esc(fonte) + ". Gerado as " + hora(d.geradoEm) +
+      ", " + d.comentarios + " comentario(s) em " + d.tarefasVarridas + " tarefa(s)." +
+      (d.falhas ? " " + d.falhas + " tarefa(s) sem leitura de comentario." : "") + "</span></div>" +
+    seletor +
+    (d.resumo ? '<p class="detalhe-txt" style="margin:14px 0 18px;font-size:15px">' + esc(d.resumo) + "</p>" : "") +
+    '<p class="detalhe-rot">Feito</p>' + feito +
+    '<p class="detalhe-rot" style="margin-top:18px">Proximas</p>' + proximas +
+    '<div class="tr-acoes" style="margin-top:18px">' +
+      '<button class="btn" data-daily-copiar="1">Copiar daily</button>' +
+      '<button class="btn btn-suave" data-daily-refazer="1">Refazer</button>' +
+    "</div><div style=\"height:14px\"></div>";
+}
+
+function gerarDaily(horas, forcar) {
+  S.dailyHoras = horas;
+  abrirSheet("Daily",
+    '<div class="cartao-insight"><div class="pensando">' +
+    '<span class="pontinhos"><i></i><i></i><i></i></span>' +
+    "Lendo seus comentarios das ultimas " + horas + "h" +
+    (S.temGroq ? " e perguntando para a Groq" : "") + "\u2026</div></div>");
+
+  var qs = "?horas=" + horas + (forcar ? "&atualizar=1" : "");
+  api("/daily" + qs)
+    .then(function (d) {
+      S.dailyUltima = d;
+      abrirSheet("Daily", corpoDaily(d));
+    })
+    .catch(function (e) {
+      abrirSheet("Daily",
+        '<div class="tr-aviso"><strong>' + esc(e.message) + "</strong><p>" + esc(e.dica || "") + "</p></div>");
+    });
+}
+
+/* ============================================================
    Opcoes
    ============================================================ */
 function abrirOpcoes() {
   api("/health").then(function (h) {
     var linhas =
+      '<div class="grupo"><button class="item" data-daily-abrir="1">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+          '<rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M7.5 14h5"/></svg>' +
+        '<div class="item-txt"><strong>Gerar daily</strong>' +
+        "<span>Resumo dos seus comentarios e o que pegar agora</span></div></button></div>" +
       '<div class="grupo">' +
         '<div class="item"><div class="item-txt"><strong>Token do ClickUp</strong>' +
           "<span>" + (h.tokenConfigurado ? "configurado" : "faltando") + "</span></div></div>" +
         '<div class="item"><div class="item-txt"><strong>Groq</strong>' +
-          "<span>" + (h.groq ? esc(h.groqModelo) : "sem chave, a ordem sai por heurística") + "</span></div></div>" +
+          "<span>" + (h.groq ? esc(h.groqModelo) + " · " + (h.groqChaves || 1) + " chave(s)" : "sem chave, a ordem sai por heurística") + "</span></div></div>" +
         '<div class="item"><div class="item-txt"><strong>Escrita</strong>' +
           "<span>" + (h.somenteLeitura ? "somente leitura" : "comentário e status liberados") + "</span></div></div>" +
         '<div class="item"><div class="item-txt"><strong>Onde roda</strong>' +
@@ -569,14 +693,19 @@ document.addEventListener("click", function (ev) {
     if (cartaoEl) cartaoEl.classList.toggle("marcada", marcado);
     return pintarBarraSel();
   }
+  if (ev.target.closest("[data-daily-abrir]")) return gerarDaily(S.dailyHoras, false);
+  if ((alvo = ev.target.closest("[data-daily-horas]"))) return gerarDaily(Number(alvo.dataset.dailyHoras), false);
+  if (ev.target.closest("[data-daily-refazer]")) return gerarDaily(S.dailyHoras, true);
+  if (ev.target.closest("[data-daily-copiar]")) {
+    if (!S.dailyUltima) return;
+    copiar(dailyEmTexto(S.dailyUltima), "Daily copiada");
+    return;
+  }
   if ((alvo = ev.target.closest("[data-abrir]"))) return abrirTarefa(alvo.dataset.abrir);
   if ((alvo = ev.target.closest("[data-comentar]"))) return enviarComentario(alvo.dataset.comentar, alvo);
   if ((alvo = ev.target.closest("[data-status]"))) return enviarStatus(alvo.dataset.status, alvo);
   if ((alvo = ev.target.closest("[data-copiar]"))) {
-    var botao = alvo;
-    navigator.clipboard.writeText("[CU-" + botao.dataset.copiar + "]").then(function () {
-      toast("Copiado");
-    });
+    copiar("[CU-" + alvo.dataset.copiar + "]", "Copiado");
     return;
   }
 });
