@@ -16,7 +16,38 @@ var S = {
   detalhes: new Map(), somenteLeitura: false, temGroq: false,
   carregando: true, carregadoEm: 0, doCache: false, erro: null,
   dailyHoras: 48, dailyUltima: null,
+  statusOcultos: new Set(),
+  planoUltimo: null, planoJanela: 48, planoNaDaily: false,
 };
+
+/* ============================================================
+   Status ocultos (so na aba Status)
+   ============================================================ */
+var CHAVE_STATUS = "2brain-trabalho-status-ocultos";
+
+function lerStatusOcultos() {
+  try { return new Set(JSON.parse(localStorage.getItem(CHAVE_STATUS) || "[]")); }
+  catch (e) { return new Set(); }
+}
+function salvarStatusOcultos() {
+  try { localStorage.setItem(CHAVE_STATUS, JSON.stringify(Array.from(S.statusOcultos))); }
+  catch (e) {}
+}
+S.statusOcultos = lerStatusOcultos();
+
+/* Os status vem das tarefas que ja estao na mao, nao de rota nova: o filtro e de
+   cliente e responde na hora, sem gastar requisicao no ClickUp.
+   A contagem e sobre S.tasks inteiro, ignorando o proprio ocultamento, senao o
+   chip apagado mostraria zero e voce nao saberia quanto esta escondendo. */
+function statusDisponiveis() {
+  var mapa = new Map();
+  S.tasks.forEach(function (t) {
+    var k = t.status || "sem status";
+    if (!mapa.has(k)) mapa.set(k, { nome: k, cor: corHex(t.statusColor), n: 0 });
+    mapa.get(k).n++;
+  });
+  return Array.from(mapa.values()).sort(function (a, b) { return a.nome.localeCompare(b.nome, "pt-BR"); });
+}
 
 var $ = function (s) { return document.querySelector(s); };
 
@@ -196,7 +227,31 @@ function renderFiltros() {
       (S.subtarefas ? CHECK : "") + "Subtarefas</button>" +
     '<button class="chip" data-marcar-visiveis="1">Marcar visíveis</button>';
 
+  /* So na aba Status: filtro que continua agindo numa aba onde voce nao ve os
+     controles e armadilha. */
+  var blocoStatus = "";
+  if (S.agrupar === "status") {
+    var listaSt = statusDisponiveis();
+    var ocultas = listaSt.reduce(function (a, s) {
+      return a + (S.statusOcultos.has(s.nome) ? s.n : 0);
+    }, 0);
+    var chipsSt = listaSt.map(function (s) {
+      var off = S.statusOcultos.has(s.nome);
+      return '<button class="chip tr-chip-status' + (off ? " apagado" : "") +
+        '" data-status-alvo="' + esc(s.nome) + '" aria-pressed="' + (!off) + '">' +
+        '<span class="ponto" style="background:' + s.cor + '"></span>' +
+        esc(s.nome) + '<span class="n">' + s.n + "</span></button>";
+    }).join("");
+    blocoStatus =
+      '<p class="tr-rot-filtro">Status na vista' +
+        (ocultas ? '<span class="tr-ocultas">' + ocultas + " oculta(s)</span>" : "") + "</p>" +
+      '<div class="faixa-chips"><div class="chips">' + chipsSt +
+        (S.statusOcultos.size ? '<button class="chip" data-status-todos="1">Mostrar todos</button>' : "") +
+      "</div></div>";
+  }
+
   $("#filtros").innerHTML =
+    blocoStatus +
     '<p class="tr-rot-filtro">Prazo</p>' +
     '<div class="faixa-chips"><div class="chips">' + linhaPrazo + "</div></div>" +
     '<p class="tr-rot-filtro">Última mexida</p>' +
@@ -261,9 +316,13 @@ function esqueletos() {
 }
 
 function filtradas() {
+  var lista = S.tasks;
+  if (S.agrupar === "status" && S.statusOcultos.size) {
+    lista = lista.filter(function (t) { return !S.statusOcultos.has(t.status || "sem status"); });
+  }
   var termo = S.busca.toLowerCase().trim();
-  if (!termo) return S.tasks;
-  return S.tasks.filter(function (t) {
+  if (!termo) return lista;
+  return lista.filter(function (t) {
     return [t.name, t.list, t.folder, t.space, t.status, t.id, t.customId, t.tags.join(" ")]
       .join(" ").toLowerCase().indexOf(termo) !== -1;
   });
@@ -309,7 +368,8 @@ function render() {
   alvo.innerHTML = html;
 
   // anima so quando a vista muda de verdade, senao filtrar faz tudo re-animar
-  var chave = [S.agrupar, S.busca, S.filtroPrazo, S.periodo, S.fechadas, S.subtarefas].join("|");
+  var chave = [S.agrupar, S.busca, S.filtroPrazo, S.periodo, S.fechadas, S.subtarefas,
+    Array.from(S.statusOcultos).sort().join(",")].join("|");
   if (chave !== render._vista) {
     render._vista = chave;
     alvo.querySelectorAll(".lista").forEach(function (l) { l.classList.add("animar"); });
@@ -337,7 +397,12 @@ function atualizarResumo() {
 function pintarBarraSel() {
   var n = S.selecionadas.size;
   $("#barraPlano").hidden = n === 0;
-  $("#contagemSel").textContent = n === 1 ? "1 selecionada" : n + " selecionadas";
+  // Esconder um status nao desmarca nada. Sem este aviso, "3 selecionadas" com duas
+  // invisiveis parece bug.
+  var fora = 0;
+  S.selecionadas.forEach(function (id) { if (S.visiveis.indexOf(id) === -1) fora++; });
+  $("#contagemSel").textContent = (n === 1 ? "1 selecionada" : n + " selecionadas") +
+    (fora ? " · " + fora + " fora da vista" : "");
 }
 
 /* ============================================================
@@ -471,6 +536,42 @@ function enviarStatus(id, botao) {
 /* ============================================================
    Ordem de execucao
    ============================================================ */
+/* O corpo sai numa funcao propria porque o rodape repinta sozinho quando voce troca
+   a janela de horas, sem refazer o POST /plano. */
+function corpoPlano(p) {
+  var fonte = p.fonte === "groq"
+    ? "Ordem sugerida pela Groq, modelo " + p.modelo
+    : "Ordem montada localmente, sem IA";
+  var itens = p.tarefas.map(function (t) {
+    var titulo = t.url
+      ? '<a href="' + esc(t.url) + '" target="_blank" rel="noopener">' + esc(t.name) + "</a>"
+      : esc(t.name);
+    return "<li><div><strong>" + titulo + "</strong>" +
+      (t.list ? '<span class="motivo">' + esc(t.list) + "</span>" : "") +
+      '<span class="motivo">' + esc(t.motivo) + "</span></div></li>";
+  }).join("");
+
+  /* JANELAS e a mesma lista que a daily usa, e a rota /daily so aceita 24, 48 ou 72.
+     Escolher aqui nao muda a ordem: so diz com qual janela abrir a daily depois. */
+  var chipsJanela = JANELAS.map(function (h) {
+    return '<button class="chip' + (S.planoJanela === h ? " ativo" : "") +
+      '" data-plano-horas="' + h + '">' + h + "h</button>";
+  }).join("");
+
+  return '<div class="insight-fonte"><span>' + esc(fonte) + ". Gerado às " + hora(p.geradoEm) + ".</span></div>" +
+    (p.resumo ? '<p class="detalhe-txt" style="margin:0 0 16px;font-size:15px">' + esc(p.resumo) + "</p>" : "") +
+    '<ol class="tr-plano">' + itens + "</ol>" +
+    '<div class="tr-plano-pe">' +
+      '<p class="tr-rot-filtro">Levar para a daily</p>' +
+      '<div class="faixa-chips"><div class="chips">' + chipsJanela + "</div></div>" +
+      '<p class="tr-desc">Estas ' + p.tarefas.length + ' tarefa(s) entram no bloco Proximas da daily, ' +
+        'com o motivo desta ordem. O bloco Feito continua saindo dos seus comentarios.</p>' +
+      '<div class="tr-acoes" style="margin-top:12px">' +
+        '<button class="btn" data-plano-daily="1">Usar na daily</button>' +
+      "</div>" +
+    "</div><div style=\"height:14px\"></div>";
+}
+
 function gerarPlano() {
   var ids = Array.from(S.selecionadas);
   if (!ids.length) return;
@@ -481,21 +582,8 @@ function gerarPlano() {
 
   api("/plano", { method: "POST", body: JSON.stringify({ ids: ids }) })
     .then(function (p) {
-      var fonte = p.fonte === "groq"
-        ? "Ordem sugerida pela Groq, modelo " + p.modelo
-        : "Ordem montada localmente, sem IA";
-      var itens = p.tarefas.map(function (t) {
-        var titulo = t.url
-          ? '<a href="' + esc(t.url) + '" target="_blank" rel="noopener">' + esc(t.name) + "</a>"
-          : esc(t.name);
-        return "<li><div><strong>" + titulo + "</strong>" +
-          (t.list ? '<span class="motivo">' + esc(t.list) + "</span>" : "") +
-          '<span class="motivo">' + esc(t.motivo) + "</span></div></li>";
-      }).join("");
-      abrirSheet("Ordem de execução",
-        '<div class="insight-fonte"><span>' + esc(fonte) + ". Gerado às " + hora(p.geradoEm) + ".</span></div>" +
-        (p.resumo ? '<p class="detalhe-txt" style="margin:0 0 16px;font-size:15px">' + esc(p.resumo) + "</p>" : "") +
-        '<ol class="tr-plano">' + itens + '</ol><div style="height:14px"></div>');
+      S.planoUltimo = p;
+      abrirSheet("Ordem de execução", corpoPlano(p));
     })
     .catch(function (e) {
       abrirSheet("Ordem de execução",
@@ -507,6 +595,21 @@ function gerarPlano() {
    Daily
    ============================================================ */
 var JANELAS = [24, 48, 72];
+
+/* Troca o bloco Proximas pela ordem que voce escolheu a dedo no modal.
+   Substituicao no CLIENTE, depois da resposta chegar: a rota /daily, o prompt da Groq
+   e o bloco Feito continuam exatamente como sao. "Refazer" volta pro palpite da IA. */
+function aplicarPlanoNaDaily(d) {
+  if (!S.planoNaDaily || !S.planoUltimo) return d;
+  d.proximas = S.planoUltimo.tarefas.map(function (t) {
+    return {
+      id: t.id, name: t.name, url: t.url, list: t.list, motivo: t.motivo,
+      status: t.status, prazo: t.prazo, dueDate: t.dueDate,
+    };
+  });
+  d.proximasFonte = "plano";
+  return d;
+}
 
 /* Texto puro pro botao copiar. O que vai pro Slack nao pode ter tag. */
 function dailyEmTexto(d) {
@@ -521,7 +624,7 @@ function dailyEmTexto(d) {
     linhas.push("");
   }
   if (d.proximas && d.proximas.length) {
-    linhas.push("Proximas:");
+    linhas.push(d.proximasFonte === "plano" ? "Proximas (ordem escolhida):" : "Proximas:");
     d.proximas.forEach(function (p) {
       linhas.push("- " + p.name + (p.list ? " [" + p.list + "]" : ""));
       if (p.motivo) linhas.push("  por que: " + p.motivo);
@@ -567,10 +670,15 @@ function corpoDaily(d) {
     seletor +
     (d.resumo ? '<p class="detalhe-txt" style="margin:14px 0 18px;font-size:15px">' + esc(d.resumo) + "</p>" : "") +
     '<p class="detalhe-rot">Feito</p>' + feito +
-    '<p class="detalhe-rot" style="margin-top:18px">Proximas</p>' + proximas +
+    '<p class="detalhe-rot" style="margin-top:18px">Proximas' +
+      (d.proximasFonte === "plano" ? '<span class="tr-ocultas">sua ordem de execução</span>' : "") +
+    "</p>" + proximas +
     '<div class="tr-acoes" style="margin-top:18px">' +
       '<button class="btn" data-daily-copiar="1">Copiar daily</button>' +
       '<button class="btn btn-suave" data-daily-refazer="1">Refazer</button>' +
+      (d.proximasFonte === "plano"
+        ? '<button class="btn btn-suave" data-daily-semplano="1">Voltar à sugestão da IA</button>'
+        : "") +
     "</div><div style=\"height:14px\"></div>";
 }
 
@@ -585,8 +693,8 @@ function gerarDaily(horas, forcar) {
   var qs = "?horas=" + horas + (forcar ? "&atualizar=1" : "");
   api("/daily" + qs)
     .then(function (d) {
-      S.dailyUltima = d;
-      abrirSheet("Daily", corpoDaily(d));
+      S.dailyUltima = aplicarPlanoNaDaily(d);
+      abrirSheet("Daily", corpoDaily(S.dailyUltima));
     })
     .catch(function (e) {
       abrirSheet("Daily",
@@ -693,9 +801,42 @@ document.addEventListener("click", function (ev) {
     if (cartaoEl) cartaoEl.classList.toggle("marcada", marcado);
     return pintarBarraSel();
   }
-  if (ev.target.closest("[data-daily-abrir]")) return gerarDaily(S.dailyHoras, false);
+  if ((alvo = ev.target.closest("[data-status-alvo]"))) {
+    var st = alvo.dataset.statusAlvo;
+    if (S.statusOcultos.has(st)) S.statusOcultos.delete(st);
+    else S.statusOcultos.add(st);
+    salvarStatusOcultos();
+    return render();
+  }
+  if (ev.target.closest("[data-status-todos]")) {
+    S.statusOcultos.clear();
+    salvarStatusOcultos();
+    return render();
+  }
+  if ((alvo = ev.target.closest("[data-plano-horas]"))) {
+    S.planoJanela = Number(alvo.dataset.planoHoras);
+    if (S.planoUltimo) abrirSheet("Ordem de execução", corpoPlano(S.planoUltimo));
+    return;
+  }
+  if (ev.target.closest("[data-plano-daily]")) {
+    if (!S.planoUltimo) return;
+    S.planoNaDaily = true;
+    return gerarDaily(S.planoJanela, false);
+  }
+  // Abrir pelo menu e pedir daily normal: nao carrega plano de outra hora sem querer.
+  if (ev.target.closest("[data-daily-abrir]")) {
+    S.planoNaDaily = false;
+    return gerarDaily(S.dailyHoras, false);
+  }
+  if (ev.target.closest("[data-daily-semplano]")) {
+    S.planoNaDaily = false;
+    return gerarDaily(S.dailyHoras, false);
+  }
   if ((alvo = ev.target.closest("[data-daily-horas]"))) return gerarDaily(Number(alvo.dataset.dailyHoras), false);
-  if (ev.target.closest("[data-daily-refazer]")) return gerarDaily(S.dailyHoras, true);
+  if (ev.target.closest("[data-daily-refazer]")) {
+    S.planoNaDaily = false;
+    return gerarDaily(S.dailyHoras, true);
+  }
   if (ev.target.closest("[data-daily-copiar]")) {
     if (!S.dailyUltima) return;
     copiar(dailyEmTexto(S.dailyUltima), "Daily copiada");

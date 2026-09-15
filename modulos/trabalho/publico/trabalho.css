@@ -114,3 +114,15 @@
   padding: 18px; display: grid; gap: 6px; border-left: 3px solid var(--perigo); }
 .tr-aviso strong { font-size: 16px; }
 .tr-aviso p { margin: 0; font-size: 14px; color: var(--texto-2); }
+
+/* Chips de status: todos nascem visiveis e clicar APAGA. Nao uso .ativo aqui porque
+   viraria uma parede de azul; o que precisa saltar aos olhos e o que ficou de fora. */
+.tr-chip-status .ponto { opacity: 1; }
+.tr-chip-status.apagado { opacity: .42; text-decoration: line-through; }
+.tr-chip-status.apagado .ponto { filter: grayscale(1); }
+.tr-ocultas { text-transform: none; letter-spacing: 0; font-weight: 600;
+  opacity: .75; margin-left: 7px; }
+
+/* Rodape da ordem de execucao: separado da lista, porque e acao, nao conteudo. */
+.tr-plano-pe { border-top: 1px solid var(--separador); margin-top: 18px; padding-top: 14px; }
+.tr-plano-pe .tr-desc { margin: 2px 0 0; }
