@@ -81,16 +81,35 @@ function parseJSONSeguro(texto) {
   }
 }
 
-async function umaChamada(chave, modelo, systemPrompt, userPrompt) {
+/* So deixa passar o que a API aceita. O historico vem do banco ou do
+   cliente, entao nao da pra confiar no formato: uma entrada torta aqui
+   derruba a chamada inteira com 400. */
+function historicoLimpo(bruto) {
+  if (!Array.isArray(bruto)) return [];
+  return bruto
+    .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+    .map((m) => ({ role: m.role, content: String(m.content ?? "") }))
+    .filter((m) => m.content.trim());
+}
+
+async function umaChamada(chave, modelo, systemPrompt, userPrompt, opcoes = {}) {
+  /* mensagens: turnos anteriores, no formato da propria API. Entram ENTRE o
+     system e o userPrompt, que continua sendo o turno atual. Sem elas o corpo
+     sai identico ao de antes. Achatar historico dentro do user prompt (que e o
+     que o continuarInsight faz) serve pra insight, mas em conversa o modelo
+     perde quem falou o que. */
+  const historico = historicoLimpo(opcoes.mensagens);
   const resposta = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${chave}` },
     body: JSON.stringify({
       model: modelo,
-      temperature: 0.2,
+      // 0.2 continua o padrao: e o certo pra classificar nota. Conversa pede mais.
+      temperature: opcoes.temperatura ?? 0.2,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
+        ...historico,
         { role: "user", content: userPrompt },
       ],
     }),
@@ -115,7 +134,7 @@ async function umaChamada(chave, modelo, systemPrompt, userPrompt) {
  * Chat da Groq com resposta em JSON.
  * Devolve so os dados (compatibilidade). Use chatJSONDetalhado quando precisar
  * saber de qual chave/modelo a resposta saiu.
- * @param {object} [opcoes] { modelo, tentativas }
+ * @param {object} [opcoes] { modelo, tentativas, temperatura, mensagens }
  */
 export async function chatJSON(systemPrompt, userPrompt, opcoes = {}) {
   const { dados } = await chatJSONDetalhado(systemPrompt, userPrompt, opcoes);
@@ -126,7 +145,9 @@ export async function chatJSON(systemPrompt, userPrompt, opcoes = {}) {
  * Igual ao chatJSON, mas devolve { dados, meta } com provedor/modelo/chave.
  * Percorre as chaves: se uma bate no limite, ela descansa e a proxima assume.
  * So espera de verdade quando TODAS estao em descanso.
- * @param {object} [opcoes] { modelo, tentativas }
+ * @param {object} [opcoes] { modelo, tentativas, temperatura, mensagens }
+ *        mensagens = [{ role: "user"|"assistant", content: string }], turnos
+ *        anteriores da conversa. Opcional: sem elas o comportamento e o de antes.
  * @returns {Promise<{ dados: any, meta: { provedor, modelo, chave, totalChaves } }>}
  */
 export async function chatJSONDetalhado(systemPrompt, userPrompt, opcoes = {}) {
@@ -146,7 +167,7 @@ export async function chatJSONDetalhado(systemPrompt, userPrompt, opcoes = {}) {
         continue;
       }
       try {
-        const r = await umaChamada(chave, modelo, systemPrompt, userPrompt);
+        const r = await umaChamada(chave, modelo, systemPrompt, userPrompt, opcoes);
         ponteiro++;
         return {
           dados: r,

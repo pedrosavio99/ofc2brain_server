@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="sistema">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<!-- Reaproveita os tokens e componentes do Segundo Cerebro.
+     conversa.css so acrescenta o que e especifico daqui. -->
+<link rel="stylesheet" href="/estilos.css" />
+<link rel="stylesheet" href="/conversa/conversa.css" />
+<title>Conversa</title>
+<script>
+  // Antes da primeira pintura, senao o tema escuro pisca branco.
+  try { document.documentElement.dataset.tema = localStorage.getItem("2brain-tema") || "sistema"; } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="barra" id="barra">
+  <div class="barra-int">
+    <a class="voltar voltar-barra" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      Segundo cérebro
+    </a>
+    <span class="barra-titulo">Conversa</span>
+    <div class="barra-acoes">
+      <button class="icone-btn" id="btnGaveta" aria-label="Conversas" title="Suas conversas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7h16M4 12h16M4 17h10"/>
+        </svg>
+      </button>
+      <button class="icone-btn" id="btnAlma" aria-label="Alma" title="O que ele aprendeu sobre você">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z"/>
+        </svg>
+      </button>
+      <button class="icone-btn" id="btnNova" aria-label="Nova conversa" title="Nova conversa">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="cv-corpo" id="corpo">
+  <div class="cv-fluxo" id="fluxo" aria-live="polite"></div>
+</main>
+
+<footer class="cv-rodape">
+  <div class="cv-caixa">
+    <textarea id="campo" rows="1" placeholder="Fala comigo" autocomplete="off"></textarea>
+    <button class="cv-enviar" id="btnEnviar" aria-label="Enviar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h13M12 5l7 7-7 7"/>
+      </svg>
+    </button>
+  </div>
+</footer>
+
+<!-- Painel da alma. Editavel de proposito: ela e um laco de realimentacao,
+     entao precisa de um lugar onde voce conserte o que ele escreveu errado. -->
+<div class="cv-folha" id="folhaAlma" hidden>
+  <div class="cv-folha-int">
+    <div class="cv-folha-topo">
+      <strong>O que ele aprendeu sobre você</strong>
+      <button class="icone-btn" id="btnFecharAlma" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="cv-folha-sub" id="almaMeta"></p>
+    <textarea id="almaTexto" rows="10" placeholder="Ainda vazio. Ele preenche conversando."></textarea>
+    <div class="cv-folha-acoes">
+      <button class="cv-btn-sec" id="btnDestilar">Destilar agora</button>
+      <button class="cv-btn" id="btnSalvarAlma">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gaveta das conversas. hidden por atributo; o CSS respeita com a regra
+     .cv-gaveta[hidden], que e o que faltou no painel da alma antes. -->
+<div class="cv-gaveta" id="gaveta" hidden>
+  <aside class="cv-gaveta-int" role="dialog" aria-label="Suas conversas">
+    <div class="cv-gaveta-topo">
+      <strong>Conversas</strong>
+      <button class="icone-btn" id="btnFecharGaveta" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <button class="cv-btn cv-nova" id="btnNovaGaveta">Nova conversa</button>
+    <div class="cv-lista" id="lista"></div>
+  </aside>
+</div>
+
+<script src="/conversa/conversa.js"></script>
+</body>
+</html>

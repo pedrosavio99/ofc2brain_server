@@ -1,0 +1,205 @@
+/* Modulo CONVERSA. So o que e especifico daqui: os tokens, a barra, os botoes
+   e o tema vem do /estilos.css do Segundo Cerebro. */
+
+/* Altura real do viewport no celular: com 100vh a barra do navegador cobre o
+   campo de digitar e voce escreve sem ver o que escreve. */
+.cv-corpo {
+  height: calc(100dvh - 116px);
+  overflow-y: auto;
+  padding: 16px 16px 8px;
+  max-width: 720px;
+  margin: 0 auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cv-fluxo { display: flex; flex-direction: column; gap: 10px; }
+
+.cv-bolha {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  line-height: 1.45;
+  font-size: 15.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: cv-entra .22s ease-out;
+}
+@keyframes cv-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.cv-bolha.pessoa {
+  align-self: flex-end;
+  background: var(--acento);
+  color: #fff;
+  border-bottom-right-radius: 6px;
+}
+.cv-bolha.cerebro {
+  align-self: flex-start;
+  background: var(--superficie);
+  color: var(--texto);
+  border: 1px solid var(--separador);
+  border-bottom-left-radius: 6px;
+  box-shadow: var(--sombra);
+}
+
+/* Camadas 0 e 1: status honesto, nao e fala dele. Por isso nao tem bolha. */
+.cv-status {
+  align-self: flex-start;
+  font-size: 13.5px;
+  color: var(--texto-2);
+  padding: 2px 6px;
+  animation: cv-entra .22s ease-out;
+}
+.cv-status.some { opacity: 0; transition: opacity .3s; }
+
+.cv-pontos { display: inline-flex; gap: 3px; vertical-align: middle; margin-left: 5px; }
+.cv-pontos i {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--texto-3);
+  animation: cv-pulsa 1.2s infinite ease-in-out;
+}
+.cv-pontos i:nth-child(2) { animation-delay: .18s; }
+.cv-pontos i:nth-child(3) { animation-delay: .36s; }
+@keyframes cv-pulsa { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+.cv-fontes { font-size: 12.5px; color: var(--texto-3); align-self: flex-start; padding: 0 6px 4px; }
+.cv-erro {
+  align-self: stretch; font-size: 13.5px; color: var(--perigo);
+  background: rgba(255,59,48,.08); border-radius: var(--r-card); padding: 10px 12px;
+}
+
+/* --- rodape --- */
+.cv-rodape {
+  position: sticky; bottom: 0;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  background: var(--fundo);
+  border-top: 1px solid var(--separador);
+}
+.cv-caixa {
+  max-width: 720px; margin: 0 auto;
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--superficie);
+  border: 1px solid var(--separador);
+  border-radius: 22px;
+  padding: 6px 6px 6px 14px;
+}
+.cv-caixa textarea {
+  flex: 1; border: 0; outline: 0; resize: none;
+  background: transparent; color: var(--texto);
+  font-family: var(--fonte); font-size: 16px; line-height: 1.4;
+  max-height: 140px; padding: 8px 0;
+}
+.cv-enviar {
+  width: var(--toque); height: var(--toque); min-width: var(--toque);
+  border: 0; border-radius: 50%; background: var(--acento); color: #fff;
+  display: grid; place-items: center; cursor: pointer;
+}
+.cv-enviar svg { width: 20px; height: 20px; }
+.cv-enviar:disabled { opacity: .35; cursor: default; }
+
+/* --- folha da alma --- */
+.cv-folha {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,.35);
+  display: grid; align-items: end;
+}
+/* Sem isto o painel NUNCA esconde: o display:grid acima e regra de autor e
+   ganha do [hidden]{display:none} do navegador, que e regra de user agent.
+   O painel ficava por cima da tela inteira, cobrindo o campo e o voltar. */
+.cv-folha[hidden] { display: none; }
+.cv-folha-int {
+  background: var(--fundo);
+  border-radius: var(--r-grande) var(--r-grande) 0 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  max-width: 720px; width: 100%; margin: 0 auto;
+  max-height: 82dvh; overflow-y: auto;
+}
+.cv-folha-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cv-folha-sub { font-size: 13px; color: var(--texto-2); margin: 6px 0 12px; }
+.cv-folha-int textarea {
+  width: 100%; box-sizing: border-box;
+  background: var(--superficie); color: var(--texto);
+  border: 1px solid var(--separador); border-radius: var(--r-card);
+  font-family: var(--fonte); font-size: 15px; line-height: 1.5; padding: 12px;
+  resize: vertical;
+}
+.cv-folha-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.cv-btn, .cv-btn-sec {
+  min-height: var(--toque); padding: 0 18px; border-radius: var(--r-pill);
+  font-family: var(--fonte); font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.cv-btn { border: 0; background: var(--acento); color: #fff; }
+.cv-btn-sec { border: 1px solid var(--separador); background: var(--superficie); color: var(--texto); }
+.cv-btn:disabled, .cv-btn-sec:disabled { opacity: .5; cursor: default; }
+
+/* ===================== gaveta das conversas ===================== */
+.cv-gaveta { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.35); display: flex; }
+/* Igual ao painel da alma: sem isto o display acima ganha do [hidden] do
+   navegador e a gaveta fica aberta pra sempre por cima da tela. */
+.cv-gaveta[hidden] { display: none; }
+
+.cv-gaveta-int {
+  background: var(--fundo); width: min(320px, 86vw); height: 100%;
+  padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+  padding-top: calc(14px + env(safe-area-inset-top));
+  display: flex; flex-direction: column; gap: 10px;
+  box-shadow: 2px 0 24px rgba(0,0,0,.18);
+  animation: cv-desliza .2s ease-out;
+}
+@keyframes cv-desliza { from { transform: translateX(-100%); } to { transform: none; } }
+
+.cv-gaveta-topo { display: flex; align-items: center; justify-content: space-between; }
+.cv-nova { width: 100%; }
+.cv-lista { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+
+.cv-item {
+  display: flex; align-items: center; gap: 2px;
+  border-radius: var(--r-card); padding: 2px 4px 2px 0;
+}
+.cv-item:hover { background: var(--superficie-2); }
+.cv-item.ativo { background: var(--acento-eco); }
+
+.cv-item-abrir {
+  flex: 1; min-width: 0; text-align: left; border: 0; background: transparent;
+  color: var(--texto); font-family: var(--fonte); font-size: 14.5px;
+  padding: 11px 8px 11px 10px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cv-item.fav .cv-item-abrir { font-weight: 600; }
+
+.cv-mini {
+  width: 32px; height: 32px; min-width: 32px; border: 0; background: transparent;
+  border-radius: var(--r-pill); color: var(--texto-3);
+  display: grid; place-items: center; cursor: pointer;
+}
+.cv-mini svg { width: 16px; height: 16px; }
+.cv-mini:hover { background: var(--superficie); color: var(--texto-2); }
+.cv-item.fav .cv-estrela { color: var(--alerta); }
+.cv-lixo:hover { color: var(--perigo); }
+
+.cv-vazio { font-size: 13.5px; color: var(--texto-3); padding: 14px 10px; }
+
+/* ===================== painel da alma ===================== */
+.cv-alma-add { display: flex; gap: 6px; margin-bottom: 12px; }
+.cv-alma-add input, .cv-alma-add select {
+  background: var(--superficie); color: var(--texto);
+  border: 1px solid var(--separador); border-radius: var(--r-card);
+  font-family: var(--fonte); font-size: 15px; padding: 10px;
+}
+.cv-alma-add input { flex: 1; min-width: 0; }
+.cv-alma-add select { max-width: 130px; }
+.cv-alma-add .cv-btn { padding: 0 16px; min-height: 42px; }
+
+.cv-tracos { display: flex; flex-direction: column; gap: 6px; }
+.cv-traco {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--superficie); border: 1px solid var(--separador);
+  border-radius: var(--r-card); padding: 10px 8px 10px 12px;
+}
+.cv-traco.off { opacity: .45; }
+.cv-traco-txt { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.35; }
+.cv-traco-sub { font-size: 12px; color: var(--texto-3); margin-top: 2px; }
+.cv-pin { font-size: 11px; color: var(--acento); font-weight: 700; }
+.cv-vezes {
+  font-size: 12px; font-weight: 700; color: var(--texto-2);
+  background: var(--superficie-2); border-radius: var(--r-pill); padding: 3px 9px;
+}

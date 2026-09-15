@@ -144,6 +144,31 @@ function limparCercas(texto) {
   return String(texto || "").replace(/```json|```/g, "").trim();
 }
 
+/**
+ * Turnos anteriores no formato do Gemini. O SDK usa role "model" onde a OpenAI
+ * usa "assistant", e o texto vai dentro de parts.
+ *
+ * Exportado pra dar pra testar sem bater na API. Entrada torta e descartada em
+ * vez de derrubar a chamada: o historico vem do banco, nao da nossa mao.
+ * @param {Array<{role:string, content:string}>} mensagens
+ * @param {string} prompt o turno atual, sempre por ultimo, como user
+ */
+export function paraContents(mensagens, prompt) {
+  const turnos = (Array.isArray(mensagens) ? mensagens : [])
+    .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+    .map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: String(m.content ?? "") }],
+    }))
+    .filter((m) => m.parts[0].text.trim());
+
+  /* O Gemini recusa historico que comeca com "model": a conversa tem que abrir
+     com quem perguntou. Acontece quando os primeiros turnos ja sairam da janela. */
+  while (turnos.length && turnos[0].role === "model") turnos.shift();
+
+  return turnos.concat([{ role: "user", parts: [{ text: String(prompt ?? "") }] }]);
+}
+
 async function umaTentativa(chave, modelo, instrucaoSistema, prompt, opcoes, comPensamento) {
   const ai = getCliente(chave);
   const config = {
@@ -155,7 +180,12 @@ async function umaTentativa(chave, modelo, instrucaoSistema, prompt, opcoes, com
   if (comPensamento) {
     config.thinkingConfig = { thinkingLevel: process.env.GEMINI_THINKING || "HIGH" };
   }
-  const resposta = await ai.models.generateContent({ model: modelo, contents: prompt, config });
+  /* Sem opcoes.mensagens manda a string crua, exatamente como antes: as
+     chamadas de insight e de sugestao nao percebem diferenca nenhuma. */
+  const contents = opcoes.mensagens && opcoes.mensagens.length
+    ? paraContents(opcoes.mensagens, prompt)
+    : prompt;
+  const resposta = await ai.models.generateContent({ model: modelo, contents, config });
   return resposta.text;
 }
 
@@ -174,6 +204,9 @@ export async function gerarJSON(instrucaoSistema, prompt, opcoes = {}) {
  * Igual ao gerarJSON, mas devolve { dados, meta }. O "meta" diz qual provedor,
  * modelo e chave produziram a resposta, pra gente poder mostrar isso na UI
  * (util pra saber por que um insight saiu melhor ou pior).
+ * @param {object} [opcoes] { temperatura, maxTokens, mensagens }
+ *        mensagens = [{ role: "user"|"assistant", content }], turnos anteriores.
+ *        Opcional: sem elas o comportamento e identico ao de antes.
  * @returns {Promise<{ dados: any, meta: { provedor, modelo, chave, totalChaves, pensando } }>}
  */
 export async function gerarJSONDetalhado(instrucaoSistema, prompt, opcoes = {}) {

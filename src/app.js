@@ -12,6 +12,7 @@ import docsRouter from "./routes/docs.js";
 // Modulos externos: cada um vive inteiro em modulos/<nome>/ e so encosta no
 // app por uma linha de app.use(). Comentar as duas linhas desliga o modulo.
 import trabalhoRouter from "../modulos/trabalho/servidor/index.js";
+import conversaRouter from "../modulos/conversa/servidor/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -34,7 +35,7 @@ app.get("/api", (_req, res) => {
     versao: 4,
     armazenamento: "supabase + pgvector",
     embedding: "gemini text-embedding-004 (768d)",
-    modulos: ["trabalho (ClickUp) em /trabalho"],
+    modulos: ["trabalho (ClickUp) em /trabalho", "conversa em /conversa"],
     endpoints: [
       "GET    /health",
       "POST   /ideias             { texto: string }",
@@ -67,6 +68,16 @@ app.get("/api", (_req, res) => {
       "POST   /trabalho/api/tasks/:id/comment { texto }",
       "PUT    /trabalho/api/tasks/:id/status  { status }",
       "POST   /trabalho/api/plano             { ids: [] }",
+      "--- modulo conversa ---",
+      "GET    /conversa                       (tela do modulo)",
+      "GET    /conversa/api/health",
+      "POST   /conversa/api/sessao            { titulo? }",
+      "GET    /conversa/api/historico         ?conversa_id=&n=",
+      "POST   /conversa/api/contexto          { conversa_id, texto }  (camada 1, sem LLM)",
+      "POST   /conversa/api/responder         { conversa_id, ordem }  (camada 2)",
+      "GET    /conversa/api/alma",
+      "PUT    /conversa/api/alma              { perfil }",
+      "POST   /conversa/api/destilar          { forcar? }",
     ],
   });
 });
@@ -77,6 +88,7 @@ app.use(docsRouter);
 
 // Modulos montados por prefixo. O prefixo e o unico acoplamento.
 app.use("/trabalho", trabalhoRouter);
+app.use("/conversa", conversaRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
