@@ -27,6 +27,10 @@
   var tracoCat = document.getElementById("tracoCat");
   var btnAddTraco = document.getElementById("btnAddTraco");
   var almaMeta = document.getElementById("almaMeta");
+  // Existiam no HTML e nao eram lidos por ninguem: a textarea nunca era
+  // preenchida e o Salvar nao tinha handler.
+  var almaTexto = document.getElementById("almaTexto");
+  var btnSalvarAlma = document.getElementById("btnSalvarAlma");
   var btnFecharAlma = document.getElementById("btnFecharAlma");
   var btnDestilar = document.getElementById("btnDestilar");
 
@@ -74,6 +78,23 @@
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
   }
 
+  /* Carregando da abertura. Antes a tela subia vazia e parecia pronta enquanto
+     a sessao ainda estava sendo criada: voce digitava e nada acontecia. */
+  var aviso = null;
+  function carregando(texto) {
+    if (!aviso) {
+      aviso = document.createElement("div");
+      aviso.className = "cv-status";
+      fluxo.appendChild(aviso);
+    }
+    aviso.textContent = texto;
+    paraBaixo();
+  }
+  function fimDoCarregando() {
+    if (aviso && aviso.parentNode) aviso.parentNode.removeChild(aviso);
+    aviso = null;
+  }
+
   function erro(msg) { var d = document.createElement("div"); d.className = "cv-erro"; d.textContent = msg; fluxo.appendChild(d); paraBaixo(); }
   function rodape(texto) { var d = document.createElement("div"); d.className = "cv-fontes"; d.textContent = texto; fluxo.appendChild(d); paraBaixo(); }
 
@@ -93,7 +114,13 @@
     clearTimeout(relogio);
     var dados = null;
     try { dados = await r.json(); } catch (e) {}
-    if (!r.ok) throw new Error((dados && dados.erro) || "Falhou (" + r.status + ")");
+    if (!r.ok) {
+      // o status vai junto: quem chama precisa distinguir 404 de 500 sem ler texto
+      var err = new Error((dados && dados.erro) || "Falhou (" + r.status + ")");
+      err.status = r.status;
+      err.dados = dados;
+      throw err;
+    }
     return dados;
   }
 
@@ -121,7 +148,14 @@
     try { localStorage.setItem(CHAVE_SESSAO, conversaId); } catch (e) {}
   }
 
-  async function enviar() {
+  /* A conversa guardada no navegador pode ter morrido no banco: base trocada,
+     faxina, exclusao em outro aparelho. Quando isso aparece no meio do envio,
+     jogamos o id fora e abrimos outra, em vez de deixar voce preso num erro. */
+  function sessaoMorreu(e) {
+    return e && (e.status === 404 || /conversa nao encontrada/i.test(e.message || ""));
+  }
+
+  async function enviar(reenvio) {
     var texto = campo.value.trim();
     if (!texto || ocupado) return;
     /* Sem sessao o envio saia em silencio: voce apertava Enter e nao acontecia
@@ -134,10 +168,24 @@
     var sinal = status(ABERTURAS[Math.floor(Math.random() * ABERTURAS.length)]);
 
     try {
-      var ctx = await pedir("/contexto", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversa_id: conversaId, texto: texto }),
-      });
+      var ctx;
+      try {
+        ctx = await pedir("/contexto", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversa_id: conversaId, texto: texto }),
+        });
+      } catch (e) {
+        // uma recuperacao so: reenvio evita laco se a conversa nova tambem falhar
+        if (!sessaoMorreu(e) || reenvio) throw e;
+        sumir(sinal); travar(false);
+        try { localStorage.removeItem(CHAVE_SESSAO); } catch (e2) {}
+        conversaId = null;
+        await garantirSessao();
+        campo.value = texto;
+        // a bolha antiga fica: a mensagem e a mesma, so a conversa que e outra
+        if (fluxo.lastElementChild) fluxo.removeChild(fluxo.lastElementChild);
+        return enviar(true);
+      }
 
       // camada 1: o que a busca ja devolveu, sem modelo nenhum
       trocarStatus(sinal, ctx.frase);
@@ -249,6 +297,8 @@
     try {
       var a = await pedir("/alma", {});
       desenharTracos(a.tracos || []);
+      // a observacao escrita por voce vive em alma.perfil
+      if (almaTexto) almaTexto.value = a.perfil || "";
       var ativos = (a.tracos || []).filter(function (t) { return t.ativo !== false; }).length;
       almaMeta.textContent = ativos + " traço(s) no prompt · " + (a.turnos_totais || 0) +
         " turnos · " + (a.precisa_destilar ? "tem material novo" : "em dia");
@@ -269,6 +319,22 @@
       await abrirAlma();
     } catch (e) { alert(e.message); }
     finally { btnAddTraco.disabled = false; }
+  }
+
+  async function salvarAlma() {
+    if (!almaTexto) return;
+    btnSalvarAlma.disabled = true;
+    var antes = almaMeta.textContent;
+    almaMeta.textContent = "salvando...";
+    try {
+      await pedir("/alma", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ perfil: almaTexto.value }),
+      });
+      almaMeta.textContent = "observação salva.";
+      setTimeout(function () { if (almaMeta.textContent === "observação salva.") almaMeta.textContent = antes; }, 2000);
+    } catch (e) { almaMeta.textContent = e.message; }
+    finally { btnSalvarAlma.disabled = false; }
   }
 
   async function destilarAgora() {
@@ -444,6 +510,7 @@
   btnAlma.addEventListener("click", abrirAlma);
   btnFecharAlma.addEventListener("click", function () { folha.hidden = true; });
   btnDestilar.addEventListener("click", destilarAgora);
+  btnSalvarAlma.addEventListener("click", salvarAlma);
   btnAddTraco.addEventListener("click", addTraco);
   tracoNovo.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addTraco(); } });
   folha.addEventListener("click", function (e) { if (e.target === folha) folha.hidden = true; });
@@ -464,16 +531,60 @@
     var b = document.createElement("button");
     b.className = "cv-btn-sec";
     b.textContent = "Tentar de novo";
+    // Tenta de novo pelo MESMO caminho da abertura: se o banco continuar fora,
+    // voce ve o motivo outra vez, e nao uma mensagem crua do supabase-js.
     b.addEventListener("click", function () {
       if (b.parentNode) b.parentNode.removeChild(b);
-      garantirSessao().then(function () { campo.focus(); }).catch(function (e) { erro(e.message); });
+      abrirComHealth();
     });
     fluxo.appendChild(b);
     paraBaixo();
   }
 
-  garantirSessao().catch(function (e) {
-    erro("Nao consegui abrir a conversa: " + e.message);
-    semSessao();
-  });
+  /* Abertura em dois tempos: primeiro pergunta ao servidor se o banco responde,
+     so depois tenta abrir a sessao.
+
+     Sem isso, qualquer falha caia na mesma mensagem generica culpando o SQL do
+     Supabase, inclusive quando o problema era chave errada, projeto pausado ou
+     nada disso. O /health agora devolve o motivo e a tela repete o motivo. */
+  var MOTIVO = {
+    sem_config: "As variaveis do Supabase nao estao no ambiente deste deploy.",
+    sem_tabelas: "As tabelas do modulo nao existem. Rode supabase/conversa.sql no seu projeto.",
+    sem_permissao: "O Supabase recusou a chave. Confira a SUPABASE_SECRET_KEY.",
+    inacessivel: "O Supabase nao respondeu. Pode estar pausado ou fora do ar.",
+  };
+
+  async function abrirComHealth() {
+    travar(true);
+    carregando("Conectando...");
+    var h = null;
+    try {
+      h = await pedir("/health", {}, 12000);
+    } catch (e) {
+      fimDoCarregando(); travar(false);
+      erro("O servidor do modulo nao respondeu: " + e.message);
+      semSessao();
+      return;
+    }
+
+    if (h && h.banco && h.banco.ok === false) {
+      fimDoCarregando(); travar(false);
+      erro(MOTIVO[h.banco.estado] || h.banco.detalhe || "O banco nao respondeu.");
+      semSessao();
+      return;
+    }
+
+    carregando("Abrindo sua conversa...");
+    try {
+      await garantirSessao();
+      fimDoCarregando(); travar(false);
+      campo.focus();
+    } catch (e) {
+      fimDoCarregando(); travar(false);
+      erro("Nao consegui abrir a conversa: " + e.message);
+      semSessao();
+    }
+  }
+
+  abrirComHealth();
 })();

@@ -132,6 +132,24 @@ export async function listarResumidas() {
   return (await buscarPaginado(COLUNAS_LEVES)).map(linhaParaIdeia);
 }
 
+/**
+ * Notas criadas dentro de um intervalo. Usado pelo filtro de data da conversa.
+ *
+ * criado_em e timestamptz, entao o intervalo desce pro Postgres de verdade e
+ * usa indice, diferente de data_evento (text) ali embaixo.
+ *
+ * Intervalo meio aberto: [desde, ate). Assim "hoje" e desde 00:00 de hoje ate
+ * 00:00 de amanha, sem a nota da meia-noite em ponto cair nos dois dias.
+ *
+ * @param {string} desde ISO
+ * @param {string} ate   ISO, exclusivo
+ */
+export async function listarPorPeriodo(desde, ate) {
+  const linhas = await buscarPaginado(COLUNAS_LEVES, (q) =>
+    q.gte("criado_em", desde).lt("criado_em", ate));
+  return linhas.map(linhaParaIdeia);
+}
+
 // Eventos: o filtro por tipo desce pro Postgres, que e onde ele deveria estar.
 // A janela de dias NAO desce junto de proposito: data_evento e text no schema,
 // e comparar data como texto depende do formato gravado. Quem decide a janela

@@ -32,6 +32,51 @@ export class ErroHttp extends Error {
   }
 }
 
+const TETO_HEALTH = Number(process.env.TETO_HEALTH_MS) || 6000;
+
+/**
+ * Toca o banco de verdade e devolve POR QUE nao foi, quando nao vai.
+ *
+ * O /health antigo respondia ok sem encostar no Supabase, entao dizia ok com o
+ * banco fora. E a tela, sem saber o motivo, sempre culpava a falta do SQL.
+ *
+ * Nunca lanca: quem chama quer o diagnostico, nao um 500.
+ * @returns {Promise<{ok: boolean, estado: string, detalhe: string}>}
+ */
+export async function checarBanco() {
+  if (!URL || !KEY) {
+    return { ok: false, estado: "sem_config", detalhe: "SUPABASE_URL ou a chave secreta nao estao no ambiente." };
+  }
+  try {
+    /* Teto de tempo. Projeto pausado ou DNS fora deixam a consulta pendurada por
+       dezenas de segundos, e a tela ficaria carregando pra sempre esperando o
+       diagnostico. Health que trava e pior que health nenhum. */
+    const consulta = sb.from("conversas").select("id", { count: "exact", head: true });
+    const { error } = await Promise.race([
+      consulta,
+      new Promise((_, rej) => setTimeout(() => rej(new Error(`sem resposta em ${TETO_HEALTH / 1000}s`)), TETO_HEALTH)),
+    ]);
+    if (!error) return { ok: true, estado: "ok", detalhe: "" };
+
+    /* O supabase-js as vezes devolve erro com message vazia e a informacao em
+       code/details/hint. Detalhe em branco na tela nao ajuda ninguem, entao
+       junta tudo que veio. */
+    const msg = [error.message, error.details, error.hint, error.code]
+      .filter(Boolean).map(String).join(" | ") || "o banco recusou a consulta sem dizer o motivo";
+    // 42P01 = relation does not exist. E o caso de quem nunca rodou o SQL do modulo.
+    if (error.code === "42P01" || /does not exist|schema cache/i.test(msg)) {
+      return { ok: false, estado: "sem_tabelas", detalhe: "As tabelas do modulo nao existem. Rode supabase/conversa.sql no seu projeto." };
+    }
+    if (/JWT|api key|Invalid|401|403/i.test(msg)) {
+      return { ok: false, estado: "sem_permissao", detalhe: "O Supabase recusou a chave. Confira SUPABASE_SECRET_KEY." };
+    }
+    return { ok: false, estado: "erro", detalhe: msg };
+  } catch (e) {
+    // rede, DNS, projeto pausado: nao chegou nem a responder
+    return { ok: false, estado: "inacessivel", detalhe: String(e && e.message ? e.message : e) };
+  }
+}
+
 export async function criarConversa(titulo = null) {
   const { data, error } = await sb
     .from("conversas")

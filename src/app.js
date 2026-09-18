@@ -9,6 +9,7 @@ import cors from "cors";
 import ideiasRouter from "./routes/ideias.js";
 import backupRouter from "./routes/backup.js";
 import docsRouter from "./routes/docs.js";
+import { exigirPin, rotaDeAcesso, pinAtivo } from "./acesso.js";
 // Modulos externos: cada um vive inteiro em modulos/<nome>/ e so encosta no
 // app por uma linha de app.use(). Comentar as duas linhas desliga o modulo.
 import trabalhoRouter from "../modulos/trabalho/servidor/index.js";
@@ -25,6 +26,12 @@ app.use(express.json({ limit: "1mb" }));
 // Healthcheck: responde rapido, sem tocar o banco.
 app.get("/health", (_req, res) => res.status(200).json({ status: "ok" }));
 
+/* PIN. Fica DEPOIS do health (a Vercel precisa sondar sem credencial) e ANTES
+   de tudo que devolve dado. A casca passa: sem ela nao ha onde digitar o PIN.
+   Sem PIN_ACESSO no ambiente, nada disso liga. Ver src/acesso.js. */
+rotaDeAcesso(app);
+app.use(exigirPin);
+
 // Front (mural). Na Vercel o CDN serve o public/ antes da funcao; isto aqui
 // cobre o uso local. Inofensivo em serverless.
 app.use(express.static(PUBLIC_DIR));
@@ -34,6 +41,7 @@ app.get("/api", (_req, res) => {
     nome: "Segundo Cerebro API",
     versao: 4,
     armazenamento: "supabase + pgvector",
+    acesso: pinAtivo() ? "protegido por PIN" : "aberto",
     embedding: "gemini text-embedding-004 (768d)",
     modulos: ["trabalho (ClickUp) em /trabalho", "conversa em /conversa"],
     endpoints: [

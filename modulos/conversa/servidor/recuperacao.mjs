@@ -15,6 +15,7 @@
  */
 import { gerarEmbedding } from "../../../src/embeddings.js";
 import * as db from "../../../src/db.js";
+import { janelaDoTexto, temaRestante, diaLocal } from "./tempo.mjs";
 
 const DIA_MS = 86400000;
 
@@ -23,6 +24,11 @@ const DIA_MS = 86400000;
    alguma coisa. Tratar tudo como achado e o jeito mais rapido de o chat
    comecar a inventar ligacao que nao existe. */
 export const LIMIAR_FORTE = 0.42;
+
+/* Teto de notas num pedido por data. Um dia cheio pode ter 40 notas, e mandar
+   as 40 estoura o prompt e afoga o assunto. Ao estourar, o corte e avisado no
+   proprio bloco, pra ele nao afirmar que aquilo e tudo que existe. */
+export const MAX_POR_PERIODO = 14;
 
 /** Divide o que veio da busca no que realmente fala do assunto e no resto. */
 export function separar(notas, limiar = LIMIAR_FORTE) {
@@ -96,6 +102,59 @@ export function fraseDoAchado(resumo, textoPessoa = "") {
   return partes.join("") + ". Deixa eu ler.";
 }
 
+/** A fala da camada 1 quando o pedido foi por data. Pura. */
+export function frasePeriodo(janela, quantas) {
+  if (!quantas) return `Não tem nota nenhuma sua de ${janela.rotulo}.`;
+  const n = quantas === 1 ? "1 nota sua" : `${quantas} notas suas`;
+  return `Peguei ${n} de ${janela.rotulo}. Deixa eu ler.`;
+}
+
+/** As notas do periodo viradas em texto. Pura. */
+export function blocoDoPeriodo(janela, notas, total, agora = new Date()) {
+  if (!notas.length) {
+    return `Ele pediu as notas de ${janela.rotulo} e NAO existe nenhuma nesse periodo. ` +
+      `Diga isso com todas as letras. Nao troque por nota de outra data e nao invente que achou.`;
+  }
+  const linha = (n, i) =>
+    `${i + 1}. [${n.area || "sem área"}] ${n.resumo || "(sem resumo)"}\n` +
+    `   guardada em ${String(n.criado_em).slice(0, 10)} (${rotuloDaNota(n.criado_em, agora)})\n` +
+    `   texto: ${corta(n.texto_original, 700)}`;
+  const aviso = total > notas.length
+    ? `\n\n(São ${total} no período; estas são as ${notas.length} mais recentes. Diga que tem mais se ele perguntar.)`
+    : "";
+  return `Notas dele de ${janela.rotulo} (${notas.length}), TODAS deste periodo:\n` +
+    notas.map(linha).join("\n") + aviso;
+}
+
+/**
+ * A idade da nota em palavras, para a LINHA da nota no prompt.
+ *
+ * Existe porque a data crua nao bastava. O prompt ja dizia "Hoje e 2026-09-18"
+ * e a nota ja dizia "guardada em 2026-09-18", mas a conta ficava por conta do
+ * modelo, e ele errava: chamava nota de hoje de "aquela vez que voce escreveu".
+ *
+ * Irmao do idadeEmPalavras, que e da frase de espera e pode ser vago ("das
+ * ultimas semanas"). Aqui nao pode: e o que o modelo vai repetir pra voce.
+ * Puro.
+ */
+export function rotuloDaNota(criadoEm, agora = new Date()) {
+  const t = new Date(criadoEm).getTime();
+  if (!Number.isFinite(t)) return "data desconhecida";
+  /* Dias de CALENDARIO, nao horas decorridas. Nota de ontem as 20h tem 18
+     horas de idade e a conta por horas dizia "hoje". */
+  const dias = diaLocal(agora) - diaLocal(t);
+  if (dias <= 0) return "hoje";
+  if (dias === 1) return "ontem";
+  if (dias === 2) return "anteontem";
+  if (dias <= 13) return `há ${dias} dias`;
+  if (dias <= 60) {
+    const sem = Math.round(dias / 7);
+    return `há ${sem} semana${sem === 1 ? "" : "s"}`;
+  }
+  const d = new Date(t);
+  return `em ${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
+}
+
 const corta = (t, n) => {
   const s = String(t || "");
   return s.length > n ? s.slice(0, n) + "…" : s;
@@ -106,11 +165,11 @@ const corta = (t, n) => {
  * rotulados: o modelo precisa saber no que pode se apoiar e o que e so
  * vizinhanca, senao ele cita tangente com a mesma confianca do resto.
  */
-export function blocoDeNotas(notas) {
+export function blocoDeNotas(notas, agora = new Date()) {
   const { fortes, fracas } = separar(notas);
   const linha = (n, i) =>
     `${i + 1}. [${n.area || "sem área"}] ${n.resumo || "(sem resumo)"}\n` +
-    `   guardada em ${String(n.criado_em).slice(0, 10)}\n` +
+    `   guardada em ${String(n.criado_em).slice(0, 10)} (${rotuloDaNota(n.criado_em, agora)})\n` +
     `   texto: ${corta(n.texto_original, 700)}`;
 
   const blocos = [];
@@ -145,11 +204,32 @@ export function blocoDeNotas(notas) {
  * Tetos separados porque um teto unico enche a lista de score baixo quando a
  * base tem pouca coisa do tema, e corta nota boa quando tem muita.
  */
-export async function recuperar(texto, { buscar = 40, maxFortes = 20, maxFracas = 4 } = {}) {
+export async function recuperar(texto, { buscar = 40, maxFortes = 20, maxFracas = 4, agora = new Date() } = {}) {
   const entrada = String(texto || "").trim();
   if (!entrada) {
     const vazio = resumirAchado([]);
     return { notas: [], fortes: [], fracas: [], resumo: vazio, frase: fraseDoAchado(vazio, ""), bloco: blocoDeNotas([]) };
+  }
+
+  /* Pedido de data vira FILTRO, nao busca. "As notas de hoje" nao e parecida
+     com nota nenhuma: as notas falam de jiu-jitsu, de entrevista, de gente.
+     Procurar por semelhanca nesse caso devolve qualquer coisa, que era o que
+     acontecia. */
+  const janela = janelaDoTexto(entrada, agora);
+  if (janela) {
+    const doPeriodo = await db.listarPorPeriodo(janela.desde, janela.ate);
+    // mais novas primeiro: quem pergunta pelo periodo quer o fim dele
+    doPeriodo.sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
+    const cortou = doPeriodo.length > MAX_POR_PERIODO;
+    const usadas = doPeriodo.slice(0, MAX_POR_PERIODO)
+      // tudo que esta na janela E do assunto pedido: nao ha tangente aqui
+      .map((n) => ({ ...n, embedding: undefined, score: 1 }));
+    const resumo = { ...resumirAchado(usadas), periodo: janela.rotulo, cortou, totalPeriodo: doPeriodo.length };
+    return {
+      notas: usadas, fortes: usadas, fracas: [], resumo, janela,
+      frase: frasePeriodo(janela, doPeriodo.length),
+      bloco: blocoDoPeriodo(janela, usadas, doPeriodo.length),
+    };
   }
 
   const emb = await gerarEmbedding(entrada);

@@ -60,6 +60,8 @@ function limparInsight() {
   S.insightNotas = null;
   S.insightThread = [];
   S.insightUrl = null;
+  // o pedido era daquele recorte; carregar pro proximo seria surpresa ruim
+  S.insightPedido = "";
 }
 
 /* ============================================================
@@ -232,6 +234,10 @@ function pedirInsight(aoFalhar) {
 
   var url = S.insightUrl + "&angulo=" + encodeURIComponent(S.insightAngulo) +
     "&tamanho=" + encodeURIComponent(S.insightTamanho);
+  /* Pedido livre na GERACAO, nao so na continuacao. Angulo e tamanho sao um
+     cardapio; isto e voce dizendo o que precisa daquele recorte agora, e no
+     servidor ele manda sobre o preset. */
+  if (S.insightPedido) url += "&pedido=" + encodeURIComponent(S.insightPedido);
 
   api(url).then(function (r) { return r.json(); }).then(function (d) {
     if (d.erro) throw new Error(d.erro);
@@ -518,6 +524,11 @@ function abrirInsight(titulo) {
   abrirSheet(INS.titulo,
     descreverFonte(S.insightFonte) +
     htmlDosBlocos() +
+    '<p class="grupo-titulo">O que você quer deste insight</p>' +
+    '<div class="campo-linha"><textarea id="insPedido" class="campo" rows="2" ' +
+      'placeholder="Escreva com suas palavras. Ex: me diga só o que muda a decisão de hoje">' +
+      esc(S.insightPedido || "") + '</textarea>' +
+      '<button class="btn btn-suave btn-largo" id="insPedidoGerar" style="margin-top:10px">Gerar assim</button></div>' +
     '<p class="grupo-titulo">Reformular</p>' + chipsFormato() +
     '<p class="grupo-titulo">Continuar</p>' +
     '<div class="ins-linha ins-atalhos">' + atalhos + "</div>" +
@@ -546,6 +557,17 @@ function abrirInsight(titulo) {
         rotulo: "aprofundar: " + String(bloco.notas || bloco.texto).slice(0, 60),
       });
     });
+  });
+
+  var campoPedido = $("#insPedido");
+  var gerarComPedido = function () {
+    S.insightPedido = (campoPedido.value || "").trim();
+    // regera o MESMO recorte, agora com a instrucao junto
+    pedirInsight();
+  };
+  $("#insPedidoGerar").addEventListener("click", gerarComPedido);
+  campoPedido.addEventListener("keydown", function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") gerarComPedido();
   });
 
   var campo = $("#insPergunta");

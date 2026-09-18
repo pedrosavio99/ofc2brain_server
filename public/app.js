@@ -14,6 +14,9 @@ var S = {
   insight: null, insightBlocos: null, insightFonte: null, insightNotas: null,
   insightCarregando: false, insightEscopo: null, insightUrl: null,
   insightAngulo: "panorama", insightTamanho: "curto", insightThread: [], insightAuto: true,
+  // instrucao em texto livre para a GERACAO. Zera junto com a thread: pedido de
+  // um recorte nao vale pro proximo.
+  insightPedido: "",
   filtroArea: null, filtroTipo: null, carregando: true,
   areaAberta: null, periodo: '7d', dataDe: '', dataAte: '', limiteTempo: 40,
 };

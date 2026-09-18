@@ -220,7 +220,7 @@ export async function removerIdeia(id) {
  * Busca semantica (modo pesquisa): embeda a query e ranqueia por similaridade
  * usando a mesma varredura rapida do banco.
  */
-export async function pesquisar(query, { comInsight = false, limite = 5, angulo = null, tamanho = null } = {}) {
+export async function pesquisar(query, { comInsight = false, limite = 5, angulo = null, tamanho = null, pedido = null } = {}) {
   const embeddingQuery = await gerarEmbedding(query);
 
   const ranking = await db.topKSimilares(embeddingQuery, { k: limite, piso: 0 });
@@ -238,7 +238,7 @@ export async function pesquisar(query, { comInsight = false, limite = 5, angulo 
   let insightBlocos = null;
   let insightMeta = null;
   if (comInsight) {
-    const ins = await gerarInsight(query, resultados, { angulo, tamanho });
+    const ins = await gerarInsight(query, resultados, { angulo, tamanho, pedido });
     if (ins) {
       insight = ins.texto;
       insightBlocos = ins.blocos;
@@ -378,6 +378,20 @@ ${formatar(resultados.slice(0, 8))}`
   // modelo nao tem como calcular "isso foi ha tres meses" nem "isso ja passou".
   const hojeISO = new Date().toISOString().slice(0, 10);
 
+  /* Pedido livre. O angulo e o tamanho sao um cardapio fechado; isto e a pessoa
+     dizendo o que ela precisa AGORA, com as palavras dela. Entra por ultimo e
+     manda sobre o angulo de proposito: quando ela escreve o que quer, o preset
+     vira sugestao. */
+  const pedido = String(opcoes.pedido || "").trim().slice(0, 600);
+  const blocoPedido = pedido
+    ? `PEDIDO DELA PARA ESTE INSIGHT (isto manda sobre o formato pedido acima):
+"""
+${pedido}
+"""
+Atenda o que ela pediu. Se o pedido conflitar com o formato, siga o pedido e
+mantenha apenas a estrutura de saida (o JSON) intacta.`
+    : "";
+
   const prompt = `Data de hoje: ${hojeISO}
 
 ${panorama}
@@ -386,7 +400,9 @@ ${cabecalho}
 
 ${blocoMaterial}
 
-${blocoContexto}`;
+${blocoContexto}
+
+${blocoPedido}`;
 
   // INSIGHT_DEBUG_PROMPT=1 imprime no terminal o prompt exato enviado ao
   // modelo. Serve pra conferir o que ele recebe, sem adivinhar. Desligado por
@@ -581,6 +597,8 @@ export async function insightAvancado(args = {}) {
     escopoTexto,
     angulo: args.angulo || null,
     tamanho: args.tamanho || null,
+    // instrucao em texto livre, escrita na hora
+    pedido: args.pedido || null,
   });
   if (!ins) {
     return { insight: null, insight_blocos: null, insight_meta: null, usou: selecionadas.length, escopo, escopoTexto, motivo: "modelo indisponivel agora" };

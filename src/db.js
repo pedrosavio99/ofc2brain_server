@@ -4,6 +4,7 @@
 export {
   listarTodas,
   listarResumidas,
+  listarPorPeriodo,
   listarEventos,
   buscarPorId,
   salvar,

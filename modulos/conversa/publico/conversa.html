@@ -70,7 +70,27 @@
       </button>
     </div>
     <p class="cv-folha-sub" id="almaMeta"></p>
-    <textarea id="almaTexto" rows="10" placeholder="Ainda vazio. Ele preenche conversando."></textarea>
+
+    <!-- Tracos: o que ele aprendeu sozinho, um por linha, com a contagem de
+         repeticao. O JS ja esperava estes quatro ids e o CSS ja tinha as regras
+         (.cv-alma-add, .cv-tracos); so o HTML faltava, e a ausencia derrubava o
+         script inteiro no addEventListener. -->
+    <div class="cv-alma-add">
+      <input id="tracoNovo" placeholder="Escreva um traço: ex. frases curtas, sem rodeio" />
+      <select id="tracoCat" aria-label="Categoria do traço">
+        <option value="vocabulario">vocabulário</option>
+        <option value="ritmo">ritmo</option>
+        <option value="tom">tom</option>
+        <option value="formato">formato</option>
+        <option value="evitar">evitar</option>
+      </select>
+      <button class="cv-btn" id="btnAddTraco">Adicionar</button>
+    </div>
+    <div class="cv-tracos" id="listaTracos"></div>
+
+    <!-- Observacao livre, escrita por voce. O destilador nao mexe aqui. -->
+    <label class="cv-folha-sub" for="almaTexto" style="margin-top:14px;display:block">Sua observação</label>
+    <textarea id="almaTexto" rows="6" placeholder="Algo que você queira que ele leve em conta e que não sai sozinho da conversa."></textarea>
     <div class="cv-folha-acoes">
       <button class="cv-btn-sec" id="btnDestilar">Destilar agora</button>
       <button class="cv-btn" id="btnSalvarAlma">Salvar</button>
@@ -93,6 +113,7 @@
   </aside>
 </div>
 
+<script src="/pin.js"></script>
 <script src="/conversa/conversa.js"></script>
 </body>
 </html>
