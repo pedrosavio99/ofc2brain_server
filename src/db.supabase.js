@@ -222,7 +222,19 @@ export async function estatisticas() {
     .from(TABELA)
     .select("id", { count: "exact", head: true });
   if (error) throw new Error(`estatisticas: ${error.message}`);
-  return { motor: "supabase", ideias: count ?? 0, tumbas: 0 };
+  const base = { motor: "supabase", ideias: count ?? 0, tumbas: 0 };
+
+  /* Tamanho em bytes vem de uma funcao no banco porque o supabase-js nao roda
+     SQL solto: ele so fala PostgREST. A funcao armazenamento() esta em
+     supabase/armazenamento.sql e precisa ser criada uma vez.
+
+     Falha dela NAO derruba a rota: quem nunca rodou o SQL continua recebendo a
+     contagem de sempre, com o motivo no lugar dos bytes. */
+  const { data, error: erroTamanho } = await sb.rpc("armazenamento");
+  if (erroTamanho) {
+    return { ...base, armazenamento: null, armazenamento_erro: erroTamanho.message };
+  }
+  return { ...base, armazenamento: data };
 }
 
 // ---------- backup: agora e export/import JSON (o .bin nao existe mais) ----------

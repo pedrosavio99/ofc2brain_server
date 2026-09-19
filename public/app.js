@@ -14,6 +14,9 @@ var S = {
   insight: null, insightBlocos: null, insightFonte: null, insightNotas: null,
   insightCarregando: false, insightEscopo: null, insightUrl: null,
   insightAngulo: "panorama", insightTamanho: "curto", insightThread: [], insightAuto: true,
+  // payload da funcao armazenamento() do banco. null enquanto nao carrega, ou
+  // quando a funcao nao foi criada no Supabase.
+  armazenamento: null,
   // instrucao em texto livre para a GERACAO. Zera junto com a thread: pedido de
   // um recorte nao vale pro proximo.
   insightPedido: "",
@@ -179,6 +182,9 @@ function obterNotasComRetry(tentativa) {
   ]).then(function (res) {
     var notas = Array.isArray(res[0]) ? res[0] : [];
     var stats = res[1];
+    // o /armazenamento ja era buscado aqui e o resultado ia pro lixo. Agora fica
+    // guardado pro topo mostrar o tamanho sem fazer uma chamada a mais.
+    S.armazenamento = (stats && stats.armazenamento) || null;
     var esperado = stats && typeof stats.ideias === "number" ? stats.ideias : null;
     var coldStart = notas.length === 0 && esperado > 0;
     if (coldStart && tentativa < MAX) {
@@ -434,6 +440,31 @@ document.addEventListener("click", function (ev) {
   if (ir) { abrirDetalhe(ir.dataset.ir); return; }
 });
 
+/* Bytes em texto de gente. O pg_size_pretty do Postgres so vira MB depois de
+   uns 10 MB, entao 4288 kB ficava assim na tela. Aqui a gente formata dos bytes
+   crus, com virgula decimal. */
+function tamanhoBonito(bytes) {
+  var b = Number(bytes);
+  if (!isFinite(b) || b <= 0) return "";
+  if (b < 1024) return b + " B";
+  var kb = b / 1024;
+  if (kb < 1024) return Math.round(kb) + " KB";
+  var mb = kb / 1024;
+  if (mb < 1024) return String(Math.round(mb * 10) / 10).replace(".", ",") + " MB";
+  return String(Math.round((mb / 1024) * 100) / 100).replace(".", ",") + " GB";
+}
+
+/* O tamanho do que e SEU (schema public), nao o do banco inteiro: o numero do
+   painel do Supabase inclui auth, storage, realtime e catalogos, que sao uns
+   27 MB que existem num projeto vazio e nao crescem com o uso.
+   Vazio quando a funcao armazenamento() nao foi criada no banco. */
+function tamanhoDaBase() {
+  var a = S.armazenamento;
+  if (!a) return "";
+  // prefere os bytes crus; o texto do Postgres e o plano B
+  return tamanhoBonito(a.seu_bytes) || (a.seu ? String(a.seu) : "");
+}
+
 function atualizarResumoTopo() {
   var el = $("#resumoTopo");
   if (S.carregando) { el.textContent = "Carregando…"; return; }
@@ -441,8 +472,10 @@ function atualizarResumoTopo() {
   var lig = 0;
   S.notas.forEach(function (i) { lig += relsDe(i).length; });
   lig = Math.round(lig / 2);
+  var tam = tamanhoDaBase();
   el.textContent = n === 0 ? "Nenhuma nota ainda."
-    : n + " " + (n === 1 ? "nota" : "notas") + " · " + lig + " " + (lig === 1 ? "ligação" : "ligações");
+    : n + " " + (n === 1 ? "nota" : "notas") + " · " + lig + " " + (lig === 1 ? "ligação" : "ligações") +
+      (tam ? " · " + tam : "");
 }
 
 /* Filtros por area e tipo (chips roláveis) */
@@ -1273,20 +1306,49 @@ function baixarBackup() {
 function telaArmazenamento() {
   abrirSheet("Armazenamento", esqueletos(1));
   api("/armazenamento").then(function (r) { return r.json(); }).then(function (d) {
+    S.armazenamento = d.armazenamento || null;
+    var a = S.armazenamento;
+
+    /* A tela antiga era do motor de ARQUIVO: lia d.bytes e d.registrosNoArquivo,
+       que nao existem no Supabase, entao mostrava "NaN KB". E oferecia limpar
+       historico do arquivo, que aqui nao quer dizer nada. */
+    if (!a) {
+      $("#sheetCorpo").innerHTML =
+        '<div class="grupo"><div class="item"><div class="item-txt"><strong>Notas</strong></div>' +
+        '<span class="valor">' + d.ideias + "</span></div></div>" +
+        '<div class="vazio"><p>O tamanho em bytes precisa da função <code>armazenamento()</code> no banco. ' +
+        "Rode <code>supabase/armazenamento.sql</code> no SQL Editor.</p>" +
+        (d.armazenamento_erro ? "<p>" + esc(d.armazenamento_erro) + "</p>" : "") + "</div>";
+      return;
+    }
+
+    var tabelas = a.tabelas || [];
+    var mortas = tabelas.reduce(function (t, x) { return t + (x.linhas_mortas || 0); }, 0);
+    var vivas = tabelas.reduce(function (t, x) { return t + (x.linhas || 0); }, 0);
+
     $("#sheetCorpo").innerHTML =
       '<div class="grupo">' +
         '<div class="item"><div class="item-txt"><strong>Notas</strong></div><span class="valor">' + d.ideias + "</span></div>" +
-        '<div class="item"><div class="item-txt"><strong>Tamanho do arquivo</strong></div><span class="valor">' + (d.bytes / 1024).toFixed(1) + " KB</span></div>" +
-        '<div class="item"><div class="item-txt"><strong>Registros</strong><span>Inclui histórico ainda não limpo</span></div><span class="valor">' + d.registrosNoArquivo + "</span></div>" +
+        '<div class="item"><div class="item-txt"><strong>Suas tabelas</strong><span>O que você de fato ocupa</span></div>' +
+          '<span class="valor">' + esc(tamanhoBonito(a.seu_bytes) || a.seu || "?") + "</span></div>" +
+        '<div class="item"><div class="item-txt"><strong>Banco inteiro</strong><span>Inclui o que o Supabase instala sozinho</span></div>' +
+          '<span class="valor">' + esc(tamanhoBonito(a.banco_bytes) || a.banco || "?") + "</span></div>" +
       "</div>" +
-      '<button class="btn btn-suave btn-largo" id="mCompactar">Limpar histórico do arquivo</button>';
-    $("#mCompactar").addEventListener("click", function (e) {
-      e.target.textContent = "Limpando…";
-      api("/compactar", { method: "POST" }).then(function (r) { return r.json(); }).then(function (r) {
-        avisar("Arquivo limpo (" + (r.bytes / 1024).toFixed(1) + " KB).");
-        telaArmazenamento();
-      }).catch(function () { avisar("Não deu pra limpar."); });
-    });
+      '<p class="grupo-titulo">Por tabela</p>' +
+      '<div class="grupo">' +
+      tabelas.map(function (t) {
+        return '<div class="item"><div class="item-txt"><strong>' + esc(t.nome) + "</strong><span>" +
+          (t.linhas || 0) + " linhas · dados " + esc(t.dados) + " · índices " + esc(t.indices) +
+          " · toast " + esc(t.toast) +
+          (t.bytes_por_linha ? " · " + Math.round(t.bytes_por_linha / 1024 * 10) / 10 + " KB por linha" : "") +
+          "</span></div><span class=\"valor\">" + esc(tamanhoBonito(t.total_bytes) || t.total) + "</span></div>";
+      }).join("") +
+      "</div>" +
+      (mortas > 0 && vivas > 0 && mortas / vivas > 0.2
+        ? '<div class="vazio"><p>' + mortas + " linhas mortas para " + vivas +
+          " vivas. É espaço de versões antigas ainda não recolhido. Rode <code>vacuum analyze ideias;</code> no SQL Editor.</p></div>"
+        : "") +
+      '<p class="grupo-titulo">Medido em ' + esc(a.medido_em || "") + "</p>";
   }).catch(function () {
     $("#sheetCorpo").innerHTML = '<div class="vazio"><h3>Não deu pra ler</h3><p>O armazenamento não respondeu.</p></div>';
   });
