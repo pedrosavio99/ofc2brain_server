@@ -14,6 +14,7 @@ import { exigirPin, rotaDeAcesso, pinAtivo } from "./acesso.js";
 // app por uma linha de app.use(). Comentar as duas linhas desliga o modulo.
 import trabalhoRouter from "../modulos/trabalho/servidor/index.js";
 import conversaRouter from "../modulos/conversa/servidor/index.js";
+import treinoRouter from "../modulos/treino/servidor/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -97,6 +98,7 @@ app.use(docsRouter);
 // Modulos montados por prefixo. O prefixo e o unico acoplamento.
 app.use("/trabalho", trabalhoRouter);
 app.use("/conversa", conversaRouter);
+app.use("/treino", treinoRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

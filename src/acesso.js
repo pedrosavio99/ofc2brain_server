@@ -39,8 +39,13 @@ export function conferirPin(valor) {
 }
 
 /* Caminhos que passam sem PIN. A casca e o health, nada mais.
-   Extensao no fim cobre os estaticos dos modulos (/conversa/conversa.js etc). */
-const CASCA = ["/", "/trabalho", "/conversa"];
+   Extensao no fim cobre os estaticos dos modulos (/conversa/conversa.js etc).
+
+   MODULO NOVO PRECISA ENTRAR AQUI. Nao da pra liberar "qualquer caminho de um
+   segmento so": /ideias, /insight e /backup tambem tem um segmento e SAO dados.
+   Sem a entrada, a pagina do modulo cai no 401 e o navegador mostra o JSON cru
+   em vez da tela. Foi o que aconteceu quando o treino entrou. */
+const CASCA = ["/", "/trabalho", "/conversa", "/treino"];
 const ESTATICO = /\.(js|mjs|css|html|svg|png|jpe?g|gif|webp|ico|webmanifest|woff2?|ttf|map)$/i;
 
 /** Este caminho pode ser servido sem PIN? Puro. */

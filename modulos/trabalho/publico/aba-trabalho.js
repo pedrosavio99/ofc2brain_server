@@ -31,20 +31,26 @@
     if (titulo.textContent !== "Opções") return;
     if (document.getElementById(ID)) return;
 
-    var bloco = document.createElement("div");
-    bloco.innerHTML =
-      '<p class="grupo-titulo">Módulos</p><div class="grupo">' +
-        '<button class="item" id="' + ID + '">' + ICONE +
-        '<div class="item-txt"><strong>' + ROTULO + "</strong>" +
-        "<span>" + DESCRICAO + "</span></div></button>" +
-      "</div>";
+    /* Grupo COMPARTILHADO entre os modulos. Antes cada aba criava o proprio
+       titulo "Módulos", e com tres modulos apareciam tres titulos iguais
+       seguidos. Agora o primeiro a rodar cria o grupo e os outros penduram o
+       botao dentro dele. Qual roda primeiro nao importa. */
+    var grupo = document.getElementById("grupoModulos");
+    if (!grupo) {
+      var bloco = document.createElement("div");
+      bloco.innerHTML = '<p class="grupo-titulo">Módulos</p><div class="grupo" id="grupoModulos"></div>';
+      // no topo: modulo e destino, nao precisa rolar o menu inteiro pra achar
+      while (bloco.lastChild) corpo.insertBefore(bloco.lastChild, corpo.firstChild);
+      grupo = document.getElementById("grupoModulos");
+    }
 
-    // no topo: modulo e destino, nao precisa rolar o menu inteiro pra achar
-    while (bloco.firstChild) corpo.insertBefore(bloco.firstChild, corpo.firstChild);
-
-    document.getElementById(ID).addEventListener("click", function () {
-      location.href = ROTA;
-    });
+    var botao = document.createElement("button");
+    botao.className = "item";
+    botao.id = ID;
+    botao.innerHTML = ICONE + '<div class="item-txt"><strong>' + ROTULO + "</strong>" +
+      "<span>" + DESCRICAO + "</span></div>";
+    botao.addEventListener("click", function () { location.href = ROTA; });
+    grupo.appendChild(botao);
   }
 
   new MutationObserver(inserir).observe(corpo, { childList: true });

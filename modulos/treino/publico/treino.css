@@ -1,0 +1,186 @@
+/* Modulo TREINO.
+ *
+ * REGRA: so usar variaveis e classes que o /estilos.css do Segundo Cerebro
+ * define de verdade. Variavel inexistente nao cai em fallback: ela INVALIDA a
+ * regra inteira, e o elemento fica sem fundo. Foi o que aconteceu na primeira
+ * versao deste arquivo, com --fundo-1 e --linha: os modais ficaram
+ * transparentes e se viam por cima uns dos outros.
+ *
+ * O que existe e esta sendo usado aqui:
+ *   --fundo --superficie --superficie-2 --texto --texto-2 --texto-3
+ *   --separador --acento --acento-eco --sucesso --perigo --sombra
+ *   --r-card --r-grande --r-pill --toque --fonte
+ * Classes: .btn .btn-suave .btn-largo .grupo .grupo-titulo .item .item-txt
+ *          .valor .vazio .campo .campo-linha .sheet .sheet-cab .sheet-corpo
+ */
+
+.tr-corpo {
+  min-height: calc(100dvh - 116px);
+  padding: 16px 16px 40px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ------------------------------------------------------------ cartoes */
+
+.tr-cartao {
+  background: var(--superficie);
+  border-radius: var(--r-card);
+  box-shadow: var(--sombra);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.tr-cartao h2 { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+.tr-sub { font-size: 14px; color: var(--texto-2); line-height: 1.45; margin: 0 0 14px; }
+
+/* O motivo da ficha. Citacao e nao paragrafo solto: e a voz do modelo
+   explicando a escolha, e separar visualmente evita voce ler como regra. */
+.tr-motivo {
+  border-left: 3px solid var(--acento);
+  padding: 2px 0 2px 12px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--texto-2);
+  margin: 0 0 14px;
+}
+
+/* ---------------------------------------------------------- exercicio */
+
+.tr-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--separador);
+}
+.tr-item:last-of-type { border-bottom: 0; }
+
+/* Alvo de toque grande: isso e marcado com a mao suada no meio do treino. */
+.tr-check {
+  flex: 0 0 auto;
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  border: 2px solid var(--separador);
+  background: var(--superficie-2);
+  display: grid; place-items: center;
+  cursor: pointer; padding: 0;
+  transition: background .15s, border-color .15s;
+}
+.tr-check svg { width: 18px; height: 18px; opacity: 0; stroke: #fff; fill: none; }
+.tr-check[aria-pressed="true"] { background: var(--sucesso); border-color: var(--sucesso); }
+.tr-check[aria-pressed="true"] svg { opacity: 1; }
+
+.tr-item-txt { flex: 1; min-width: 0; }
+.tr-item-txt strong { display: block; font-size: 16px; font-weight: 500; color: var(--texto); }
+.tr-item-txt span { display: block; font-size: 13.5px; color: var(--texto-2); margin-top: 2px; line-height: 1.4; }
+.tr-item.feito .tr-item-txt strong { opacity: .5; text-decoration: line-through; }
+
+/* --------------------------------------------------------- resultado */
+
+.tr-numero { font-size: 44px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; color: var(--texto); }
+.tr-numero span { font-size: 18px; font-weight: 600; color: var(--texto-2); letter-spacing: 0; }
+
+.tr-linhas { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.tr-linha { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; color: var(--texto); }
+.tr-linha span:last-child { color: var(--texto-2); flex: none; }
+
+/* ------------------------------------------------------------ escolha */
+
+.tr-escolha { display: flex; gap: 8px; }
+.tr-escolha button {
+  flex: 1;
+  height: 44px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--separador);
+  background: var(--superficie);
+  color: var(--texto-2);
+  font-size: 15px;
+  font-family: var(--fonte);
+  cursor: pointer;
+}
+.tr-escolha button[aria-pressed="true"] {
+  border-color: var(--acento);
+  background: var(--acento-eco);
+  color: var(--acento);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------- folha
+   Reaproveita a .sheet do app (fundo, animacao e o comportamento em tela
+   grande). Aqui so entra o veu escuro, que a .sheet nao tem porque no app ela
+   e aberta sem fundo por tras. */
+
+.tr-veu {
+  position: fixed; inset: 0; z-index: 49;
+  background: rgba(0,0,0,.45);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s ease;
+}
+.tr-veu.aberto { opacity: 1; pointer-events: auto; }
+
+/* ---------------------------------------------------------- campos */
+
+.tr-campo { margin-bottom: 14px; }
+.tr-campo label { display: block; font-size: 13px; color: var(--texto-2); margin-bottom: 6px; font-weight: 500; }
+/* .campo do app ja tem borda, foco e altura. So falta o select, que nao existe la. */
+select.campo {
+  width: 100%; height: 42px; padding: 0 10px;
+  border: 1.5px solid var(--separador); border-radius: 12px;
+  background: var(--superficie); color: var(--texto);
+  font-size: 16px; font-family: var(--fonte);
+}
+.tr-dupla { display: flex; gap: 10px; }
+.tr-dupla > * { flex: 1; min-width: 0; }
+
+/* ------------------------------------------------------------ avisos */
+
+.tr-aviso {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: 60;
+  background: var(--texto); color: var(--fundo);
+  padding: 12px 18px; border-radius: var(--r-pill);
+  font-size: 14.5px; max-width: 90vw; text-align: center;
+  box-shadow: var(--sombra);
+}
+
+/* Marca que o texto veio de modelo. Existe pra voce nunca confundir o que a
+   IA sugeriu com o que voce confirmou. */
+.tr-selo {
+  display: inline-block;
+  font-size: 11.5px; font-weight: 600;
+  padding: 3px 9px; border-radius: var(--r-pill);
+  background: var(--acento-eco); color: var(--acento);
+  margin-left: 6px;
+}
+
+.tr-carregando { text-align: center; padding: 50px 20px; color: var(--texto-2); font-size: 15px; }
+
+/* Botao pequeno de linha. O app tem .btn mas nao tem versao discreta. */
+.tr-mini {
+  height: 32px; padding: 0 12px;
+  border-radius: var(--r-pill); border: 1px solid var(--separador);
+  background: transparent; color: var(--texto-2);
+  font-size: 13.5px; font-family: var(--fonte); cursor: pointer; flex: none;
+}
+.tr-mini:hover { color: var(--perigo); border-color: var(--perigo); }
+
+/* ----------------------------------------------------------- faixa de dias
+   Uma coluna por dia do ciclo. Altura proporcional ao maior dia; dia sem
+   treino vira um tracinho fino. O buraco e a informacao. */
+
+.tr-faixa {
+  display: flex; gap: 4px; align-items: flex-end;
+  height: 88px; margin: 4px 0 16px;
+}
+.tr-barra-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.tr-barra-trilho { width: 100%; height: 66px; display: flex; align-items: flex-end; }
+.tr-barra {
+  width: 100%; border-radius: 4px 4px 2px 2px;
+  background: var(--acento); min-height: 3px;
+  transition: height .3s ease;
+}
+.tr-barra.vazia { height: 3px !important; background: var(--separador); border-radius: 2px; }
+.tr-barra-col span { font-size: 10.5px; color: var(--texto-3); line-height: 1; }
+.tr-barra-col.hoje span { color: var(--acento); font-weight: 700; }

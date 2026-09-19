@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="sistema">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<!-- Reaproveita os tokens e componentes do Segundo Cerebro.
+     treino.css so acrescenta o que e especifico daqui. -->
+<link rel="stylesheet" href="/estilos.css" />
+<link rel="stylesheet" href="/treino/treino.css" />
+<title>Treino</title>
+<script>
+  // Antes da primeira pintura, senao o tema escuro pisca branco.
+  try { document.documentElement.dataset.tema = localStorage.getItem("2brain-tema") || "sistema"; } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="barra" id="barra">
+  <div class="barra-int">
+    <a class="voltar" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      Segundo cérebro
+    </a>
+    <span class="barra-titulo">Treino</span>
+    <div class="barra-acoes">
+      <button class="icone-btn" id="btnEquipamentos" aria-label="Equipamentos" title="Seus equipamentos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/>
+        </svg>
+      </button>
+      <button class="icone-btn" id="btnPerfil" aria-label="Perfil" title="Seu perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="tr-corpo" id="corpo">
+  <!-- tudo e pintado pelo treino.js: o estado manda no que aparece -->
+  <div id="tela"></div>
+</main>
+
+<!-- Folha unica reaproveitada por todos os modais, usando a .sheet do app:
+     fundo, animacao e o comportamento em tela grande ja vem de la. Antes isto
+     era uma folha propria com variaveis que nao existem, e o modal ficava
+     transparente. O veu escuro e a unica parte nossa. -->
+<div class="tr-veu" id="veu"></div>
+<aside class="sheet" id="folha" role="dialog" aria-modal="true">
+  <div class="puxador"></div>
+  <div class="sheet-cab">
+    <h3 id="folhaTitulo"></h3>
+    <button class="icone-btn" id="btnFecharFolha" aria-label="Fechar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="sheet-corpo" id="folhaCorpo"></div>
+</aside>
+
+<div class="tr-aviso" id="aviso" hidden></div>
+
+<script src="/pin.js"></script>
+<script src="/treino/treino.js"></script>
+</body>
+</html>

@@ -1,22 +1,17 @@
-/* Modulo CONVERSA - entrada no menu do Segundo Cerebro.
+/* Modulo TREINO - entrada no menu do Segundo Cerebro.
  *
- * Copia fiel do aba-trabalho.js, trocando so ROTA, ROTULO, DESCRICAO, ICONE e
- * o id do botao, que e o que o proprio arquivo de la manda fazer pra modulo
- * novo. A versao anterior tentava reaproveitar o grupo "Modulos" do trabalho e
- * nao funcionou; nao vale complicar por causa de um titulo repetido.
- *
- * MutationObserver e nao insercao unica: o abrirMenu() do app reescreve o
- * #sheetCorpo inteiro a cada chamada, e se rechama sozinho quando voce troca o
- * tema. Item inserido na mao sumiria nesse momento.
+ * Mesmo padrao do aba-conversa.js: MutationObserver e nao insercao unica,
+ * porque o abrirMenu() do app reescreve o #sheetCorpo inteiro a cada chamada
+ * e se rechama sozinho quando voce troca o tema. Item inserido na mao sumiria
+ * nesse momento.
  */
 (function () {
-  var ROTA = "/conversa";
-  var ROTULO = "Conversa";
-  var DESCRICAO = "Falar com o seu segundo cérebro";
-  var ID = "mConversa";
+  var ROTA = "/treino";
+  var ROTULO = "Treino";
+  var DESCRICAO = "Ficha do dia e calorias";
+  var ID = "mTreino";
   var ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M20 12a8 8 0 01-8 8H5l1.8-3A8 8 0 1120 12z"/>' +
-    '<path d="M9 11h6M9 14.5h3.5"/></svg>';
+    '<path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>';
 
   var corpo = document.getElementById("sheetCorpo");
   var titulo = document.getElementById("sheetTitulo");
