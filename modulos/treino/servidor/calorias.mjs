@@ -65,6 +65,34 @@ export function pesoDeTempo(item) {
   return series * (40 + descanso);
 }
 
+const TRANSICAO_S = 75;
+
+/**
+ * Quanto tempo o treino marcado deve ter levado, em minutos. Puro.
+ *
+ * Sai da PROPRIA ficha: serie por serie, mais o descanso de cada uma. Nao
+ * precisa de modelo nem de cronometro, e nao precisa perguntar.
+ *
+ * So conta o que foi marcado como feito, entao a estimativa acompanha o treino
+ * de verdade: parou na metade, o tempo cai junto.
+ *
+ * Os 40s por serie sao uma media de execucao. Erra alguns minutos pra quem faz
+ * serie muito longa ou muito curta, e por isso o numero continua editavel na
+ * tela. Mas errar 5 minutos numa estimativa que ja erra 20% em caloria nao
+ * muda nada, e perguntar a cada treino custa muito mais.
+ */
+export function duracaoEstimada(ficha, feitos) {
+  const marcados = new Set((feitos || []).map(String));
+  const itens = (ficha || []).filter((i) => i && marcados.has(String(i.id)));
+  if (!itens.length) return 0;
+  /* pesoDeTempo cobre serie + descanso. Falta o que acontece ENTRE exercicios:
+     trocar anilha, ajustar banco, beber agua, achar o proximo. Sem isso a
+     estimativa sai uns 20% abaixo do treino real. */
+  const segundos = itens.reduce((t, i) => t + pesoDeTempo(i), 0) + itens.length * TRANSICAO_S;
+  // arredonda pra 5 em 5: precisao falsa em estimativa so atrapalha
+  return Math.max(5, Math.round(segundos / 60 / 5) * 5);
+}
+
 /** Idade em anos. Puro. */
 export function idadeDe(nascimento, agora = new Date()) {
   if (!nascimento) return null;

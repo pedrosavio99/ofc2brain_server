@@ -168,17 +168,31 @@ export async function buscarSessao(id) {
 }
 
 /**
- * A sessao de hoje que ainda vale: a mais recente do dia que nao foi regerada.
- * Quando voce manda gerar outra ficha, a antiga fica gravada mas sai de cena.
+ * Tudo que aconteceu hoje, mais novo primeiro, ja sem as fichas regeradas.
+ * Ficha e atividade avulsa convivem no mesmo dia.
  */
-export async function sessaoDeHoje(agora = new Date()) {
+export async function sessoesDeHoje(agora = new Date()) {
   const { data, error } = await sb.from("treino_sessoes")
     .select("*").eq("data", hojeLocal(agora))
-    .order("criado_em", { ascending: false }).limit(5);
-  if (error) throw new ErroHttp(500, `sessaoDeHoje: ${error.message}`);
+    .order("criado_em", { ascending: false }).limit(20);
+  if (error) throw new ErroHttp(500, `sessoesDeHoje: ${error.message}`);
   const lista = data || [];
   const regeradas = new Set(lista.map((s) => s.regerada_de).filter(Boolean));
-  return lista.find((s) => !regeradas.has(s.id)) || null;
+  return lista.filter((s) => !regeradas.has(s.id));
+}
+
+/**
+ * A FICHA de hoje, que e o que a tela de treino governa.
+ *
+ * Filtra por origem 'ficha' de proposito. Antes isto devolvia simplesmente a
+ * sessao mais recente do dia, e ai duas coisas quebravam quando voce lancava
+ * uma atividade avulsa: a tela passava a mostrar so a avulsa, escondendo a
+ * ficha, e gerar a ficha do dia devolvia 409 dizendo que o treino ja tinha
+ * acabado, porque a avulsa nasce concluida.
+ */
+export async function sessaoDeHoje(agora = new Date()) {
+  const lista = await sessoesDeHoje(agora);
+  return lista.find((s) => s.origem === "ficha") || null;
 }
 
 export async function criarSessao(campos, agora = new Date()) {

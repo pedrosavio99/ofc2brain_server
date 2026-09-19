@@ -280,15 +280,22 @@
 
   function conferirManual(r) {
     var d = r.rascunho || {};
+    /* MET nao aparece: e numero interno, so serve pra conta. E a duracao ja vem
+       resolvida, do que voce escreveu ou da duracao tipica da atividade.
+       O que sobra pra voce e uma escolha: como foi. */
+    var deOnde = { texto: "do que você escreveu", tipica: "típico dessa atividade",
+      estimada: "estimado pela IA", chute: "estimativa padrão" }[d.duracao_fonte] || "estimado";
     abrir("Confira e salve", '' +
-      '<p class="tr-sub" style="margin-top:0">Veio da ' +
-        (r.fonte === "tabela" ? "tabela de gasto energético" : r.fonte === "ia" ? "IA" : "estimativa padrão") +
-      '.</p>' +
-      '<div class="tr-campo"><label>Atividade</label><input class="campo" id="aNome" value="' + esc(d.nome) + '"></div>' +
-      '<div class="tr-dupla">' +
-        '<div class="tr-campo"><label>Duração (min)</label><input class="campo" id="aDur" type="number" inputmode="numeric" value="' + esc(d.duracao_min || "") + '"></div>' +
-        '<div class="tr-campo"><label>MET</label><input class="campo" id="aMet" type="number" step="0.1" value="' + esc(d.met) + '"></div>' +
-      '</div>' +
+      '<div class="tr-tempo" id="aResumo">' +
+        '<span><strong>' + esc(d.nome) + '</strong> · ' + esc(d.duracao_min) + ' min ' + deOnde + "</span>" +
+        '<button class="tr-mini" id="aAjustar">ajustar</button>' +
+      "</div>" +
+      '<div id="aCampos" hidden>' +
+        '<div class="tr-campo"><label>Atividade</label><input class="campo" id="aNome" value="' + esc(d.nome) + '"></div>' +
+        '<div class="tr-dupla">' +
+          '<div class="tr-campo"><label>Duração (min)</label><input class="campo" id="aDur" type="number" inputmode="numeric" value="' + esc(d.duracao_min || "") + '"></div>' +
+          '<div class="tr-campo"><label>Intensidade (MET)</label><input class="campo" id="aMet" type="number" step="0.1" value="' + esc(d.met) + '"></div>' +
+        "</div></div>" +
       '<div class="tr-campo"><label>Como foi</label>' +
         '<div class="tr-escolha" id="aEsforco">' +
           ["leve", "moderado", "pesado"].map(function (v) {
@@ -298,6 +305,12 @@
       '<button class="btn btn-largo" id="aSalvar">Salvar atividade</button>');
 
     var lerEsforco = ligarEscolha("#aEsforco");
+    document.getElementById("aAjustar").addEventListener("click", function () {
+      document.getElementById("aResumo").hidden = true;
+      document.getElementById("aCampos").hidden = false;
+      document.getElementById("aDur").focus();
+    });
+
     document.getElementById("aSalvar").addEventListener("click", async function (e) {
       e.target.disabled = true;
       try {
@@ -314,11 +327,19 @@
 
   function modalFechar(sessao) {
     var feitos = sessao.feitos || [];
+    /* O tempo NAO e mais pergunta: sai da propria ficha, somando serie,
+       descanso e transicao do que foi marcado. Fica visivel e ajustavel, pra
+       quando o treino sair muito do roteiro, mas ninguem precisa responder. */
+    var estimado = (S.dia && S.dia.duracao_estimada) || 0;
     abrir("Fechar o treino", '' +
       '<p class="tr-sub" style="margin-top:0">' + feitos.length + " de " + (sessao.ficha || []).length +
         ' exercícios marcados. O que não foi feito não conta, e tudo bem.</p>' +
-      '<div class="tr-campo"><label>Quanto tempo durou (min)</label>' +
-        '<input class="campo" id="zDur" type="number" inputmode="numeric" placeholder="45" autofocus></div>' +
+      '<div class="tr-tempo" id="zTempo">' +
+        '<span><strong>' + estimado + ' min</strong> estimados pela ficha</span>' +
+        '<button class="tr-mini" id="zAjustar">ajustar</button>' +
+      "</div>" +
+      '<div class="tr-campo" id="zCampoDur" hidden><label>Quanto tempo durou (min)</label>' +
+        '<input class="campo" id="zDur" type="number" inputmode="numeric" value="' + estimado + '"></div>' +
       '<div class="tr-campo"><label>Como foi</label>' +
         '<div class="tr-escolha" id="zEsforco">' +
           ["leve", "moderado", "pesado"].map(function (v) {
@@ -331,12 +352,21 @@
       '<p class="tr-sub" style="margin-top:10px">Conclusão é definitiva: o número entra no ciclo.</p>');
 
     var lerEsforco = ligarEscolha("#zEsforco");
+    var ajustarTempo = false;
+    document.getElementById("zAjustar").addEventListener("click", function () {
+      ajustarTempo = true;
+      document.getElementById("zTempo").hidden = true;
+      document.getElementById("zCampoDur").hidden = false;
+      document.getElementById("zDur").focus();
+    });
+
     document.getElementById("zSalvar").addEventListener("click", async function (e) {
       e.target.disabled = true; e.target.textContent = "Calculando...";
       try {
         var res = await pedir("/sessoes/" + sessao.id + "/concluir", json("POST", {
           feitos: feitos,
-          duracao_min: document.getElementById("zDur").value,
+          // so manda quando voce abriu o ajuste; senao o servidor estima
+          duracao_min: ajustarTempo ? document.getElementById("zDur").value : null,
           esforco: lerEsforco(),
           observacao: document.getElementById("zObs").value,
         }));
@@ -364,6 +394,9 @@
       '<div class="tr-linhas">' +
         (c.percentual_do_dia != null
           ? '<div class="tr-linha"><span>Do seu gasto num dia parado</span><span>' + c.percentual_do_dia + "%</span></div>" : "") +
+        (res.duracao
+          ? '<div class="tr-linha"><span>Tempo' + (res.duracao.fonte === "estimada" ? " (estimado)" : "") +
+            '</span><span>' + res.duracao.minutos + " min</span></div>" : "") +
         '<div class="tr-linha"><span>Treinos neste ciclo</span><span>' + (p.treinos_no_ciclo || 1) + "</span></div>" +
         (p.sequencia > 1 ? '<div class="tr-linha"><span>Dias seguidos</span><span>' + p.sequencia + "</span></div>" : "") +
         (p.pulados > 0 ? '<div class="tr-linha"><span>Exercícios pulados</span><span>' + p.pulados + "</span></div>" : "") +
@@ -418,6 +451,36 @@
       "</div></div>";
   }
 
+  /* Podem existir DOIS botoes de atividade avulsa na mesma tela: um no cartao
+     do dia e outro no cartao de gerar treino. Por isso data-manual e nao id:
+     id repetido e HTML invalido e getElementById so enxerga o primeiro. */
+  function ligarManual() {
+    tela.querySelectorAll("[data-manual]").forEach(function (b) {
+      b.addEventListener("click", modalManual);
+    });
+  }
+
+  /* O que foi feito HOJE, ficha e avulsas juntas.
+     Antes a tela mostrava so a ultima sessao criada: lancar uma corrida depois
+     do treino escondia a ficha e o numero do dia virava so o da corrida. */
+  function cartaoDoDia(t) {
+    if (!t || !t.itens || !t.itens.length) return "";
+    var varias = t.itens.length > 1;
+    return '<div class="tr-cartao">' +
+      "<h2>Hoje</h2>" +
+      '<p class="tr-sub">' + t.calorias + " kcal · " + t.minutos + " min" +
+        (varias ? " · " + t.itens.length + " registros" : "") + "</p>" +
+      '<div class="tr-linhas">' +
+        t.itens.map(function (i) {
+          return '<div class="tr-linha"><span>' + esc(i.nome) +
+            (i.origem === "manual" ? ' <span class="tr-selo">avulsa</span>' : "") +
+            "</span><span>" + i.calorias + " kcal · " + i.minutos + " min</span></div>";
+        }).join("") +
+      "</div>" +
+      '<button class="btn btn-suave btn-largo" data-manual style="margin-top:14px">Lançar outra atividade</button>' +
+      "</div>";
+  }
+
   /* ------------------------------------------------------------- tela */
 
   function pintar() {
@@ -444,26 +507,23 @@
     var s = d.sessao;
 
     if (s && s.concluida) {
-      tela.innerHTML = painelResumo(d.resumo) + '<div class="tr-cartao">' +
-        "<h2>Treino de hoje concluído</h2>" +
-        '<p class="tr-sub">' + (s.calorias || 0) + " kcal · " + (s.duracao_min || 0) + " min · " + esc(s.esforco || "") + "</p>" +
-        '<button class="btn btn-suave btn-largo" id="tManual">Lançar outra atividade</button>' +
-        "</div>";
-      document.getElementById("tManual").addEventListener("click", modalManual);
+      tela.innerHTML = painelResumo(d.resumo) + cartaoDoDia(d.hoje_total);
+      ligarManual();
       return;
     }
 
     if (!s) {
-      tela.innerHTML = painelResumo(d.resumo) + '<div class="tr-cartao">' +
-        "<h2>Sem treino hoje</h2>" +
+      var jaFez = d.hoje_total && d.hoje_total.itens && d.hoje_total.itens.length;
+      tela.innerHTML = painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + '<div class="tr-cartao">' +
+        "<h2>" + (jaFez ? "Quer um treino também?" : "Sem treino hoje") + "</h2>" +
         '<p class="tr-sub">A ficha é montada olhando o que você treinou nos últimos 14 dias.</p>' +
         '<div class="tr-campo"><label>Quer pedir algo específico? (opcional)</label>' +
           '<input class="campo" id="tPedido" placeholder="Ex: hoje tenho 30 minutos"></div>' +
         '<button class="btn btn-largo" id="tGerar">Gerar treino de hoje</button>' +
-        '<button class="btn btn-suave btn-largo" id="tManual" style="margin-top:8px">Lançar atividade manual</button>' +
+        '<button class="btn btn-suave btn-largo" data-manual style="margin-top:8px">Lançar atividade manual</button>' +
         "</div>";
       document.getElementById("tGerar").addEventListener("click", gerarFicha);
-      document.getElementById("tManual").addEventListener("click", modalManual);
+      ligarManual();
       return;
     }
 
@@ -491,6 +551,7 @@
     });
     document.getElementById("tFechar").addEventListener("click", function () { modalFechar(S.dia.sessao); });
     document.getElementById("tRegerar").addEventListener("click", gerarFicha);
+    ligarManual();
   }
 
   /* O check e otimista: pinta na hora e salva depois. Esperar a rede pra

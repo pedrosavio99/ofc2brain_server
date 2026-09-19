@@ -184,3 +184,13 @@ select.campo {
 .tr-barra.vazia { height: 3px !important; background: var(--separador); border-radius: 2px; }
 .tr-barra-col span { font-size: 10.5px; color: var(--texto-3); line-height: 1; }
 .tr-barra-col.hoje span { color: var(--acento); font-weight: 700; }
+
+/* Tempo estimado no fechamento. E informacao, nao pergunta: aparece pronto e
+   so vira campo se voce clicar em ajustar. */
+.tr-tempo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--superficie-2);
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+}
+.tr-tempo span { font-size: 14.5px; color: var(--texto-2); }
+.tr-tempo strong { color: var(--texto); font-size: 16px; }

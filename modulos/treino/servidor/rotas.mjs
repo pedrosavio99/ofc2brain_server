@@ -12,11 +12,11 @@ import { ErroHttp, checarBanco, lerPerfil, salvarPerfil, listarPesagens,
   listarEquipamentos, buscarEquipamento, salvarEquipamento,
   desativarEquipamento, reativarEquipamento } from "./banco.mjs";
 import { analisarEquipamento, normalizarRascunho, TIPOS } from "./equipamentos.mjs";
-import { listarSessoes, buscarSessao, sessaoDeHoje, criarSessao, hojeLocal } from "./banco.mjs";
+import { listarSessoes, buscarSessao, sessaoDeHoje, sessoesDeHoje, criarSessao, hojeLocal } from "./banco.mjs";
 import { gerarFicha } from "./ficha.mjs";
 import { atualizarSessao } from "./banco.mjs";
 import { caloriasDaSessao, basalDiario, idadeDe, percentualDoDia,
-  comparativoDoCiclo, sequenciaDeDias } from "./calorias.mjs";
+  comparativoDoCiclo, sequenciaDeDias, duracaoEstimada } from "./calorias.mjs";
 import { analisarAtividade } from "./atividade.mjs";
 import { listarCiclos, fecharCiclosVencidos } from "./banco.mjs";
 import { agruparEmCiclos, resumoDoCiclo } from "./calorias.mjs";
@@ -160,9 +160,12 @@ export async function rotear(req, res, rota, url) {
       return null;
     });
 
-    const [perfil, equipamentos, sessao, sessoes] = await Promise.all([
-      lerPerfil(), listarEquipamentos(), sessaoDeHoje(), listarSessoes(),
+    const [perfil, equipamentos, doDia, sessoes] = await Promise.all([
+      lerPerfil(), listarEquipamentos(), sessoesDeHoje(), listarSessoes(),
     ]);
+    // a ficha governa a tela de treino; as avulsas entram no total do dia
+    const sessao = doDia.find((x) => x.origem === "ficha") || null;
+    const concluidas = doDia.filter((x) => x.concluida);
     const faltam = diasAtePesagem(perfil);
     return {
       data: hojeLocal(),
@@ -177,6 +180,25 @@ export async function rotear(req, res, rota, url) {
          aparece depois do primeiro treino esconde justamente de quem mais
          precisa de referencia: quem esta comecando. */
       resumo: resumoDoCiclo(sessoes, hojeLocal(), JANELA_DIAS),
+      // quanto o treino marcado ate agora deve ter levado; a tela mostra ao vivo
+      duracao_estimada: sessao ? duracaoEstimada(sessao.ficha, sessao.feitos) : 0,
+      /* O dia INTEIRO, somando ficha e avulsas. Antes a tela mostrava so a
+         ultima sessao criada, entao uma corrida lancada depois do treino
+         escondia a ficha e o numero do dia ficava so o dela. */
+      hoje_total: {
+        calorias: concluidas.reduce((t, x) => t + (Number(x.calorias) || 0), 0),
+        minutos: concluidas.reduce((t, x) => t + (Number(x.duracao_min) || 0), 0),
+        itens: concluidas.map((x) => ({
+          id: x.id,
+          origem: x.origem,
+          nome: x.origem === "manual"
+            ? ((x.ficha || [])[0] || {}).nome || "Atividade"
+            : "Ficha do dia",
+          calorias: Number(x.calorias) || 0,
+          minutos: Number(x.duracao_min) || 0,
+          esforco: x.esforco,
+        })),
+      },
       // null quando nao houve poda; a tela pode avisar que um ciclo fechou
       ciclo_fechado: podou && podou.ciclos ? podou : null,
     };
@@ -256,9 +278,12 @@ export async function rotear(req, res, rota, url) {
     /* Valida ANTES de ir ao banco: recusar por campo faltando depois de uma
        consulta e desperdicio, e deixa a validacao sem como ser testada sem
        banco de pe. */
+    /* Duracao deixou de ser pergunta. A ficha ja tem series, repeticoes e
+       descanso de cada exercicio, entao da pra estimar. Perguntar a cada treino
+       era pedir trabalho por um numero que o sistema ja sabia calcular.
+       Continua aceitando o valor quando vem: a tela deixa ajustar. */
     const c = req.body || {};
-    const duracao = numeroEntre(c.duracao_min, 1, 600, "Duracao em minutos");
-    exigir(duracao, 400, "Informe quanto tempo durou o treino.");
+    const informada = numeroEntre(c.duracao_min, 1, 600, "Duracao em minutos");
     exigir(["leve", "moderado", "pesado"].includes(c.esforco), 400,
       "Diga como foi o treino: leve, moderado ou pesado.");
 
@@ -271,6 +296,10 @@ export async function rotear(req, res, rota, url) {
     const feitos = Array.isArray(c.feitos)
       ? [...new Set(c.feitos.map(String).filter((f) => validos.has(f)))]
       : (sessao.feitos || []);
+
+    const duracao = informada || duracaoEstimada(sessao.ficha, feitos);
+    exigir(duracao > 0, 400, "Marque pelo menos um exercicio antes de concluir.",
+      "Sem exercicio marcado nao ha treino pra registrar.");
 
     const perfil = await lerPerfil();
     const calc = caloriasDaSessao({
@@ -297,6 +326,8 @@ export async function rotear(req, res, rota, url) {
     return {
       ok: true,
       sessao: salva,
+      // a tela diz de onde veio o tempo, pra voce saber que da pra ajustar
+      duracao: { minutos: duracao, fonte: informada ? "informada" : "estimada" },
       calorias: {
         total: calc.total,
         por_item: calc.porItem,
