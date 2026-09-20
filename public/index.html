@@ -7,9 +7,33 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 <link rel="stylesheet" href="/estilos.css" />
 <title>Segundo cérebro</title>
+<!-- o SVG comeca a baixar junto com o HTML, senao a abertura pisca vazia -->
+<link rel="preload" as="image" href="/cerebro.svg" />
+<style>
+  /* A abertura mora no HTML e nao no JS: markup injetado por script pisca
+     antes de o script rodar.
+
+     Fundo escuro SEMPRE, inclusive no tema claro. Os tracos do desenho sao
+     lavanda clara (#CFC4FF) e os pontos quase brancos: em fundo claro sumiriam. */
+  #abertura {
+    position: fixed; inset: 0; z-index: 999;
+    background: #0B0714;
+    display: grid; place-items: center;
+    opacity: 1; transition: opacity .55s ease;
+  }
+  #abertura.saindo { opacity: 0; pointer-events: none; }
+  #abertura img {
+    width: min(62vw, 62vh, 340px);
+    height: auto;
+    /* sem arrasto nem selecao: e enfeite, nao conteudo */
+    user-select: none; -webkit-user-drag: none; pointer-events: none;
+  }
+</style>
 
 </head>
 <body>
+
+<div id="abertura"><img src="/cerebro.svg" alt="" /></div>
 
 <header class="barra" id="barra">
   <div class="barra-int">
@@ -110,6 +134,7 @@
 
 <!-- app.js primeiro: define $, esc, o estado e as telas.
      sinapse.js depois: usa o que o app.js expoe. -->
+<script src="/abertura.js"></script>
 <script src="/pin.js"></script>
 <script src="/app.js"></script>
 <script src="/insight.js"></script>

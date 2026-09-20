@@ -218,6 +218,9 @@ function carregar() {
   }).then(function () {
     S.carregando = false;   // sai do esqueleto aconteca o que acontecer
     render();
+    /* Avisa a tela de abertura que ja da pra sair. Ela NAO sai na hora: espera
+       a virada do ciclo da animacao, garantindo um ciclo inteiro. */
+    if (window.aberturaPronta) window.aberturaPronta();
     if ($("#sinapse").classList.contains("aberta") && typeof reconstruirGrafo === "function") reconstruirGrafo();
   });
 }
