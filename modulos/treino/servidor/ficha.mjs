@@ -16,7 +16,7 @@
  * A parte pura (resumo dos dias e normalizacao) e testavel sem rede.
  */
 import { gerarJSONDetalhado } from "../../../src/geminiClient.js";
-import { metValido } from "./calorias.mjs";
+import { metValido, minutosDoItem } from "./calorias.mjs";
 import { JANELA_DIAS } from "./banco.mjs";
 
 const LIMITES = {
@@ -129,6 +129,11 @@ export function normalizarFicha(cru, equipamentos) {
       reps: String(bruto.reps || "10").slice(0, 20),
       descanso_s: dentro(bruto.descanso_s, LIMITES.descanso_s, 60),
       observacao: String(bruto.observacao || "").trim().slice(0, 160),
+      /* Exercicio por TEMPO (caminhada, esteira, prancha) guarda os minutos
+         num campo proprio. Sem isto, a estimativa de duracao tratava tudo como
+         serie e repeticao, e uma caminhada de meia hora virava 5 minutos.
+         Vem do campo do modelo ou e lido do texto de repeticoes. */
+      duracao_min: minutosDoItem({ duracao_min: bruto.duracao_min, reps: bruto.reps }),
       // do cadastro, nunca do modelo
       met: metValido(eq.met),
     });
@@ -148,6 +153,8 @@ REGRAS DURAS:
 - Use SOMENTE os equipamentos listados, pelo id exato. Nao invente id, nao invente aparelho.
 - NAO prescreva carga em kg. Voce nao sabe quanto ele levanta. Prescreva series, repeticoes e descanso.
 - NAO invente campo met: ele vem do cadastro.
+- Exercicio medido em TEMPO (caminhada, esteira, bike, prancha, corda) leva
+  duracao_min com os minutos de CADA serie. Exercicio de repeticao nao leva.
 - Respeite as restricoes dele. Se uma restricao impede um exercicio, nao coloque.
 
 COMO ESCOLHER:
@@ -159,7 +166,7 @@ COMO ESCOLHER:
 O campo motivo e pra ELE ler: explique em duas ou tres frases por que essa ficha
 hoje, citando o que voce viu no historico. Sem enrolacao e sem elogio.
 
-{"motivo":"...","ficha":[{"equipamento_id":"...","nome":"...","series":3,"reps":"10-12","descanso_s":60,"observacao":""}]}`;
+{"motivo":"...","ficha":[{"equipamento_id":"...","nome":"...","series":3,"reps":"10-12","descanso_s":60,"duracao_min":null,"observacao":""}]}`;
 
 /**
  * Gera a ficha. Lanca quando o Gemini falha: aqui NAO da pra cair em plano B

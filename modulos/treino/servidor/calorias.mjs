@@ -59,9 +59,39 @@ export function caloriasDoBloco({ met, minutos, pesoKg, esforco }) {
  * PROPORCAO entre os itens, nao o valor absoluto, porque a duracao real que
  * voce cronometrou e que vai ser repartida.
  */
+/**
+ * O exercicio declara duracao propria? Puro. Devolve minutos ou null.
+ *
+ * Existe porque nem todo exercicio e serie e repeticao. Caminhada, esteira,
+ * bike e prancha sao prescritos em TEMPO, e a ficha guarda isso no campo de
+ * repeticoes ("30 min", "1h", "45s"). A conta por series ignorava esse texto e
+ * estimava uma caminhada de meia hora em 3 minutos.
+ */
+export function minutosDoItem(item) {
+  if (!item) return null;
+  const direto = Number(item.duracao_min);
+  if (Number.isFinite(direto) && direto > 0) return Math.min(direto, 300);
+
+  const t = String(item.reps || "").toLowerCase().replace(",", ".");
+  const h = t.match(/(\d+(?:\.\d+)?)\s*h/);
+  if (h) return Math.min(Number(h[1]) * 60, 300);
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(?:min|minutos?|'|\bm\b)/);
+  if (m) return Math.min(Number(m[1]), 300);
+  const seg = t.match(/(\d+)\s*(?:s|seg|segundos?)\b/);
+  if (seg) return Math.min(Number(seg[1]) / 60, 300);
+  // "30" sozinho e repeticao, nao minuto: sem unidade, nao e tempo
+  return null;
+}
+
 export function pesoDeTempo(item) {
   const series = Math.max(Number(item && item.series) || 1, 1);
   const descanso = Math.max(Number(item && item.descanso_s) || 60, 0);
+
+  /* Exercicio por tempo: o que manda e o tempo declarado, multiplicado pelas
+     series, mais o descanso ENTRE elas (uma a menos que o numero de series). */
+  const minutos = minutosDoItem(item);
+  if (minutos != null) return series * minutos * 60 + Math.max(series - 1, 0) * descanso;
+
   return series * (40 + descanso);
 }
 
