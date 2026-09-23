@@ -113,41 +113,36 @@
    entao 3x12 e 4x10 ficam um embaixo do outro, como no quadro. */
 .tr-ex {
   position: relative;
-  display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; align-items: start;
-  padding: 12px 10px; margin: 0 -10px;
-  border-radius: 14px;
+  display: grid; grid-template-columns: 36px 1fr auto; gap: 14px; align-items: start;
+  padding: 14px 0;
   cursor: pointer;
   -webkit-user-select: none; user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: background .15s ease;
 }
-/* O cartao inteiro responde ao toque, pra ficar claro que nao e so a bolinha. */
-.tr-ex:active { background: var(--superficie-2); }
-@media (hover: hover) { .tr-ex:hover { background: var(--superficie-2); } }
-.tr-ex:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
-/* O fio que liga os exercicios na ordem. Fica verde ate onde voce chegou.
-   left = padding 10 + metade da bolinha 13 - metade do fio 1. */
+/* O fio que liga os exercicios na ordem. Fica verde ate onde voce chegou. */
 .tr-ex:not(:last-child)::after {
-  content: ""; position: absolute; left: 22px; top: 44px; bottom: -8px;
+  content: ""; position: absolute; left: 17px; top: 52px; bottom: -12px;
   width: 2px; border-radius: 2px; background: var(--separador);
 }
 .tr-ex.feito:not(:last-child)::after { background: var(--sucesso); opacity: .5; }
 
 .tr-check {
-  width: 26px; height: 26px; border-radius: 50%; margin-top: 1px;
-  border: 1.5px solid var(--separador);
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--separador);
   background: var(--superficie);
   color: var(--texto-2);
-  font-size: 12px; font-weight: 700; font-family: var(--fonte);
+  font-size: 14px; font-weight: 700; font-family: var(--fonte);
   font-variant-numeric: tabular-nums;
   display: grid; place-items: center;
+  cursor: pointer; padding: 0;
   transition: background .2s ease, border-color .2s ease, transform .12s ease;
 }
-.tr-check svg { width: 14px; height: 14px; stroke: #fff; fill: none; display: none; }
-.tr-ex.feito .tr-check { background: var(--sucesso); border-color: var(--sucesso); }
-.tr-ex.feito .tr-check svg { display: block; }
-.tr-ex.feito .tr-check .tr-ordem { display: none; }
+.tr-check svg { width: 18px; height: 18px; stroke: #fff; fill: none; display: none; }
+.tr-check[aria-pressed="true"] { background: var(--sucesso); border-color: var(--sucesso); }
+.tr-check[aria-pressed="true"] svg { display: block; }
+.tr-check[aria-pressed="true"] .tr-ordem { display: none; }
 .tr-ex:active .tr-check { transform: scale(.9); }
+.tr-check:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
 /* a resposta ao toque: o check recem marcado da um pulo curto */
 .tr-ex.agora .tr-check { animation: tr-pulo .4s cubic-bezier(.32,.72,0,1); }
 @keyframes tr-pulo { 0% { transform: scale(.7); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
@@ -206,31 +201,10 @@
 }
 .tr-energia-par span { display: block; font-size: 13px; color: var(--texto-2); margin-top: 5px; }
 .tr-energia-par .soma { text-align: right; }
-/* o numero do treino queima junto com a barra */
-.tr-energia-par .soma b {
-  font-size: 24px; letter-spacing: -.6px;
-  color: var(--alerta);
-  background: linear-gradient(90deg, var(--alerta), var(--perigo), var(--alerta), var(--perigo), var(--alerta));
-  background-size: 200% 100%;
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: tr-fogo 2.4s linear infinite;
-}
+.tr-energia-par .soma b { font-size: 24px; color: var(--sucesso); letter-spacing: -.6px; }
 .tr-energia-barra { display: flex; gap: 3px; height: 12px; margin: 16px 0 0; }
-/* Basal em verde: e a base, o que o corpo faz sozinho. O treino e fogo em
-   cima dela, laranja ao vermelho correndo pela barra. */
-.tr-energia-barra i { display: block; border-radius: var(--r-pill); background: var(--sucesso); min-width: 8px; }
-.tr-energia-barra i.soma {
-  background: linear-gradient(90deg, var(--alerta), var(--perigo), var(--alerta), var(--perigo), var(--alerta));
-  background-size: 200% 100%;
-  animation: tr-fogo 1.6s linear infinite, tr-brasa 1.2s ease-in-out infinite alternate;
-}
-/* o degrade tem dois ciclos iguais; andar metade da imagem fecha o laco sem emenda */
-@keyframes tr-fogo { from { background-position: 0 0; } to { background-position: -100% 0; } }
-@keyframes tr-brasa {
-  from { box-shadow: 0 0 4px rgba(255,59,48,.35); }
-  to   { box-shadow: 0 0 12px rgba(255,149,0,.6); }
-}
+.tr-energia-barra i { display: block; border-radius: var(--r-pill); background: var(--separador); min-width: 8px; }
+.tr-energia-barra i.soma { background: var(--sucesso); }
 .tr-energia-nota { font-size: 14px; color: var(--texto-2); margin: 12px 0 0; line-height: 1.45; }
 
 /* ----------------------------------------------------- ultimos dias */
@@ -417,7 +391,7 @@ select.campo {
 }
 .tr-esq-item { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
 .tr-esq-item .quadro {
-  flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--separador);
+  flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--separador);
   animation: pulsar 1.4s ease-in-out infinite;
 }
 .tr-esq-item > div { flex: 1; }
@@ -432,5 +406,4 @@ select.campo {
 @media (prefers-reduced-motion: reduce) {
   .tr-anel-prog { transition: none; }
   .tr-ex.agora .tr-check { animation: none; }
-  .tr-energia-barra i.soma, .tr-energia-par .soma b { animation: none; }
 }

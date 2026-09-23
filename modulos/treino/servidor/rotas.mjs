@@ -13,7 +13,7 @@ import { ErroHttp, checarBanco, lerPerfil, salvarPerfil, listarPesagens,
   desativarEquipamento, reativarEquipamento } from "./banco.mjs";
 import { analisarEquipamento, normalizarRascunho, TIPOS } from "./equipamentos.mjs";
 import { listarSessoes, buscarSessao, sessaoDeHoje, sessoesDeHoje, criarSessao, hojeLocal } from "./banco.mjs";
-import { gerarFicha } from "./ficha.mjs";
+import { gerarFicha, localValido, LOCAIS } from "./ficha.mjs";
 import { atualizarSessao } from "./banco.mjs";
 import { caloriasDaSessao, basalDiario, idadeDe, percentualDoDia,
   comparativoDoCiclo, sequenciaDeDias, duracaoEstimada } from "./calorias.mjs";
@@ -167,8 +167,30 @@ export async function rotear(req, res, rota, url) {
     const sessao = doDia.find((x) => x.origem === "ficha") || null;
     const concluidas = doDia.filter((x) => x.concluida);
     const faltam = diasAtePesagem(perfil);
+    const caloriasHoje = concluidas.reduce((t, x) => t + (Number(x.calorias) || 0), 0);
+    /* O basal sai AGORA, antes do treino, pra tela ter um numero de contexto
+       desde que abre. Antes ele so aparecia depois de concluir. Sem sexo,
+       nascimento ou altura ele e null e "falta" diz o que completar. */
+    const basal = basalDiario({
+      sexo: perfil.sexo, pesoKg: perfil.peso_kg, alturaCm: perfil.altura_cm,
+      idade: idadeDe(perfil.nascimento),
+    });
+    const faltaBasal = [
+      !(perfil.peso_kg > 0) && "peso", !(perfil.altura_cm > 0) && "altura",
+      !idadeDe(perfil.nascimento) && "nascimento", !["M", "F"].includes(perfil.sexo) && "sexo",
+    ].filter(Boolean);
     return {
       data: hojeLocal(),
+      basal: {
+        kcal: basal,
+        falta: faltaBasal,
+        // o que o treino de hoje somou em cima do basal
+        hoje_pct: percentualDoDia(caloriasHoje, basal),
+      },
+      // a tela monta os botoes de local a partir daqui, sem repetir a lista
+      locais: Object.entries(LOCAIS).map(([id, l]) => ({ id, rotulo: l.rotulo })),
+      // fora de casa da pra gerar mesmo sem equipamento cadastrado
+      pode_gerar_fora: true,
       perfil,
       pronto: perfilPronto(perfil),
       pesagem: { faltam_dias: faltam, pedir: faltam === null || faltam <= 0, primeira_vez: faltam === null },
@@ -217,9 +239,14 @@ export async function rotear(req, res, rota, url) {
      Se ja houver sessao hoje, a nova aponta pra antiga em regerada_de, e as
      duas ficam. Foi o que combinamos pra o historico nao mentir. */
   if (req.method === "POST" && rota === "/ficha") {
+    const corpo = req.body || {};
+    // sem local = casa, que e o comportamento de antes
+    const local = localValido(corpo.local);
+    const localTexto = String(corpo.local_texto || "").trim().slice(0, 300);
     const perfil = await lerPerfil();
     const equipamentos = await listarEquipamentos();
-    exigir(equipamentos.length, 400, "Cadastre pelo menos um equipamento antes de gerar ficha.",
+    // so em casa o equipamento e obrigatorio
+    exigir(local !== "casa" || equipamentos.length, 400, "Cadastre pelo menos um equipamento antes de gerar ficha.",
       "Use POST /treino/api/equipamentos/analisar pra comecar.");
 
     const anterior = await sessaoDeHoje();
@@ -228,8 +255,11 @@ export async function rotear(req, res, rota, url) {
 
     const sessoes = await listarSessoes();
     const gerada = await gerarFicha({
-      perfil, equipamentos, sessoes,
-      pedido: (req.body || {}).pedido || "",
+      perfil, equipamentos, sessoes, local, localTexto,
+      pedido: corpo.pedido || "",
+      /* A ficha que esta sendo trocada vai pro modelo como recusada. Sem isso
+         o "gerar outra" devolvia quase a mesma. */
+      rejeitada: anterior && !anterior.concluida ? anterior.ficha : null,
     });
     exigir(gerada.ficha.length, 502, "O modelo nao devolveu exercicio nenhum valido.",
       "Tente de novo; se repetir, revise os equipamentos cadastrados.");
@@ -246,6 +276,7 @@ export async function rotear(req, res, rota, url) {
       // a tela avisa quando o modelo tentou usar aparelho que voce nao tem
       descartados: gerada.descartados,
       regerou: !!anterior,
+      local: gerada.local,
       fonte: gerada.meta,
     };
   }
@@ -267,7 +298,13 @@ export async function rotear(req, res, rota, url) {
     exigir(!sessao.concluida, 409, "Essa sessao ja foi concluida.");
     const validos = new Set((sessao.ficha || []).map((i) => String(i.id)));
     const feitos = [...new Set(((req.body || {}).feitos || []).map(String).filter((f) => validos.has(f)))];
-    return { ok: true, sessao: await atualizarSessao(sessao.id, { feitos }) };
+    /* A duracao vai junto: a tela mostrava o tempo calculado quando abriu, e
+       marcar exercicio nao mexia nele. */
+    return {
+      ok: true,
+      sessao: await atualizarSessao(sessao.id, { feitos }),
+      duracao_estimada: duracaoEstimada(sessao.ficha, feitos),
+    };
   }
 
   /* POST /sessoes/:id/concluir { feitos, duracao_min, esforco, observacao }

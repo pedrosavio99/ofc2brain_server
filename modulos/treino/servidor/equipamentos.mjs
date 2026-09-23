@@ -50,7 +50,7 @@ export function ajustarMet(met, tipo) {
   return { met: Math.round(n * 10) / 10, corrigido: false, motivo: "" };
 }
 
-const GRUPOS = ["peito", "costas", "ombro", "biceps", "triceps", "perna",
+export const GRUPOS = ["peito", "costas", "ombro", "biceps", "triceps", "perna",
   "gluteo", "panturrilha", "abdomen", "lombar", "cardio", "corpo inteiro"];
 
 function limpar(v, max) {

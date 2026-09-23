@@ -426,16 +426,11 @@
   function painelResumo(r) {
     if (!r) return "";
     var maior = r.maior_dia || 1;
-    var numeros = [
-      [kcal(r.calorias), "kcal no ciclo"],
-      [r.treinos ? kcal(r.media_calorias) : "0", "kcal por treino"],
-      [String(r.sequencia || 0), r.sequencia === 1 ? "dia seguido" : "dias seguidos"],
-    ];
-    return '<section class="tr-cartao tr-painel">' +
-      "<h2>Últimos " + r.dias + " dias</h2>" +
-      '<p class="tr-sub" style="margin:0">' +
+    return '<div class="tr-cartao">' +
+      '<h2>Últimos ' + r.dias + " dias</h2>" +
+      '<p class="tr-sub">' +
         (r.treinos
-          ? r.treinos + (r.treinos === 1 ? " treino, " : " treinos, ") + r.minutos + " min no total"
+          ? r.treinos + (r.treinos === 1 ? " treino" : " treinos") + " · " + r.minutos + " min"
           : "Nenhum treino ainda neste ciclo.") +
       "</p>" +
       '<div class="tr-faixa">' +
@@ -443,15 +438,17 @@
           var alt = d.treinou ? Math.max(Math.round((d.calorias / maior) * 100), 12) : 0;
           var dia = new Date(d.data + "T12:00:00Z").getUTCDay();
           return '<div class="tr-barra-col' + (d.hoje ? " hoje" : "") + '" title="' +
-            d.data + (d.treinou ? ": " + d.calorias + " kcal" : ": sem treino") + '">' +
+            d.data + (d.treinou ? " · " + d.calorias + " kcal" : " · sem treino") + '">' +
             '<div class="tr-barra-trilho"><div class="tr-barra' + (d.treinou ? "" : " vazia") +
               '" style="height:' + alt + '%"></div></div>' +
             "<span>" + DIA_CURTO[dia] + "</span></div>";
         }).join("") +
       "</div>" +
-      '<div class="tr-numeros">' + numeros.map(function (n) {
-        return "<div><b>" + n[0] + "</b><span>" + n[1] + "</span></div>";
-      }).join("") + "</div></section>";
+      '<div class="tr-linhas">' +
+        '<div class="tr-linha"><span>Calorias no ciclo</span><span>' + r.calorias + " kcal</span></div>" +
+        (r.treinos ? '<div class="tr-linha"><span>Média por treino</span><span>' + r.media_calorias + " kcal</span></div>" : "") +
+        (r.sequencia > 1 ? '<div class="tr-linha"><span>Dias seguidos</span><span>' + r.sequencia + "</span></div>" : "") +
+      "</div></div>";
   }
 
   /* Podem existir DOIS botoes de atividade avulsa na mesma tela: um no cartao
@@ -468,42 +465,21 @@
      do treino escondia a ficha e o numero do dia virava so o da corrida. */
   function cartaoDoDia(t) {
     if (!t || !t.itens || !t.itens.length) return "";
-    return '<section class="tr-cartao">' +
-      '<div class="tr-treino-cab"><h2>Feito hoje</h2>' +
-        '<span class="tr-conta"><b class="tr-num">' + kcal(t.calorias) + "</b> kcal</span></div>" +
-      '<p class="tr-sub" style="margin:0">' + t.minutos + " min" +
-        (t.itens.length > 1 ? " em " + t.itens.length + " registros" : "") + "</p>" +
-      '<ul class="tr-registros">' +
+    var varias = t.itens.length > 1;
+    return '<div class="tr-cartao">' +
+      "<h2>Hoje</h2>" +
+      '<p class="tr-sub">' + t.calorias + " kcal · " + t.minutos + " min" +
+        (varias ? " · " + t.itens.length + " registros" : "") + "</p>" +
+      '<div class="tr-linhas">' +
         t.itens.map(function (i) {
-          var avulsa = i.origem === "manual";
-          return "<li>" +
-            '<span class="ic' + (avulsa ? " avulsa" : "") + '">' + (avulsa ? ICONE.mais : ICONE.check) + "</span>" +
-            '<span class="nome">' + esc(i.nome) + "<small>" + i.minutos + " min" + (avulsa ? ", avulsa" : "") + "</small></span>" +
-            '<span class="kcal">' + kcal(i.calorias) + " kcal</span></li>";
+          return '<div class="tr-linha"><span>' + esc(i.nome) +
+            (i.origem === "manual" ? ' <span class="tr-selo">avulsa</span>' : "") +
+            "</span><span>" + i.calorias + " kcal · " + i.minutos + " min</span></div>";
         }).join("") +
-      "</ul>" +
-      '<div class="tr-acoes"><button class="btn btn-suave btn-largo" data-manual>Lançar outra atividade</button></div>' +
-      "</section>";
+      "</div>" +
+      '<button class="btn btn-suave btn-largo" data-manual style="margin-top:14px">Lançar outra atividade</button>' +
+      "</div>";
   }
-
-  /* Icones de traco, no mesmo desenho dos da barra. */
-  /* O banco guarda sem acento; a tela mostra como se escreve. */
-  var ROTULO_GRUPO = {
-    peito: "peito", costas: "costas", ombro: "ombro", biceps: "bíceps", triceps: "tríceps",
-    perna: "perna", gluteo: "glúteo", panturrilha: "panturrilha", abdomen: "abdômen",
-    lombar: "lombar", cardio: "cardio", "corpo inteiro": "corpo inteiro",
-  };
-  function rotuloGrupo(g) { return ROTULO_GRUPO[g] || g; }
-
-  var ICONE = {
-    casa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>',
-    academia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg>',
-    sem_equipamento: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M5 10l7 1 7-1M12 11v4l-3 6M12 15l3 6"/></svg>',
-    ar_livre: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
-    relogio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/></svg>',
-    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
-    mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-  };
 
   /* ---------------------------------------------------- esqueleto e basal */
 
@@ -540,38 +516,36 @@
     if (!b) return "";
     if (!b.kcal) {
       var falta = (b.falta || []).map(function (f) { return NOME_CAMPO[f] || f; });
-      return '<section class="tr-cartao tr-energia">' +
-        "<h2>Seu gasto do dia</h2>" +
-        '<p class="tr-sub">Falta ' + esc(falta.join(", ")) + " no perfil pra calcular quanto seu corpo gasta parado.</p>" +
-        '<button class="btn btn-suave btn-largo" data-perfil>Completar perfil</button></section>';
+      return '<div class="tr-cartao tr-basal">' +
+        '<p class="tr-basal-rotulo">Quanto seu corpo gasta por dia</p>' +
+        '<p class="tr-sub">Falta ' + esc(falta.join(", ")) + " no perfil pra calcular.</p>" +
+        '<button class="btn btn-suave btn-largo" data-perfil>Completar perfil</button></div>';
     }
 
     var t = d.hoje_total || {};
     var r = d.resumo || {};
-    var soma = 0, rotuloSoma = "", nota;
-    var virgula = function (n) { return String(n).replace(".", ","); };
+    var extra, soma = 0;
     if (t.calorias > 0) {
       soma = t.calorias;
-      rotuloSoma = "de treino hoje";
-      nota = b.hoje_pct != null ? "Hoje o treino somou " + virgula(b.hoje_pct) + "% ao que o corpo gasta parado." : "";
+      extra = '<strong>+<span data-contar="' + t.calorias + '">' + kcal(t.calorias) + "</span> kcal</strong>" +
+        "<span>hoje com treino" + (b.hoje_pct != null ? ", " + b.hoje_pct + "% a mais no dia" : "") + "</span>";
     } else if (r.media_calorias > 0) {
       soma = r.media_calorias;
-      rotuloSoma = "no seu treino médio";
-      nota = "Um treino seu costuma somar " + virgula(Math.round((r.media_calorias / b.kcal) * 1000) / 10) +
-        "% ao dia. Falta o de hoje.";
+      var pct = Math.round((r.media_calorias / b.kcal) * 1000) / 10;
+      extra = "<span>Seu treino médio soma</span><strong>+" + kcal(r.media_calorias) + " kcal</strong>" +
+        "<span>(" + pct + "% a mais no dia)</span>";
     } else {
-      nota = "Cada treino vira número em cima disso.";
+      extra = "<span>Cada treino vira número em cima disso. O primeiro começa a conta.</span>";
     }
-    return '<section class="tr-cartao tr-energia">' +
-      "<h2>Seu gasto do dia</h2>" +
-      '<div class="tr-energia-par">' +
-        '<div><b class="tr-num" data-contar="' + b.kcal + '">' + kcal(b.kcal) + "</b><span>kcal com o corpo parado</span></div>" +
-        (soma ? '<div class="soma"><b class="tr-num">+' + kcal(soma) + "</b><span>" + rotuloSoma + "</span></div>" : "") +
-      "</div>" +
-      '<div class="tr-energia-barra" aria-hidden="true"><i style="flex:' + b.kcal + '"></i>' +
-        (soma ? '<i class="soma" style="flex:' + soma + '"></i>' : "") + "</div>" +
-      (nota ? '<p class="tr-energia-nota">' + nota + "</p>" : "") +
-      "</section>";
+    // a barra: basal cheio mais o que o treino somou, na mesma escala
+    var total = b.kcal + soma;
+    var base = Math.round((b.kcal / total) * 1000) / 10;
+    return '<div class="tr-cartao tr-basal">' +
+      '<p class="tr-basal-rotulo">Seu corpo gasta parado, por dia</p>' +
+      '<div class="tr-basal-num"><span data-contar="' + b.kcal + '">' + kcal(b.kcal) + "</span> <span>kcal</span></div>" +
+      '<div class="tr-basal-trilho"><div class="tr-basal-base" style="width:' + base + '%"></div>' +
+        '<div class="tr-basal-soma" style="width:' + (soma ? 100 - base : 0) + '%"></div></div>' +
+      '<div class="tr-basal-extra">' + extra + "</div></div>";
   }
 
   /* Numero que sobe do zero na primeira abertura. Da vida a tela sem custar
@@ -597,15 +571,6 @@
     tela.querySelectorAll("[data-perfil]").forEach(function (b) {
       b.addEventListener("click", modalPerfil);
     });
-    /* O anel nasce no valor de ANTES do toque e anda ate o novo no quadro
-       seguinte. Como a tela e repintada a cada check, sem isso ele pularia. */
-    var anel = tela.querySelector(".tr-anel-prog");
-    if (anel) {
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () { anel.style.strokeDashoffset = anel.dataset.alvo; });
-      });
-    }
-    S.acabou = null;
     if (S.primeira && !S.carregando && S.dia) {
       S.primeira = false;
       tela.classList.add("tr-entra");
@@ -644,15 +609,12 @@
         '<div class="tr-escolha tr-locais" id="' + pre + 'Locais">' +
         locais.map(function (l) {
           return '<button type="button" data-local="' + l.id + '" aria-pressed="' + (l.id === marcado) + '">' +
-            (ICONE[l.id] || "") + "<span>" + esc(l.rotulo) + "</span></button>";
+            esc(l.rotulo) + "</button>";
         }).join("") + "</div></div>" +
-      '<div class="tr-opcionais">' +
-        '<label class="tr-opcional"><span>Lugar</span>' +
-          '<input id="' + pre + 'LocalTxt" autocomplete="off" placeholder="' + esc(DICA_LOCAL[marcado] || "") + '"></label>' +
-        '<label class="tr-opcional"><span>Pedido</span>' +
-          '<input id="' + pre + 'Pedido" autocomplete="off" placeholder="Ex: hoje tenho 30 minutos"></label>' +
-      "</div>" +
-      '<p class="tr-opcionais-nota">Os dois são opcionais e ajudam a acertar a ficha.</p>';
+      '<div class="tr-campo"><label>Detalhe o lugar ou o que tem (opcional)</label>' +
+        '<input class="campo" id="' + pre + 'LocalTxt" placeholder="' + esc(DICA_LOCAL[marcado] || "") + '"></div>' +
+      '<div class="tr-campo"><label>Algum pedido? (opcional)</label>' +
+        '<input class="campo" id="' + pre + 'Pedido" placeholder="Ex: hoje tenho 30 minutos"></div>';
   }
 
   /* Liga os botoes e devolve quem le os tres campos. raiz e a tela ou a folha. */
@@ -738,15 +700,14 @@
 
     if (!s) {
       var jaFez = d.hoje_total && d.hoje_total.itens && d.hoje_total.itens.length;
-      var contexto = cartaoBasal(d) + painelResumo(d.resumo);
-      tela.innerHTML = contexto + cartaoDoDia(d.hoje_total) + '<section class="tr-cartao">' +
-        "<h2>" + (jaFez ? "Quer um treino também?" : "Montar o treino de hoje") + "</h2>" +
-        '<p class="tr-sub">A ficha olha o que você treinou nos últimos 14 dias e puxa o que está parado há mais tempo.</p>' +
+      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + '<div class="tr-cartao">' +
+        "<h2>" + (jaFez ? "Quer um treino também?" : "Sem treino hoje") + "</h2>" +
+        '<p class="tr-sub">A ficha é montada olhando o que você treinou nos últimos 14 dias.</p>' +
         camposGeracao("t", !d.pode_gerar) +
         (d.pode_gerar ? "" : '<p class="tr-sub">Sem equipamento de casa cadastrado. <button class="tr-mini" id="tEquip">cadastrar</button></p>') +
-        '<div class="tr-acoes"><button class="btn btn-largo" id="tGerar">Gerar treino de hoje</button>' +
-        (jaFez ? "" : '<button class="tr-link" data-manual>Lançar atividade que já fiz</button>') + "</div>" +
-        "</section>";
+        '<button class="btn btn-largo" id="tGerar">Gerar treino de hoje</button>' +
+        '<button class="btn btn-suave btn-largo" data-manual style="margin-top:8px">Lançar atividade manual</button>' +
+        "</div>";
       var lerGeracao = ligarGeracao(tela, "t");
       document.getElementById("tGerar").addEventListener("click", function () { gerarFicha(lerGeracao()); });
       var tEquip = document.getElementById("tEquip");
@@ -756,77 +717,30 @@
     }
 
     var feitos = s.feitos || [];
-    var ficha = s.ficha || [];
-    var total = ficha.length || 1;
-
-    /* Os musculos do dia, na ordem em que aparecem. E o resumo do rodizio:
-       bate o olho e ve o que a ficha escolheu treinar. */
-    var musculos = [];
-    ficha.forEach(function (i) {
-      (i.grupos || []).forEach(function (g) { if (musculos.indexOf(g) < 0) musculos.push(g); });
-    });
-
-    var R = 30, VOLTA = 2 * Math.PI * R;
-    var agora = feitos.length / total;
-    var antes = S.primeira ? 0 : (S.anelDe != null ? S.anelDe : agora);
-    S.anelDe = null;
-    var completo = feitos.length === ficha.length && ficha.length > 0;
-
-    tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) +
-      '<section class="tr-cartao tr-sessao' + (completo ? " completo" : "") + '">' +
-      '<div class="tr-sessao-topo">' +
-        '<div class="tr-anel" role="img" aria-label="' + feitos.length + " de " + ficha.length + ' exercícios feitos">' +
-          '<svg viewBox="0 0 72 72" aria-hidden="true"><circle class="tr-anel-fundo" cx="36" cy="36" r="' + R + '"/>' +
-            '<circle class="tr-anel-prog" cx="36" cy="36" r="' + R + '" stroke-dasharray="' + VOLTA.toFixed(2) + '"' +
-            ' style="stroke-dashoffset:' + (VOLTA * (1 - antes)).toFixed(2) + '" data-alvo="' + (VOLTA * (1 - agora)).toFixed(2) + '"/></svg>' +
-          '<span class="tr-num"><b>' + feitos.length + "</b>de " + ficha.length + "</span></div>" +
-        '<div class="tr-sessao-cab"><h2>' + (completo ? "Tudo feito" : "Treino de hoje") + "</h2>" +
-          '<p class="tr-tempo-vivo" data-tempo>' + textoTempo(feitos.length, d.duracao_estimada) + "</p></div>" +
-      "</div>" +
-      (musculos.length ? '<ul class="tr-musculos" aria-label="Músculos de hoje">' + musculos.map(function (g) {
-        return "<li>" + esc(rotuloGrupo(g)) + "</li>";
-      }).join("") + "</ul>" : "") +
+    tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + '<div class="tr-cartao">' +
+      "<h2>Treino de hoje</h2>" +
       (s.motivo ? '<p class="tr-motivo">' + esc(s.motivo) + "</p>" : "") +
-      '<ol class="tr-lista">' + ficha.map(function (i, n) {
+      (s.ficha || []).map(function (i) {
         var on = feitos.indexOf(i.id) >= 0;
-        // a unidade encolhe pra dose caber na coluna sem espremer o nome
-        var dose = textoSerie(i).replace(" x ", "×").replace(/(\d)\s?(min|s)$/, "$1<small>$2</small>");
-        return '<li class="tr-ex' + (on ? " feito" : "") + (S.acabou === i.id ? " agora" : "") + '" data-ex="' + i.id + '"' +
-          ' role="button" tabindex="0" aria-pressed="' + on + '" aria-label="Marcar ' + esc(i.nome) + '">' +
-          '<span class="tr-check" aria-hidden="true">' +
-            '<span class="tr-ordem">' + (n + 1) + "</span>" + ICONE.check + "</span>" +
-          '<div class="tr-ex-txt">' +
-            '<span class="tr-ex-nome">' + esc(i.nome) + "</span>" +
-            '<span class="tr-ex-meta">' +
-              (i.grupos || []).map(function (g) { return '<em>' + esc(rotuloGrupo(g)) + "</em>"; }).join("") +
-              (i.equipamento_nome ? '<span class="tr-ex-equip">' + esc(i.equipamento_nome) + "</span>" : "") +
-            "</span>" +
-            (i.observacao ? '<span class="tr-ex-obs">' + esc(i.observacao) + "</span>" : "") +
-          "</div>" +
-          '<div class="tr-ex-dose"><b class="tr-num">' + dose + "</b>" +
-            (i.descanso_s ? '<span class="tr-descanso">' + ICONE.relogio + i.descanso_s + "s</span>" : "") + "</div>" +
-          "</li>";
-      }).join("") + "</ol>" +
-      '<div class="tr-acoes"><button class="btn btn-largo" id="tFechar">Fechar treino</button>' +
-      '<button class="tr-link" id="tRegerar">Gerar outra ficha</button></div>' +
-      "</section>";
+        return '<div class="tr-item' + (on ? " feito" : "") + '">' +
+          '<button class="tr-check" data-item="' + i.id + '" aria-pressed="' + on + '">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>' +
+          "</button>" +
+          '<div class="tr-item-txt"><strong>' + esc(i.nome) + "</strong><span>" +
+            textoSerie(i) + " · descanso " + i.descanso_s + "s · " + esc(i.equipamento_nome) +
+            (i.observacao ? " · " + esc(i.observacao) : "") +
+          "</span></div></div>";
+      }).join("") +
+      '<button class="btn btn-largo" id="tFechar" style="margin-top:16px">Fechar treino</button>' +
+      '<button class="btn btn-suave btn-largo" id="tRegerar" style="margin-top:8px">Gerar outra ficha</button>' +
+      "</div>";
 
-    // a linha inteira marca: alvo grande pra mao suada no meio do treino
-    tela.querySelectorAll("[data-ex]").forEach(function (li) {
-      li.addEventListener("click", function () { alternar(s, li.dataset.ex); });
-      // teclado: a linha e um botao, entao Enter e espaco marcam
-      li.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(s, li.dataset.ex); }
-      });
+    tela.querySelectorAll("[data-item]").forEach(function (b) {
+      b.addEventListener("click", function () { alternar(s, b.dataset.item); });
     });
     document.getElementById("tFechar").addEventListener("click", function () { modalFechar(S.dia.sessao); });
     document.getElementById("tRegerar").addEventListener("click", modalRegerar);
     ligarManual();
-  }
-
-  function textoTempo(marcados, minutos) {
-    if (!marcados) return "Toque em cada exercício quando terminar.";
-    return "Uns " + (minutos || 0) + " min de treino até agora.";
   }
 
   /* O check e otimista: pinta na hora e salva depois. Esperar a rede pra
@@ -835,18 +749,12 @@
     var feitos = (sessao.feitos || []).slice();
     var i = feitos.indexOf(id);
     if (i >= 0) feitos.splice(i, 1); else feitos.push(id);
-    S.anelDe = ((sessao.feitos || []).length) / ((sessao.ficha || []).length || 1);
-    S.acabou = i >= 0 ? null : id;
     S.dia.sessao.feitos = feitos;
     pintar();
     try {
       var r = await pedir("/sessoes/" + sessao.id + "/feitos", json("PUT", { feitos: feitos }));
       // o "Fechar treino" le daqui; antes ficava o valor de quando a tela abriu
-      if (r && typeof r.duracao_estimada === "number") {
-        S.dia.duracao_estimada = r.duracao_estimada;
-        var vivo = tela.querySelector("[data-tempo]");
-        if (vivo) vivo.textContent = textoTempo((S.dia.sessao.feitos || []).length, r.duracao_estimada);
-      }
+      if (r && typeof r.duracao_estimada === "number") S.dia.duracao_estimada = r.duracao_estimada;
     } catch (err) { avisar("Não salvou a marcação: " + err.message); }
   }
 
@@ -895,23 +803,6 @@
 
   document.getElementById("btnPerfil").addEventListener("click", modalPerfil);
   document.getElementById("btnEquipamentos").addEventListener("click", modalListaEquipamentos);
-
-  var elData = document.getElementById("trData");
-  if (elData) {
-    try {
-      elData.textContent = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-    } catch (e) {}
-  }
-  /* Mesmo comportamento do app: o titulo pequeno da barra aparece quando o
-     grande sai de vista. */
-  var barra = document.getElementById("barra");
-  var rolou = false;
-  window.addEventListener("scroll", function () {
-    var agora = window.scrollY > 40;
-    if (agora === rolou || !barra) return;
-    rolou = agora;
-    barra.classList.toggle("rolou", agora);
-  }, { passive: true });
 
   // esqueleto na tela antes da primeira resposta chegar
   pintar();

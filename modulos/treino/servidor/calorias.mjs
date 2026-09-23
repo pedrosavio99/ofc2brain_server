@@ -69,17 +69,36 @@ export function caloriasDoBloco({ met, minutos, pesoKg, esforco }) {
  */
 export function minutosDoItem(item) {
   if (!item) return null;
-  const direto = Number(item.duracao_min);
-  if (Number.isFinite(direto) && direto > 0) return Math.min(direto, 300);
+  /* duracao_min pode chegar como texto ("10 min") quando o modelo erra o tipo.
+     Antes o Number() virava NaN, caia no reps "10" sem unidade e a corrida de
+     3x10 min era contada como 3 series de musculacao: uns 5 minutos. */
+  const direto = paraMinutos(item.duracao_min, true);
+  if (direto != null) return direto;
+  // "10" solto so vira minuto quando o item se declara por tempo
+  return paraMinutos(item.reps, item.medida === "tempo");
+}
 
-  const t = String(item.reps || "").toLowerCase().replace(",", ".");
-  const h = t.match(/(\d+(?:\.\d+)?)\s*h/);
-  if (h) return Math.min(Number(h[1]) * 60, 300);
-  const m = t.match(/(\d+(?:\.\d+)?)\s*(?:min|minutos?|'|\bm\b)/);
-  if (m) return Math.min(Number(m[1]), 300);
-  const seg = t.match(/(\d+)\s*(?:s|seg|segundos?)\b/);
-  if (seg) return Math.min(Number(seg[1]) / 60, 300);
-  // "30" sozinho e repeticao, nao minuto: sem unidade, nao e tempo
+/* Le minutos de numero ou texto. Puro. semUnidadeEhMinuto decide o que fazer
+   com "10" sozinho: na duracao e minuto, nas repeticoes e repeticao. */
+export function paraMinutos(valor, semUnidadeEhMinuto = false) {
+  if (valor == null || valor === "") return null;
+  const teto = (n) => (Number.isFinite(n) && n > 0 ? Math.min(n, 300) : null);
+  if (typeof valor === "number") return teto(valor);
+
+  const t = String(valor).toLowerCase().replace(",", ".").trim();
+  // "10:00" e "1:30" sao minuto:segundo
+  const mmss = t.match(/^(\d{1,3}):([0-5]\d)$/);
+  if (mmss) return teto(Number(mmss[1]) + Number(mmss[2]) / 60);
+  // "1h", "1h30", "1 hora"
+  const h = t.match(/(\d+(?:\.\d+)?)\s*h(?:oras?|rs?)?\s*(\d{1,2})?(?![a-z])/);
+  if (h) return teto(Number(h[1]) * 60 + (h[2] ? Number(h[2]) : 0));
+  // "10 min", "10min", "10m", "10'"; o lookahead barra "10 metros"
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(?:minutos?|mins?|m|')(?![a-z])/);
+  if (m) return teto(Number(m[1]));
+  // "45s", "45 seg"; o lookahead barra "10 series"
+  const seg = t.match(/(\d+(?:\.\d+)?)\s*(?:segundos?|seg|s)(?![a-z])/);
+  if (seg) return teto(Number(seg[1]) / 60);
+  if (semUnidadeEhMinuto && /^\d+(?:\.\d+)?$/.test(t)) return teto(Number(t));
   return null;
 }
 
