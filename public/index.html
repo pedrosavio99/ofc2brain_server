@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 <link rel="stylesheet" href="/estilos.css" />
+<!-- so a pagina inicial: o estilos.css e compartilhado com os modulos -->
+<link rel="stylesheet" href="/inicio.css" />
 <title>Segundo cérebro</title>
 <!-- o SVG comeca a baixar junto com o HTML, senao a abertura pisca vazia -->
 <link rel="preload" as="image" href="/cerebro.svg" />
@@ -31,7 +33,7 @@
 </style>
 
 </head>
-<body>
+<body class="pg-inicio">
 
 <div id="abertura"><img src="/cerebro.svg" alt="" /></div>
 
@@ -77,8 +79,7 @@
 
   <nav class="segmentado" id="abas">
     <div class="indicador" id="indicadorAba"></div>
-    <button class="ativo" data-aba="foco">Em foco</button>
-    <button data-aba="areas">Áreas</button>
+    <button class="ativo" data-aba="foco">Memória</button>
     <button data-aba="tempo">Linha do tempo</button>
     <button data-aba="eventos">Eventos</button>
   </nav>

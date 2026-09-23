@@ -1,0 +1,289 @@
+/* Pagina inicial do Segundo Cerebro: so o visual.
+ *
+ * Tudo aqui vale DEBAIXO de body.pg-inicio .envolucro. O estilos.css e
+ * compartilhado com treino, trabalho e conversa; mexer nele mudaria os tres.
+ * Este arquivo so e carregado pelo index.html, e o escopo .envolucro deixa de
+ * fora as folhas (detalhe, menu, insight) e a visao sinaptica.
+ *
+ * Usa so as variaveis do estilos.css. Variavel inexistente invalida a regra
+ * inteira, sem fallback.
+ *
+ * Linguagem: a mesma do treino. Superficie cheia pro que se usa (busca,
+ * guardar, cards), contorno fino pro que e contexto, indigo so em acao e no
+ * que esta escolhido.
+ */
+
+/* ------------------------------------------------------------ topo */
+
+body.pg-inicio .envolucro .titulao {
+  font-size: 36px; letter-spacing: -.03em; margin: 12px 0 4px;
+}
+body.pg-inicio .envolucro .subtitulao {
+  font-size: 14.5px; color: var(--texto-2); margin: 0 0 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------ busca */
+
+body.pg-inicio .envolucro .busca { margin-bottom: 12px; }
+body.pg-inicio .envolucro .busca > svg { left: 15px; top: 24px; width: 18px; height: 18px; }
+body.pg-inicio .envolucro .busca input {
+  height: 48px; padding: 0 44px;
+  border-radius: 16px; border: 1px solid var(--separador);
+  background: var(--superficie); box-shadow: var(--sombra);
+  font-size: 16.5px;
+}
+body.pg-inicio .envolucro .busca input::placeholder { color: var(--texto-3); }
+body.pg-inicio .envolucro .busca input:focus {
+  border-color: var(--acento); box-shadow: 0 0 0 4px var(--acento-eco), var(--sombra);
+}
+body.pg-inicio .envolucro .busca .limpar { right: 10px; top: 24px; }
+
+/* ------------------------------------------------------- guardar nota */
+
+body.pg-inicio .envolucro .compositor {
+  border-radius: var(--r-grande); padding: 16px 16px 12px; margin-bottom: 22px;
+  border: 1px solid transparent;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+/* escrevendo: a caixa acende, pra ficar claro onde o texto vai */
+body.pg-inicio .envolucro .compositor:focus-within {
+  border-color: var(--acento); box-shadow: 0 0 0 4px var(--acento-eco), var(--sombra);
+}
+body.pg-inicio .envolucro .compositor textarea { font-size: 17px; min-height: 56px; }
+body.pg-inicio .envolucro .compositor-rodape {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--separador);
+}
+body.pg-inicio .envolucro .dica-compositor { font-size: 12.5px; line-height: 1.35; }
+body.pg-inicio .envolucro .compositor .btn { height: 38px; padding: 0 20px; flex: none; }
+
+/* ------------------------------------------------------------- abas */
+
+/* Flex e nao grade de colunas iguais: "Linha do tempo" quebrava em duas
+   linhas no celular. Cada aba ocupa o que o texto pede, e o indicador ja
+   mede a largura do botao ativo, entao acompanha sozinho. */
+body.pg-inicio .envolucro .segmentado {
+  display: flex; padding: 3px; border-radius: 14px; margin-bottom: 14px;
+  background: var(--superficie-2);
+}
+body.pg-inicio .envolucro .segmentado button {
+  flex: 1 1 auto; min-width: 0; height: 36px; padding: 0 6px; border-radius: 11px;
+  font-size: 13px; letter-spacing: -.01em; white-space: nowrap;
+}
+/* celular bem estreito (320px): letra um pouco menor pra caber sem cortar */
+@media (max-width: 350px) {
+  body.pg-inicio .envolucro .segmentado button { font-size: 12px; padding: 0 4px; }
+}
+body.pg-inicio .envolucro .segmentado .indicador {
+  top: 3px; bottom: 3px; border-radius: 11px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 2px 8px rgba(0,0,0,.06);
+}
+
+/* ------------------------------------------------------------- chips */
+
+body.pg-inicio .envolucro .chip {
+  height: 34px; padding: 0 14px;
+  background: transparent; box-shadow: none;
+  border: 1px solid var(--separador); color: var(--texto-2);
+  font-size: 14px; font-weight: 500;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+body.pg-inicio .envolucro .chip.ativo {
+  background: var(--acento-eco); border-color: var(--acento);
+  color: var(--acento); font-weight: 600;
+}
+body.pg-inicio .envolucro .chip .ponto { width: 9px; height: 9px; }
+
+/* -------------------------------------------------------------- secao */
+
+body.pg-inicio .envolucro .cab-secao { margin: 8px 2px 12px; align-items: center; }
+body.pg-inicio .envolucro .cab-secao h2 { font-size: 21px; letter-spacing: -.02em; }
+body.pg-inicio .envolucro .cab-secao p { font-size: 13.5px; }
+body.pg-inicio .envolucro .mini-seg { border-radius: 10px; padding: 3px; }
+body.pg-inicio .envolucro .mini-seg button { padding: 5px 13px; border-radius: 8px; }
+
+/* -------------------------------------------------------------- cards */
+
+body.pg-inicio .envolucro .lista { gap: 12px; }
+
+body.pg-inicio .envolucro .nota {
+  border-radius: 18px; padding: 16px 16px 14px; gap: 8px;
+  border: 1px solid var(--separador);
+  box-shadow: none;
+  transition: transform .12s ease, border-color .2s ease, box-shadow .2s ease;
+}
+@media (hover: hover) {
+  body.pg-inicio .envolucro .nota:hover { border-color: var(--acento); box-shadow: 0 0 0 3px var(--acento-eco); }
+}
+body.pg-inicio .envolucro .nota:active { transform: scale(.985); }
+/* A faixa lateral vira um ponto ao lado da area: a mesma cor do neuronio na
+   visao sinaptica, sem cortar a borda arredondada do card. */
+body.pg-inicio .envolucro .nota::before {
+  left: auto; right: 16px; top: 20px; bottom: auto;
+  width: 8px; height: 8px; border-radius: 50%;
+}
+body.pg-inicio .envolucro .nota.recente {
+  border-color: var(--sucesso); box-shadow: 0 0 0 3px rgba(52,199,89,.16);
+}
+body.pg-inicio .envolucro .nota-topo { padding-right: 18px; }
+body.pg-inicio .envolucro .selo-tipo { font-size: 10.5px; padding: 3px 8px; }
+body.pg-inicio .envolucro .area-chip { font-size: 13px; }
+body.pg-inicio .envolucro .nota-resumo { font-size: 17px; line-height: 1.3; letter-spacing: -.015em; }
+body.pg-inicio .envolucro .nota-texto { font-size: 14.5px; line-height: 1.45; }
+body.pg-inicio .envolucro .nota-pe {
+  margin-top: 2px; padding-top: 10px; border-top: 1px solid var(--separador);
+  font-size: 12.5px;
+}
+body.pg-inicio .envolucro .ligacoes .bolha { width: 7px; height: 7px; }
+
+/* ------------------------------------------------------ apoio e vazio */
+
+body.pg-inicio .envolucro .convite {
+  border-radius: 18px; padding: 15px 16px; margin-top: 16px;
+  background: transparent; box-shadow: none; border: 1px solid var(--separador);
+}
+body.pg-inicio .envolucro .convite:active { background: var(--superficie-2); }
+body.pg-inicio .envolucro .convite > svg:first-child {
+  width: 36px; height: 36px; padding: 8px; border-radius: 12px;
+  background: var(--acento-eco); box-sizing: border-box;
+}
+
+body.pg-inicio .envolucro .vazio { padding: 48px 24px; }
+body.pg-inicio .envolucro .vazio .emoji { font-size: 38px; margin-bottom: 12px; }
+body.pg-inicio .envolucro .vazio h3 { font-size: 18px; letter-spacing: -.01em; }
+body.pg-inicio .envolucro .vazio p { font-size: 14.5px; line-height: 1.5; max-width: 34ch; margin: 0 auto; }
+
+body.pg-inicio .envolucro .esqueleto {
+  border-radius: 18px; padding: 16px; box-shadow: none; border: 1px solid var(--separador);
+}
+
+/* Lista de areas (aba Areas) no mesmo cartao de contorno. */
+body.pg-inicio .envolucro .grupo {
+  border-radius: 18px; border: 1px solid var(--separador); box-shadow: none;
+}
+
+/* Acoes da busca e faixa do insight */
+body.pg-inicio .envolucro .faixa-insight { border-radius: 14px; padding: 12px 14px; }
+body.pg-inicio .envolucro .acoes-busca .btn { border-radius: 14px; height: 46px; font-size: 15px; }
+
+/* Linha do tempo */
+body.pg-inicio .envolucro .dia-rot { font-size: 12.5px; letter-spacing: .06em; color: var(--texto-3); }
+body.pg-inicio .envolucro .intervalo input { border-radius: 12px; height: 42px; }
+
+/* ============================================================ memoria */
+
+/* Painel do Em foco sem filtro: cada area e um bloco que filtra ao tocar. */
+body.pg-inicio .envolucro .memoria-areas { grid-template-columns: 1fr 1fr; gap: 10px; }
+body.pg-inicio .envolucro .memoria-area {
+  display: grid; grid-template-columns: auto 1fr; align-items: start;
+  align-content: start;
+  column-gap: 9px; row-gap: 2px;
+  text-align: left; padding: 14px 14px 13px;
+  border-radius: 16px; border: 1px solid var(--separador);
+  background: var(--superficie);
+  transition: border-color .15s ease, box-shadow .15s ease, transform .1s ease;
+}
+body.pg-inicio .envolucro .memoria-area .ponto {
+  grid-row: 1; margin-top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--cor-area);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cor-area) 22%, transparent);
+}
+body.pg-inicio .envolucro .memoria-area .nome {
+  font-size: 15.5px; font-weight: 600; letter-spacing: -.01em; color: var(--texto);
+  line-height: 1.3; overflow-wrap: anywhere;
+  /* nome longo quebra em ate duas linhas em vez de virar reticencias */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+body.pg-inicio .envolucro .memoria-area .qtd {
+  grid-column: 2; font-size: 13px; color: var(--texto-2); font-variant-numeric: tabular-nums;
+}
+body.pg-inicio .envolucro .memoria-area:active { transform: scale(.97); }
+@media (hover: hover) {
+  body.pg-inicio .envolucro .memoria-area:hover { border-color: var(--acento); box-shadow: 0 0 0 3px var(--acento-eco); }
+}
+body.pg-inicio .envolucro .memoria-area:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+body.pg-inicio .envolucro .memoria-cab { margin-top: 4px; }
+
+/* Recordar: o card volta como lembranca, do desfocado pro nitido, crescendo
+   um pouco, um depois do outro. */
+@keyframes recordar {
+  0%   { opacity: 0; filter: blur(12px); transform: translateY(12px) scale(.95); }
+  55%  { opacity: 1; filter: blur(2px); }
+  100% { opacity: 1; filter: blur(0); transform: none; }
+}
+body.pg-inicio .envolucro .lista.animar .nota,
+body.pg-inicio .envolucro .lista.animar .memoria-area,
+body.pg-inicio .envolucro .nota.recordando {
+  animation: recordar .62s cubic-bezier(.22,.8,.2,1) both;
+}
+body.pg-inicio .envolucro .lista.animar > :nth-child(2) { animation-delay: .06s; }
+body.pg-inicio .envolucro .lista.animar > :nth-child(3) { animation-delay: .12s; }
+body.pg-inicio .envolucro .lista.animar > :nth-child(4) { animation-delay: .18s; }
+body.pg-inicio .envolucro .lista.animar > :nth-child(5) { animation-delay: .24s; }
+body.pg-inicio .envolucro .lista.animar > :nth-child(6) { animation-delay: .3s; }
+body.pg-inicio .envolucro .lista.animar > :nth-child(7) { animation-delay: .34s; }
+body.pg-inicio .envolucro .lista.animar > :nth-child(8) { animation-delay: .38s; }
+body.pg-inicio .envolucro .lista.animar > :nth-child(9) { animation-delay: .42s; }
+body.pg-inicio .envolucro .lista.animar > :nth-child(n+10) { animation-delay: .46s; }
+
+/* Esquecer: o caminho contrario. O atraso de cada card vem do JS, do ultimo
+   pro primeiro. Sem clique durante a saida: o card ja esta indo embora. */
+@keyframes esquecer {
+  from { opacity: 1; filter: blur(0); transform: none; }
+  to   { opacity: 0; filter: blur(10px); transform: translateY(-8px) scale(.96); }
+}
+body.pg-inicio .envolucro .nota.esquecer {
+  animation: esquecer .34s cubic-bezier(.4,0,.8,.4) both;
+  pointer-events: none;
+}
+/* o resto da tela (titulo da secao, convite) acompanha, mais discreto */
+body.pg-inicio .envolucro .esquecendo > :not(.lista) {
+  transition: opacity .3s ease; opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.pg-inicio .envolucro .lista.animar .nota,
+  body.pg-inicio .envolucro .lista.animar .memoria-area,
+  body.pg-inicio .envolucro .nota.recordando,
+  body.pg-inicio .envolucro .nota.esquecer { animation: none; }
+}
+
+/* ---- memoria unificada ---- */
+
+/* Tres abas agora: cabem folgadas, entao voltam a dividir a largura igual. */
+body.pg-inicio .envolucro .segmentado button { flex: 1 1 0; font-size: 14px; }
+
+/* Cabecalho da area aberta: o ponto com a cor da area ao lado do nome. */
+body.pg-inicio .envolucro .area-cab h2 { display: flex; align-items: center; gap: 10px; }
+body.pg-inicio .envolucro .area-cab .ponto {
+  width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--cor-area);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--cor-area) 22%, transparent);
+}
+body.pg-inicio .envolucro .voltar { margin: 2px 0 6px -6px; font-weight: 600; }
+body.pg-inicio .envolucro .area-cab + .faixa-chips { margin-top: -2px; }
+body.pg-inicio .envolucro .memoria-area .lig { grid-column: 2; font-size: 12.5px; color: var(--texto-3); }
+
+/* Caixa de guardar compacta: uma linha ate voce tocar. Com foco ou com
+   texto escrito, abre com a dica e o botao.
+   O fechamento espera .25s: sem essa espera, tocar numa aba enquanto a caixa
+   esta aberta encolhia a caixa no meio do toque, a pagina subia e o toque
+   caia em outro lugar. O !important vence a altura inline que o
+   ajustarAltura() poe no textarea a cada tecla. */
+body.pg-inicio .envolucro .compositor .compositor-rodape {
+  max-height: 90px; overflow: hidden;
+  transition: max-height .25s ease, opacity .2s ease, margin .25s ease, padding .25s ease, border-color .2s ease;
+}
+body.pg-inicio .envolucro .compositor:not(:focus-within):not(:has(textarea:not(:placeholder-shown))) {
+  padding-top: 0; padding-bottom: 0;
+  transition: padding .25s ease .25s, border-color .2s ease, box-shadow .2s ease;
+}
+body.pg-inicio .envolucro .compositor:not(:focus-within):not(:has(textarea:not(:placeholder-shown))) .compositor-rodape {
+  max-height: 0; opacity: 0; margin-top: 0; padding-top: 0; border-top-color: transparent;
+  transition-delay: .25s;
+}
+body.pg-inicio .envolucro .compositor:not(:focus-within):not(:has(textarea:not(:placeholder-shown))) textarea {
+  height: 48px !important; min-height: 0; padding-top: 13px; overflow: hidden;
+}
+
+/* A saida tambem leva os blocos e o "voltar" junto, nao so as notas. */
+body.pg-inicio .envolucro .esquecendo .memoria-area,
+body.pg-inicio .envolucro .esquecendo .voltar { transition: opacity .3s ease, filter .3s ease; opacity: 0; filter: blur(6px); }

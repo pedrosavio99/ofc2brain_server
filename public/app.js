@@ -279,6 +279,7 @@ function adicionar() {
       $("#campoNota").value = "";
       ajustarAltura();
       S.recentes = [nova.id].concat(S.recentes.filter(function (i) { return i !== nova.id; })).slice(0, 5);
+      S.animarId = nova.id;
       trocarAba("foco");
       return absorverNota(nova).then(function () { avisar("Nota guardada."); });
     });
@@ -337,10 +338,16 @@ function notasFiltradas() {
 /* A vista atual (aba + busca + filtros). Muda de vista => anima a entrada.
    Mesma vista (ex: apenas recarregou) => sem animacao, sem piscar. */
 function chaveDaVista() {
-  return [S.busca ? "busca:" + S.busca : S.aba, S.filtroArea || "", S.filtroTipo || "",
+  return [S.busca ? "busca:" + S.busca + (S.resultadosBusca === "carregando" ? ":buscando" : "") : S.aba, S.filtroArea || "", S.filtroTipo || "",
           S.areaAberta || "", S.periodo, S.dataDe, S.dataAte].join("|");
 }
 var vistaAnterior = null;
+
+var saidaTimer = null;
+
+function movimentoReduzido() {
+  return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
 
 function render() {
   atualizarResumoTopo();
@@ -349,21 +356,60 @@ function render() {
   var html;
   if (S.busca) html = telaBusca();
   else if (S.carregando) { alvo.innerHTML = esqueletos(); return; }
-  else if (S.aba === "foco") html = telaFoco();
+  else if (S.aba === "foco") html = S.areaAberta ? telaAreaAberta() : telaFoco();
   else if (S.aba === "areas") html = S.areaAberta ? telaAreaAberta() : telaAreas();
   else if (S.aba === "tempo") html = telaTempo();
   else html = telaEventos();
 
+  var vista = chaveDaVista();
+
+  /* A ultima escolha vence: se uma saida estava rolando e chegou outro
+     render, ela e cancelada e so o mais novo vale. */
+  if (saidaTimer) { clearTimeout(saidaTimer); saidaTimer = null; }
+
+  /* Esquecer: a vista mudou e ha cards na tela que nao estarao na proxima
+     (limpou o filtro, trocou de area, apagou a busca). So esses somem,
+     desfocando do ultimo pro primeiro, e entao a tela troca. Vale na busca
+     tambem: ela so roda 350ms depois da ultima tecla. */
+  var velhas = Array.prototype.filter.call(alvo.querySelectorAll(".nota[data-id]"), function (el) {
+    return html.indexOf('data-id="' + el.dataset.id + '"') < 0;
+  });
+  if (vista !== vistaAnterior && velhas.length && !movimentoReduzido()) {
+    var n = velhas.length;
+    velhas.forEach(function (el, i) {
+      el.style.animationDelay = Math.min((n - 1 - i) * 35, 280) + "ms";
+      el.classList.add("esquecer");
+    });
+    alvo.classList.add("esquecendo");
+    saidaTimer = setTimeout(function () {
+      saidaTimer = null;
+      aplicarTela(alvo, html, vista);
+    }, 340 + Math.min(n * 35, 280));
+    return;
+  }
+  aplicarTela(alvo, html, vista);
+}
+
+function aplicarTela(alvo, html, vista) {
+  alvo.classList.remove("esquecendo");
   alvo.innerHTML = html;
 
-  var vista = chaveDaVista();
   if (vista !== vistaAnterior) {
     vistaAnterior = vista;
     alvo.querySelectorAll(".lista").forEach(function (l) { l.classList.add("animar"); });
-    // tira a classe depois da animacao: assim um re-render seguinte nao repete
+    /* tira a classe depois da animacao: assim um re-render seguinte nao
+       repete. 1100 e nao 400: os cards entram um depois do outro, e tirar
+       antes cortaria os ultimos no meio. */
     setTimeout(function () {
       alvo.querySelectorAll(".lista.animar").forEach(function (l) { l.classList.remove("animar"); });
-    }, 400);
+    }, 1100);
+  }
+
+  // a nota recem-guardada recorda sozinha, mesmo sem a vista mudar
+  if (S.animarId) {
+    var nova = alvo.querySelector('.nota[data-id="' + String(S.animarId).replace(/"/g, "") + '"]');
+    if (nova) nova.classList.add("recordando");
+    S.animarId = null;
   }
 }
 
@@ -387,6 +433,7 @@ document.addEventListener("click", function (ev) {
   var chip = ev.target.closest ? ev.target.closest(".chip") : null;
   if (chip) {
     if (chip.dataset.limpa) { S.filtroArea = null; S.filtroTipo = null; }
+    else if (chip.dataset.tipoLimpa) S.filtroTipo = null;
     else if (chip.dataset.area) S.filtroArea = S.filtroArea === chip.dataset.area ? null : chip.dataset.area;
     else if (chip.dataset.tipo) S.filtroTipo = S.filtroTipo === chip.dataset.tipo ? null : chip.dataset.tipo;
     render();
@@ -403,7 +450,7 @@ document.addEventListener("click", function (ev) {
   if (ab) { S.areaAberta = ab.dataset.areaAbrir; render(); return; }
 
   var vt = ev.target.closest ? ev.target.closest("#voltarAreas") : null;
-  if (vt) { S.areaAberta = null; render(); return; }
+  if (vt) { S.areaAberta = null; S.filtroTipo = null; render(); return; }
 
   var ip = ev.target.closest ? ev.target.closest("#insightPeriodo") : null;
   if (ip) {
@@ -481,11 +528,29 @@ function atualizarResumoTopo() {
       (tam ? " · " + tam : "");
 }
 
+/* Dentro de uma area aberta: so os tipos que existem nela. */
+function chipsDeTipo() {
+  var tipos = {};
+  S.notas.forEach(function (n) {
+    if ((n.area || "Sem área") === S.areaAberta) tipos[n.tipo || "ideia"] = 1;
+  });
+  var lista = Object.keys(tipos);
+  if (lista.length < 2) return "";
+  return '<div class="faixa-chips"><div class="chips">' +
+    '<button class="chip' + (!S.filtroTipo ? " ativo" : "") + '" data-tipo-limpa="1">Todos</button>' +
+    lista.map(function (t) {
+      return '<button class="chip' + (S.filtroTipo === t ? " ativo" : "") + '" data-tipo="' + esc(t) + '">' + esc(rotuloTipo(t)) + "</button>";
+    }).join("") + "</div></div>";
+}
+
 /* Filtros por area e tipo (chips roláveis) */
 function renderFiltros() {
   var box = $("#filtros");
   if (S.busca || S.carregando || S.aba === "eventos" || S.notas.length === 0) { box.innerHTML = ""; return; }
   if (S.aba === "areas" && S.areaAberta) { box.innerHTML = ""; return; }
+  // na Memoria nao ha faixa de chips: os blocos sao as areas, e os tipos
+  // moram dentro da area aberta, logo abaixo do titulo dela
+  if (S.aba === "foco") { box.innerHTML = ""; return; }
   var areas = {}, tipos = {};
   S.notas.forEach(function (n) {
     areas[n.area || "Sem área"] = (areas[n.area || "Sem área"] || 0) + 1;
@@ -567,6 +632,53 @@ function acoesDaBusca() {
     "O que perguntar sobre elas</button></div>";
 }
 
+/* Em foco sem filtro. Antes despejava 5 ou 10 cards toda vez que a pagina
+   abria. Agora a memoria fica quieta: as areas viram blocos, e tocar num
+   deles e o mesmo que tocar no chip da area. So a nota recem-guardada
+   aparece como card, que e a confirmacao de que ela entrou. */
+function telaFocoEmRepouso() {
+  var contagem = {}, ligacoes = {};
+  S.notas.forEach(function (n) {
+    var a = n.area || "Sem área";
+    contagem[a] = (contagem[a] || 0) + 1;
+    ligacoes[a] = (ligacoes[a] || 0) + relsDe(n).length;
+  });
+  var areas = Object.keys(contagem).sort(function (a, b) { return contagem[b] - contagem[a]; });
+
+  var recentes = S.recentes.map(function (id) {
+    return S.notas.filter(function (n) { return n.id === id; })[0];
+  }).filter(Boolean);
+
+  return (recentes.length
+      ? '<div class="cab-secao"><div><h2>Acabou de guardar</h2><p>' + recentes.length + " " +
+          (recentes.length === 1 ? "nota" : "notas") + " nesta sessão</p></div></div>" +
+        '<div class="lista duas">' + recentes.map(function (n) {
+          return cardNota(n, { recente: true });
+        }).join("") + "</div>"
+      : "") +
+    '<div class="cab-secao memoria-cab"><div><h2>Sua memória</h2>' +
+      "<p>Toque numa área pra recordar o que tem nela</p></div></div>" +
+    '<div class="lista memoria-areas">' + areas.map(function (a) {
+      var q = contagem[a];
+      // cada ligacao aparece nas duas notas; metade e o numero real
+      var l = Math.round(ligacoes[a] / 2);
+      return '<button class="memoria-area" data-area-abrir="' + esc(a) + '"' +
+        ' style="--cor-area:' + corDaArea(a === "Sem área" ? null : a) + '">' +
+        '<i class="ponto"></i>' +
+        '<span class="nome">' + esc(a) + "</span>" +
+        '<span class="qtd">' + q + " " + (q === 1 ? "nota" : "notas") + "</span>" +
+        // sempre uma linha pra ligacoes, pra todos os blocos terem a mesma altura
+        '<span class="lig">' + (l ? l + " " + (l === 1 ? "ligação" : "ligações") : "sem ligações") + "</span>" +
+      "</button>";
+    }).join("") + "</div>" +
+    '<button class="convite" id="abrirSugestoes">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" width="18" height="18">' +
+      '<path d="M9.5 17.5h5M10 21h4"/><path d="M12 3a6 6 0 00-3.5 10.9V17.5h7V13.9A6 6 0 0012 3z"/></svg>' +
+      "<span><strong>Não sabe o que perguntar?</strong>Veja 10 perguntas tiradas das suas notas</span>" +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".4" width="18" height="18"><path d="M9 6l6 6-6 6"/></svg>' +
+    "</button>";
+}
+
 /* --- Em foco: o hall --- */
 function telaFoco() {
   var base = notasFiltradas();
@@ -577,6 +689,10 @@ function telaFoco() {
   if (base.length === 0) {
     return '<div class="vazio"><h3>Nada com esse filtro</h3><p>Toque em “Tudo” pra ver todas de novo.</p></div>';
   }
+
+  /* A Memoria nunca despeja notas: sempre os blocos de area. Filtro de
+     area ou tipo vindo da Linha do tempo nao vaza pra ca. */
+  return telaFocoEmRepouso();
 
   var mapaRecentes = {};
   var recentes = S.recentes.map(function (id) {
@@ -636,18 +752,24 @@ function telaAreas() {
     }).join("") + "</div>";
 }
 
-/* Notas de UMA area (drill-down) */
+/* Notas de UMA area (drill-down). Mostra todas, das mais conectadas pras
+   menos. So o filtro de tipo vale aqui: o de area e a propria area. */
 function telaAreaAberta() {
   var alvo = S.areaAberta;
-  var notas = notasFiltradas().filter(function (n) { return (n.area || "Sem área") === alvo; }).sort(porLigacoes);
+  var daArea = S.notas.filter(function (n) { return (n.area || "Sem área") === alvo; });
+  var notas = daArea.filter(function (n) { return !S.filtroTipo || n.tipo === S.filtroTipo; }).sort(porLigacoes);
   return '<button class="voltar" id="voltarAreas">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Áreas</button>' +
-    '<div class="cab-secao"><div><h2>' + esc(alvo) + "</h2><p>" + notas.length + " " +
-      (notas.length === 1 ? "nota" : "notas") + "</p></div></div>" +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Memória</button>' +
+    '<div class="cab-secao area-cab" style="--cor-area:' + corDaArea(alvo === "Sem área" ? null : alvo) + '">' +
+      '<div><h2><i class="ponto"></i>' + esc(alvo) + "</h2><p>" + notas.length + " " +
+      (notas.length === 1 ? "nota" : "notas") + (S.filtroTipo ? " de " + esc(rotuloTipo(S.filtroTipo)).toLowerCase() : "") +
+      ", das mais conectadas pras menos</p></div></div>" +
+    chipsDeTipo() +
     (notas.length
       ? '<div class="lista duas">' + notas.map(function (n) { return cardNota(n); }).join("") + "</div>"
-      : '<div class="vazio"><p>Nada nesta área com o filtro atual.</p></div>');
+      : '<div class="vazio"><p>Nada desse tipo nesta área.</p></div>');
 }
+
 
 /* --- Linha do tempo: notas por periodo. Ajuda a olhar "o que eu pensei essa
    semana" e, junto com o insight, deixa a leitura bem mais afiada. --- */
