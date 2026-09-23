@@ -74,6 +74,35 @@ function gruposConfiaveis(item) {
 }
 
 /**
+ * Series feitas por grupo nos ultimos 14 dias, pro mapa do corpo. Puro.
+ *
+ * So treino FECHADO, igual aos numeros do painel. O grupo principal do
+ * exercicio (o primeiro) leva a serie inteira; os secundarios levam metade:
+ * supino pinta mais o peito que o triceps. Avulsa nao tem grupo, e cardio e
+ * corpo inteiro nao tem regiao no corpo, entao ficam de fora.
+ * Usa gruposConfiaveis: ficha antiga com os grupos do aparelho pintaria o
+ * corpo inteiro de vermelho.
+ */
+export function seriesPorGrupo(sessoes) {
+  const conta = {};
+  PRINCIPAIS.forEach((g) => { conta[g] = 0; });
+  for (const s of Array.isArray(sessoes) ? sessoes : []) {
+    if (!s || !s.concluida || s.origem === "manual") continue;
+    const feitos = new Set((s.feitos || []).map(String));
+    for (const i of s.ficha || []) {
+      if (!feitos.has(String(i.id))) continue;
+      const series = Math.max(1, Math.min(Number(i.series) || 1, 10));
+      gruposConfiaveis(i).forEach((g, n) => {
+        if (conta[g] === undefined) return;
+        conta[g] += n === 0 ? series : series / 2;
+      });
+    }
+  }
+  Object.keys(conta).forEach((g) => { conta[g] = Math.round(conta[g] * 2) / 2; });
+  return conta;
+}
+
+/**
  * O que o modelo le sobre os ultimos 14 dias. Puro.
  *
  * Mudancas em relacao a versao anterior, todas com bug real por tras:
@@ -118,7 +147,7 @@ export function resumoDosDias(sessoes, hoje = new Date()) {
       if (atras <= 3 && s.origem !== "manual") recentes.add(String(i.nome || "").trim());
     }
 
-    const quando = `${quandoFoi(atras)} (${s.data})`;
+    const quando = `${quandoFoi(atras)} (${s.data})` + (s.origem === "extra" ? " [ficha extra]" : "");
     if (s.origem === "manual") {
       const nome = ((s.ficha || [])[0] || {}).nome || "atividade";
       linhas.push(`- ${quando}: atividade avulsa, ${nome}` + (s.duracao_min ? `, ${s.duracao_min} min` : ""));
@@ -232,7 +261,28 @@ export function normalizarFicha(cru, equipamentos, local = "casa") {
 }
 
 /** Monta o texto de sistema. Puro. Muda conforme o local. */
-export function sistemaDaFicha(local) {
+/* Regras da ficha EXTRA. Ele ja treinou hoje e quer mais: o pedido dele e o
+   centro, e o que ele ja fez hoje e o limite. A parte de testosterona existe
+   porque o pedido e comum e a resposta honesta e diferente da que ele espera:
+   treino mexe pouco e por pouco tempo no hormonio. */
+const REGRAS_EXTRA = `
+
+FICHA EXTRA (vale mais que as regras de rodizio e volume acima):
+- Ele JA treinou hoje e quer mais. O pedido dele e o centro da ficha.
+- Veja "O que ele ja fez hoje". Nao repita esses exercicios.
+- Se ele pedir um grupo que ja trabalhou hoje, use outros exercicios e angulos,
+  2 a 3 series cada, pra nao sobrecarregar o que ja esta cansado.
+- Pedido de gasto calorico: circuito, cardio intervalado e compostos com pouco
+  descanso. Se ele disser o tempo, a ficha inteira cabe nele, contando descanso.
+- Pedido de testosterona ou hormonio: monte compostos pesados (agachamento,
+  levantamento terra, supino, remada, desenvolvimento), poucas repeticoes e
+  descanso maior. No motivo diga a verdade: o efeito do treino no hormonio e
+  pequeno e passa em minutos; o ganho real vem de forca e musculo ao longo das
+  semanas, junto com sono e alimentacao. NAO prometa efeito hormonal.
+- Entre 3 e 6 exercicios.
+- O motivo explica como a ficha atende o pedido dele, em duas ou tres frases.`;
+
+export function sistemaDaFicha(local, modo = "dia") {
   const onde = localValido(local);
   return `Voce e um treinador montando a ficha de HOJE. Responde SOMENTE JSON.
 
@@ -272,12 +322,18 @@ VOLUME:
 O campo motivo e pra ELE ler: duas ou tres frases dizendo quais grupos entram hoje
 e por que, citando o historico. Sem elogio.
 
-{"motivo":"...","ficha":[{"equipamento_id":"id ou null","equipamento":"nome do aparelho ou peso do corpo","tipo":"peso_livre","nome":"...","grupos":["perna","gluteo"],"series":3,"medida":"reps","reps":"10-12","duracao_min":null,"descanso_s":60,"observacao":""}]}`;
+{"motivo":"...","ficha":[{"equipamento_id":"id ou null","equipamento":"nome do aparelho ou peso do corpo","tipo":"peso_livre","nome":"...","grupos":["perna","gluteo"],"series":3,"medida":"reps","reps":"10-12","duracao_min":null,"descanso_s":60,"observacao":""}]}` + (modo === "extra" ? REGRAS_EXTRA : "");
 }
 
 /** O prompt do dia. Puro. */
 export function promptDaFicha({ perfil, equipamentos, sessoes, pedido = "", local = "casa",
-  localTexto = "", rejeitada = null, hoje = new Date() }) {
+  localTexto = "", rejeitada = null, hoje = new Date(), modo = "dia", feitosHoje = [] }) {
+  const extra = modo === "extra";
+  const jaFez = extra
+    ? "O que ele ja fez hoje: " + (feitosHoje.length
+        ? feitosHoje.map((i) => i.nome + (i.grupos && i.grupos.length ? " (" + i.grupos.join(", ") + ")" : "")).join("; ")
+        : "nada registrado ainda")
+    : "";
   const onde = localValido(local);
   const recusada = Array.isArray(rejeitada) && rejeitada.length
     ? "Ele pediu OUTRA ficha. Esta foi recusada: " + rejeitada.map((i) => i.nome).join("; ") +
@@ -289,7 +345,11 @@ export function promptDaFicha({ perfil, equipamentos, sessoes, pedido = "", loca
     onde === "casa" ? blocoEquipamentos(equipamentos) : `Local de hoje: ${LOCAIS[onde].rotulo}.`,
     localTexto ? `O que ele disse sobre onde esta e o que tem: "${String(localTexto).slice(0, 300)}"` : "",
     resumoDosDias(sessoes, hoje),
-    pedido ? `O que ele pediu pra hoje: "${String(pedido).slice(0, 300)}"` : "",
+    jaFez,
+    pedido
+      ? (extra ? `O que ele quer AGORA, e o centro da ficha: "${String(pedido).slice(0, 400)}"`
+               : `O que ele pediu pra hoje: "${String(pedido).slice(0, 300)}"`)
+      : "",
     recusada,
   ].filter(Boolean).join("\n\n");
 }
@@ -305,7 +365,7 @@ export async function gerarFicha(opcoes) {
   /* 8192 porque com GEMINI_THINKING=HIGH o raciocinio gasta do mesmo teto da
      resposta; com menos o JSON era cortado. 0.8 e nao 0.7: um pouco mais de
      variacao ajuda contra ficha repetida, e as regras seguram o resto. */
-  const { dados, meta } = await gerarJSONDetalhado(sistemaDaFicha(local), prompt, {
+  const { dados, meta } = await gerarJSONDetalhado(sistemaDaFicha(local, opcoes.modo), prompt, {
     temperatura: 0.8,
     maxTokens: 8192,
   });

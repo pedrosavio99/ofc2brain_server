@@ -13,7 +13,7 @@ import { ErroHttp, checarBanco, lerPerfil, salvarPerfil, listarPesagens,
   desativarEquipamento, reativarEquipamento } from "./banco.mjs";
 import { analisarEquipamento, normalizarRascunho, TIPOS } from "./equipamentos.mjs";
 import { listarSessoes, buscarSessao, sessaoDeHoje, sessoesDeHoje, criarSessao, hojeLocal } from "./banco.mjs";
-import { gerarFicha, localValido, LOCAIS } from "./ficha.mjs";
+import { gerarFicha, localValido, LOCAIS, seriesPorGrupo } from "./ficha.mjs";
 import { atualizarSessao } from "./banco.mjs";
 import { caloriasDaSessao, basalDiario, idadeDe, percentualDoDia,
   comparativoDoCiclo, sequenciaDeDias, duracaoEstimada } from "./calorias.mjs";
@@ -165,6 +165,8 @@ export async function rotear(req, res, rota, url) {
     ]);
     // a ficha governa a tela de treino; as avulsas entram no total do dia
     const sessao = doDia.find((x) => x.origem === "ficha") || null;
+    // a ficha extra aberta, se houver. So uma por vez: gerar outra substitui
+    const extra = doDia.find((x) => x.origem === "extra" && !x.concluida) || null;
     const concluidas = doDia.filter((x) => x.concluida);
     const faltam = diasAtePesagem(perfil);
     const caloriasHoje = concluidas.reduce((t, x) => t + (Number(x.calorias) || 0), 0);
@@ -204,6 +206,12 @@ export async function rotear(req, res, rota, url) {
       resumo: resumoDoCiclo(sessoes, hojeLocal(), JANELA_DIAS),
       // quanto o treino marcado ate agora deve ter levado; a tela mostra ao vivo
       duracao_estimada: sessao ? duracaoEstimada(sessao.ficha, sessao.feitos) : 0,
+      extra,
+      duracao_extra: extra ? duracaoEstimada(extra.ficha, extra.feitos) : 0,
+      // series por grupo nos 14 dias, pro mapa do corpo no cartao do gasto
+      musculos: seriesPorGrupo(sessoes),
+      // so da pra pedir extra sem ficha do dia aberta: duas abertas confundem
+      pode_extra: !(sessao && !sessao.concluida),
       /* O dia INTEIRO, somando ficha e avulsas. Antes a tela mostrava so a
          ultima sessao criada, entao uma corrida lancada depois do treino
          escondia a ficha e o numero do dia ficava so o dela. */
@@ -215,7 +223,7 @@ export async function rotear(req, res, rota, url) {
           origem: x.origem,
           nome: x.origem === "manual"
             ? ((x.ficha || [])[0] || {}).nome || "Atividade"
-            : "Ficha do dia",
+            : x.origem === "extra" ? "Ficha extra" : "Ficha do dia",
           calorias: Number(x.calorias) || 0,
           minutos: Number(x.duracao_min) || 0,
           esforco: x.esforco,
@@ -229,6 +237,56 @@ export async function rotear(req, res, rota, url) {
   if (req.method === "GET" && rota === "/sessoes") {
     const dias = Math.min(Math.max(Number(url.searchParams.get("dias")) || JANELA_DIAS, 1), 60);
     return { dias, sessoes: await listarSessoes(dias) };
+  }
+
+  /* POST /ficha/extra { pedido, local, local_texto }
+     Ficha a mais no dia, a partir do que voce disse que quer. Grava com
+     origem 'extra', entao a ficha do dia (origem 'ficha') nao e tocada:
+     gerar, gerar outra, marcar e fechar dela seguem iguais.
+     Se ja houver extra aberta, a nova substitui (regerada_de), igual ao
+     "gerar outra" da ficha do dia. */
+  if (req.method === "POST" && rota === "/ficha/extra") {
+    const corpo = req.body || {};
+    const pedido = String(corpo.pedido || "").trim().slice(0, 400);
+    exigir(pedido, 400, "Escreva o que voce quer treinar agora.");
+    const local = localValido(corpo.local);
+    const localTexto = String(corpo.local_texto || "").trim().slice(0, 300);
+
+    const [perfil, equipamentos, doDia, sessoes] = await Promise.all([
+      lerPerfil(), listarEquipamentos(), sessoesDeHoje(), listarSessoes(),
+    ]);
+    exigir(local !== "casa" || equipamentos.length, 400, "Sem equipamento de casa cadastrado.",
+      "Escolha outro local ou cadastre um equipamento.");
+
+    const doDiaFicha = doDia.find((x) => x.origem === "ficha");
+    exigir(!(doDiaFicha && !doDiaFicha.concluida), 409, "Feche a ficha do dia antes de pedir uma extra.",
+      "Duas fichas abertas ao mesmo tempo confundem o treino.");
+    const extraAberta = doDia.find((x) => x.origem === "extra" && !x.concluida) || null;
+
+    // o que ja foi feito hoje, exercicio por exercicio, pra extra complementar
+    const feitosHoje = [];
+    doDia.forEach((s) => {
+      const marcados = new Set((s.feitos || []).map(String));
+      (s.ficha || []).forEach((i) => {
+        if (marcados.has(String(i.id))) feitosHoje.push({ nome: i.nome, grupos: i.grupos || [] });
+      });
+    });
+
+    const gerada = await gerarFicha({
+      perfil, equipamentos, sessoes, local, localTexto, pedido,
+      modo: "extra", feitosHoje,
+      rejeitada: extraAberta ? extraAberta.ficha : null,
+    });
+    exigir(gerada.ficha.length, 502, "O modelo nao devolveu exercicio nenhum valido.",
+      "Tente de novo; se repetir, troque o local ou reescreva o pedido.");
+
+    const sessao = await criarSessao({
+      origem: "extra",
+      ficha: gerada.ficha,
+      motivo: gerada.motivo,
+      regerada_de: extraAberta ? extraAberta.id : null,
+    });
+    return { ok: true, sessao, regerou: !!extraAberta, local: gerada.local, fonte: gerada.meta };
   }
 
   /* POST /ficha { pedido }

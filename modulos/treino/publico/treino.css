@@ -434,3 +434,115 @@ select.campo {
   .tr-ex.agora .tr-check { animation: none; }
   .tr-energia-barra i.soma, .tr-energia-par .soma b { animation: none; }
 }
+
+/* ---- ficha extra ---- */
+
+/* Os dois modos do modal de atividade. */
+.tr-escolha.tr-modos { margin-bottom: 16px; }
+
+/* Frases prontas pro pedido: rolam na horizontal, um toque escreve. */
+.tr-sugestoes {
+  display: flex; gap: 6px; overflow-x: auto; margin: -4px -18px 14px; padding: 0 18px 2px;
+  scrollbar-width: none;
+}
+.tr-sugestoes::-webkit-scrollbar { display: none; }
+.tr-sugestoes button {
+  flex: none; height: 32px; padding: 0 12px; border-radius: var(--r-pill);
+  border: 1px solid var(--separador); background: transparent; color: var(--texto-2);
+  font-size: 13.5px; font-family: var(--fonte); cursor: pointer; white-space: nowrap;
+}
+.tr-sugestoes button:active { background: var(--acento-eco); color: var(--acento); border-color: var(--acento); }
+
+/* A extra e o treino a mais: o anel e o selo puxam pro laranja do fogo do
+   gasto, pra nao confundir com a ficha do dia. */
+.tr-extra .tr-anel-prog { stroke: var(--alerta); }
+.tr-extra.completo .tr-anel-prog { stroke: var(--sucesso); }
+.tr-selo-extra { background: rgba(255,149,0,.14); color: var(--alerta); text-transform: uppercase; letter-spacing: .04em; }
+.tr-extra .tr-musculos li { background: rgba(255,149,0,.12); color: var(--alerta); }
+
+/* ---- dia do grafico ---- */
+
+/* Cada coluna do grafico e um botao que abre o dia. */
+button.tr-barra-col {
+  background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 8px;
+}
+button.tr-barra-col:active .tr-barra { opacity: 1; transform: scaleY(1.04); transform-origin: bottom; }
+@media (hover: hover) { button.tr-barra-col:hover .tr-barra { opacity: .85; } }
+button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* Modal do dia */
+.tr-dia-topo {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  background: var(--superficie-2); border-radius: 14px; padding: 12px 4px; margin-bottom: 16px;
+}
+.tr-dia-topo div { text-align: center; border-left: 1px solid var(--separador); }
+.tr-dia-topo div:first-child { border-left: 0; }
+.tr-dia-topo b { display: block; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.tr-dia-topo span { font-size: 12.5px; color: var(--texto-2); }
+
+.tr-dia-bloco { padding: 14px 0; border-top: 1px solid var(--separador); }
+.tr-dia-bloco:first-of-type { border-top: 0; padding-top: 2px; }
+.tr-dia-bloco h4 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; display: flex; align-items: baseline; gap: 8px; }
+.tr-dia-bloco h4 small { font-size: 12px; font-weight: 600; color: var(--acento); }
+.tr-dia-bloco.extra h4 { color: var(--alerta); }
+.tr-dia-bloco.extra .tr-musculos li { background: rgba(255,149,0,.12); color: var(--alerta); }
+.tr-dia-meta { margin: 3px 0 0; font-size: 13.5px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.tr-dia-bloco .tr-musculos { margin-top: 10px; }
+.tr-dia-lista { list-style: none; margin: 10px 0 0; padding: 0; }
+.tr-dia-lista li {
+  display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  padding: 8px 0; border-bottom: 1px solid var(--separador); font-size: 15px;
+}
+.tr-dia-lista li:last-child { border-bottom: 0; }
+.tr-dia-lista b { font-size: 14.5px; font-weight: 700; white-space: nowrap; }
+.tr-dia-pulados { margin: 6px 0 0; font-size: 13px; color: var(--texto-3); }
+.tr-dia-obs {
+  margin: 10px 0 0; font-size: 14px; color: var(--texto-2); line-height: 1.45;
+  padding-left: 10px; border-left: 2px solid var(--separador);
+}
+
+/* ---- mapa do corpo ---- */
+/* .tr-mapa e nao .tr-corpo: .tr-corpo ja e o container da pagina (no topo
+   deste arquivo), e o botao herdava a altura da tela inteira. */
+
+/* Cartao do gasto: numeros a esquerda, os dois bonecos a direita. */
+.tr-energia-grade { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; margin-top: 10px; }
+.tr-energia-grade .tr-energia-par { flex-direction: column; align-items: flex-start; justify-content: center; gap: 12px; margin-top: 0; }
+.tr-energia-grade .tr-energia-par .soma { text-align: left; }
+
+.tr-mapa {
+  display: grid; justify-items: center; gap: 6px;
+  background: none; border: 0; padding: 4px; margin: -4px; border-radius: 14px;
+  cursor: pointer; font: inherit; color: inherit; -webkit-tap-highlight-color: transparent;
+}
+.tr-mapa:active { background: var(--superficie-2); }
+.tr-mapa:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.tr-mapa-par { display: flex; gap: 6px; }
+.tr-mapa-par > span, .tr-mapa-grande > span { display: grid; justify-items: center; gap: 2px; }
+.tr-mapa-par span span, .tr-mapa-grande span span { font-size: 10.5px; color: var(--texto-3); }
+.tr-mapa .tr-boneco { width: 46px; height: 101px; display: block; }
+.tr-mapa-escala { display: flex; gap: 2px; }
+.tr-mapa-escala i { width: 12px; height: 4px; border-radius: 2px; display: block; }
+
+/* A escala de cor: neutro, depois amarelo ao vermelho conforme as series. */
+.tr-boneco .neutro { fill: var(--superficie-2); stroke: var(--separador); stroke-width: .6; }
+.tr-boneco .m { transition: fill .4s ease; }
+.tr-boneco .n0, .tr-musc-lista .n0 { fill: var(--separador); background: var(--separador); }
+.tr-boneco .n1, .tr-mapa-escala .n1, .tr-musc-lista .n1 { fill: #FFD66B; background: #FFD66B; }
+.tr-boneco .n2, .tr-mapa-escala .n2, .tr-musc-lista .n2 { fill: #FFA340; background: #FFA340; }
+.tr-boneco .n3, .tr-mapa-escala .n3, .tr-musc-lista .n3 { fill: #FF6A3D; background: #FF6A3D; }
+.tr-boneco .n4, .tr-mapa-escala .n4, .tr-musc-lista .n4 { fill: #E5251B; background: #E5251B; }
+
+/* Modal: os bonecos grandes e a lista com barra por grupo. */
+.tr-mapa-grande { display: flex; justify-content: center; gap: 28px; margin: 4px 0 18px; }
+.tr-mapa-grande .tr-boneco { width: 92px; height: 202px; display: block; }
+.tr-musc-lista { list-style: none; margin: 0; padding: 0; }
+.tr-musc-lista li {
+  display: grid; grid-template-columns: 88px 1fr 34px 62px; align-items: center; gap: 10px;
+  padding: 7px 0; font-size: 15px;
+}
+.tr-musc-lista .trilho { height: 8px; border-radius: var(--r-pill); background: var(--superficie-2); overflow: hidden; }
+.tr-musc-lista .trilho i { display: block; height: 100%; border-radius: var(--r-pill); }
+.tr-musc-lista .val { text-align: right; font-weight: 700; }
+.tr-musc-lista .niv { font-size: 12.5px; color: var(--texto-2); }

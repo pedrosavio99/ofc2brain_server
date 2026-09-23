@@ -260,12 +260,25 @@
     }
   }
 
-  function modalManual() {
-    abrir("Lançar atividade", '' +
+  /* Frases prontas: um toque escreve o pedido, e voce edita se quiser. */
+  var SUGESTOES_EXTRA = [
+    "Tô com energia, quero mais ombro",
+    "Quero gastar mais caloria em 30 min",
+    "Quero algo pra testosterona",
+    "Braço, uns 20 minutos",
+  ];
+
+  /* O modal de atividade tem dois modos. "Já fiz" e o de sempre: lanca o que
+     aconteceu. "Quero treinar mais" pede uma ficha extra a partir do que voce
+     escrever. Trocar de modo reabre a folha no outro. */
+  function modalManual(modo) {
+    if (modo === "mais") return modalExtra();
+    abrir("Lançar atividade", seletorModo("fiz") +
       '<p class="tr-sub" style="margin-top:0">Escreva do seu jeito. Caminhada, corrida e bike já têm gasto tabelado.</p>' +
       '<div class="tr-campo"><label>O que você fez</label>' +
         '<input class="campo" id="mTexto" placeholder="Ex: corri 35 min no parque" autofocus></div>' +
       '<button class="btn btn-largo" id="mAnalisar">Continuar</button>');
+    ligarModo();
 
     document.getElementById("mAnalisar").addEventListener("click", async function (e) {
       var texto = document.getElementById("mTexto").value.trim();
@@ -276,6 +289,133 @@
         conferirManual(r);
       } catch (err) { avisar(err.message); e.target.disabled = false; }
     });
+  }
+
+  function seletorModo(atual) {
+    return '<div class="tr-escolha tr-modos" id="mModo">' +
+      '<button type="button" data-modo="fiz" aria-pressed="' + (atual === "fiz") + '">Já fiz</button>' +
+      '<button type="button" data-modo="mais" aria-pressed="' + (atual === "mais") + '">Quero treinar mais</button>' +
+      "</div>";
+  }
+  function ligarModo() {
+    folhaCorpo.querySelectorAll("#mModo [data-modo]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (b.getAttribute("aria-pressed") === "true") return;
+        modalManual(b.dataset.modo);
+      });
+    });
+  }
+
+  function modalExtra() {
+    var d = S.dia || {};
+    if (d.pode_extra === false) {
+      abrir("Treinar mais", seletorModo("mais") +
+        '<div class="vazio" style="padding:26px 10px"><h3>Feche a ficha do dia antes</h3>' +
+        "<p>Com duas fichas abertas ao mesmo tempo o treino se confunde. Fecha a de hoje e volta aqui.</p></div>");
+      ligarModo();
+      return;
+    }
+    abrir("Treinar mais", seletorModo("mais") +
+      '<p class="tr-sub" style="margin-top:0">Diga como você está e o que quer. A ficha extra complementa o que você já fez hoje' +
+        (d.extra ? ", e substitui a extra que está aberta" : "") + ".</p>" +
+      '<div class="tr-campo"><label>O que você quer agora</label>' +
+        '<textarea class="campo" id="xPedido" rows="3" placeholder="Ex: tô com energia, quero mais ombro"></textarea></div>' +
+      '<div class="tr-sugestoes">' + SUGESTOES_EXTRA.map(function (t) {
+        return '<button type="button" data-sugestao="' + esc(t) + '">' + esc(t) + "</button>";
+      }).join("") + "</div>" +
+      camposGeracao("x", !d.pode_gerar, true) +
+      '<button class="btn btn-largo" id="xGerar" style="margin-top:6px">Gerar ficha extra</button>');
+    ligarModo();
+
+    var campo = document.getElementById("xPedido");
+    folhaCorpo.querySelectorAll("[data-sugestao]").forEach(function (b) {
+      b.addEventListener("click", function () { campo.value = b.dataset.sugestao; campo.focus(); });
+    });
+    var ler = ligarGeracao(folhaCorpo, "x");
+    document.getElementById("xGerar").addEventListener("click", async function () {
+      var pedido = campo.value.trim();
+      if (!pedido) { avisar("Escreva o que você quer treinar agora."); campo.focus(); return; }
+      var dados = ler();
+      dados.pedido = pedido;
+      S.ultimoLocal = dados.local;
+      fechar();
+      // o Gemini leva uns segundos: o esqueleto diz que a ficha esta sendo montada
+      tela.innerHTML = esqueleto("ficha");
+      try {
+        await pedir("/ficha/extra", json("POST", dados));
+        avisar("Ficha extra pronta.");
+      } catch (err) {
+        avisar(err.message);
+      }
+      carregar();
+    });
+  }
+
+  /* O que foi treinado num dia do grafico. So o que foi FECHADO, igual aos
+     numeros do painel: ficha aberta ou trocada nao entra. Busca na hora
+     (GET /sessoes ja existe) em vez de guardar: e um toque de vez em quando,
+     e assim nunca mostra coisa velha. */
+  async function modalDia(iso) {
+    var titulo = new Date(iso + "T12:00:00Z").toLocaleDateString("pt-BR",
+      { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+    titulo = titulo.charAt(0).toUpperCase() + titulo.slice(1);
+    abrir(titulo, '<div class="esqueleto tr-esq"><div class="linha curta"></div><div class="linha"></div><div class="linha"></div></div>');
+    var lista;
+    try {
+      var r = await pedir("/sessoes?dias=14");
+      lista = (r.sessoes || []).filter(function (x) { return x.data === iso && x.concluida; });
+    } catch (err) {
+      if (folhaTitulo.textContent === titulo) folhaCorpo.innerHTML = '<div class="vazio"><p>' + esc(err.message) + "</p></div>";
+      return;
+    }
+    // se voce fechou ou trocou de folha enquanto buscava, nao pisa nela
+    if (!aberta() || folhaTitulo.textContent !== titulo) return;
+
+    if (!lista.length) {
+      folhaCorpo.innerHTML = '<div class="vazio" style="padding:30px 10px"><h3>Dia sem treino fechado</h3>' +
+        "<p>Descanso também conta. Nada foi registrado aqui.</p></div>";
+      return;
+    }
+
+    // mais antigo primeiro: le na ordem em que aconteceu
+    lista.sort(function (a, b) { return String(a.criado_em).localeCompare(String(b.criado_em)); });
+    var totKcal = lista.reduce(function (t, x) { return t + (Number(x.calorias) || 0); }, 0);
+    var totMin = lista.reduce(function (t, x) { return t + (Number(x.duracao_min) || 0); }, 0);
+
+    folhaCorpo.innerHTML = '<div class="tr-dia-topo">' +
+        '<div><b class="tr-num">' + kcal(totKcal) + '</b><span>kcal</span></div>' +
+        '<div><b class="tr-num">' + totMin + '</b><span>min</span></div>' +
+        '<div><b class="tr-num">' + lista.length + "</b><span>" + (lista.length === 1 ? "registro" : "registros") + "</span></div>" +
+      "</div>" +
+      lista.map(blocoDoDia).join("");
+  }
+
+  function blocoDoDia(x) {
+    var manual = x.origem === "manual";
+    var nome = manual ? (((x.ficha || [])[0] || {}).nome || "Atividade")
+      : x.origem === "extra" ? "Ficha extra" : "Ficha do dia";
+    var meta = [(Number(x.duracao_min) || 0) + " min", x.esforco, kcal(x.calorias) + " kcal"].filter(Boolean).join(" · ");
+    if (manual) {
+      return '<section class="tr-dia-bloco avulsa"><h4>' + esc(nome) + '<small>avulsa</small></h4><p class="tr-dia-meta">' + meta + "</p>" +
+        (x.observacao ? '<p class="tr-dia-obs">' + esc(x.observacao) + "</p>" : "") + "</section>";
+    }
+    var marcados = {};
+    (x.feitos || []).forEach(function (f) { marcados[String(f)] = true; });
+    var feitos = (x.ficha || []).filter(function (i) { return marcados[String(i.id)]; });
+    var pulados = (x.ficha || []).length - feitos.length;
+    var musculos = [];
+    feitos.forEach(function (i) {
+      (i.grupos || []).forEach(function (g) { if (musculos.indexOf(g) < 0) musculos.push(g); });
+    });
+    return '<section class="tr-dia-bloco' + (x.origem === "extra" ? " extra" : "") + '"><h4>' + esc(nome) + "</h4>" +
+      '<p class="tr-dia-meta">' + meta + "</p>" +
+      (musculos.length ? '<ul class="tr-musculos">' + musculos.map(function (g) { return "<li>" + esc(rotuloGrupo(g)) + "</li>"; }).join("") + "</ul>" : "") +
+      '<ul class="tr-dia-lista">' + feitos.map(function (i) {
+        return "<li><span>" + esc(i.nome) + '</span><b class="tr-num">' + textoSerie(i).replace(" x ", "×") + "</b></li>";
+      }).join("") + "</ul>" +
+      (pulados > 0 ? '<p class="tr-dia-pulados">' + pulados + (pulados === 1 ? " exercício pulado" : " exercícios pulados") + "</p>" : "") +
+      (x.observacao ? '<p class="tr-dia-obs">' + esc(x.observacao) + "</p>" : "") +
+      "</section>";
   }
 
   function conferirManual(r) {
@@ -330,7 +470,8 @@
     /* O tempo NAO e mais pergunta: sai da propria ficha, somando serie,
        descanso e transicao do que foi marcado. Fica visivel e ajustavel, pra
        quando o treino sair muito do roteiro, mas ninguem precisa responder. */
-    var estimado = (S.dia && S.dia.duracao_estimada) || 0;
+    var ehExtra = !!(S.dia && S.dia.extra && sessao.id === S.dia.extra.id);
+    var estimado = (S.dia && (ehExtra ? S.dia.duracao_extra : S.dia.duracao_estimada)) || 0;
     abrir("Fechar o treino", '' +
       '<p class="tr-sub" style="margin-top:0">' + feitos.length + " de " + (sessao.ficha || []).length +
         ' exercícios marcados. O que não foi feito não conta, e tudo bem.</p>' +
@@ -442,11 +583,11 @@
         r.linha.map(function (d) {
           var alt = d.treinou ? Math.max(Math.round((d.calorias / maior) * 100), 12) : 0;
           var dia = new Date(d.data + "T12:00:00Z").getUTCDay();
-          return '<div class="tr-barra-col' + (d.hoje ? " hoje" : "") + '" title="' +
-            d.data + (d.treinou ? ": " + d.calorias + " kcal" : ": sem treino") + '">' +
+          return '<button type="button" class="tr-barra-col' + (d.hoje ? " hoje" : "") + '" data-dia="' + d.data + '"' +
+            ' aria-label="Ver o dia ' + d.data + (d.treinou ? ", " + d.calorias + " kcal" : ", sem treino") + '">' +
             '<div class="tr-barra-trilho"><div class="tr-barra' + (d.treinou ? "" : " vazia") +
               '" style="height:' + alt + '%"></div></div>' +
-            "<span>" + DIA_CURTO[dia] + "</span></div>";
+            "<span>" + DIA_CURTO[dia] + "</span></button>";
         }).join("") +
       "</div>" +
       '<div class="tr-numeros">' + numeros.map(function (n) {
@@ -564,14 +705,106 @@
     }
     return '<section class="tr-cartao tr-energia">' +
       "<h2>Seu gasto do dia</h2>" +
+      '<div class="tr-energia-grade">' +
       '<div class="tr-energia-par">' +
         '<div><b class="tr-num" data-contar="' + b.kcal + '">' + kcal(b.kcal) + "</b><span>kcal com o corpo parado</span></div>" +
         (soma ? '<div class="soma"><b class="tr-num">+' + kcal(soma) + "</b><span>" + rotuloSoma + "</span></div>" : "") +
-      "</div>" +
+      "</div>" + mapaDoCorpo(d.musculos) + "</div>" +
       '<div class="tr-energia-barra" aria-hidden="true"><i style="flex:' + b.kcal + '"></i>' +
         (soma ? '<i class="soma" style="flex:' + soma + '"></i>' : "") + "</div>" +
       (nota ? '<p class="tr-energia-nota">' + nota + "</p>" : "") +
       "</section>";
+  }
+
+  /* ------------------------------------------------------- mapa do corpo */
+
+  /* Faixas por series em 14 dias. Fixas, nao relativas: com escala relativa
+     uma semana de um treino so deixaria o grupo dele vermelho vivo. O topo
+     (25+) fica na faixa que costuma ser citada pra hipertrofia, 10 a 20
+     series por semana por musculo. */
+  var NIVEIS = [
+    { ate: 0, rotulo: "nada" },
+    { ate: 6.5, rotulo: "pouco" },
+    { ate: 14.5, rotulo: "moderado" },
+    { ate: 24.5, rotulo: "bom" },
+    { ate: Infinity, rotulo: "alto" },
+  ];
+  function nivelDe(series) {
+    for (var n = 0; n < NIVEIS.length; n++) if ((Number(series) || 0) <= NIVEIS[n].ate) return n;
+    return NIVEIS.length - 1;
+  }
+
+  /* Os bonecos: formas simples, cada grupo uma peca separada por um respiro,
+     como os mapas musculares de academia. O que nao e grupo (cabeca, mao,
+     canela, pe) fica neutro. viewBox 60x132, espelhado em x=30. */
+  function pecasFrente() {
+    return [
+      ["neutro", '<circle cx="30" cy="9" r="7"/>'],
+      ["neutro", '<rect x="27" y="15" width="6" height="5" rx="2"/>'],
+      ["ombro", '<ellipse cx="15.5" cy="25" rx="5.5" ry="5"/><ellipse cx="44.5" cy="25" rx="5.5" ry="5"/>'],
+      ["peito", '<path d="M18.5 21.5h10.5v12c-4 2.5-8.5 2-10.5-1.5z"/><path d="M41.5 21.5H31v12c4 2.5 8.5 2 10.5-1.5z"/>'],
+      ["biceps", '<rect x="8" y="31" width="7" height="14" rx="3.5"/><rect x="45" y="31" width="7" height="14" rx="3.5"/>'],
+      ["neutro", '<rect x="6.5" y="46.5" width="6" height="16" rx="3"/><rect x="47.5" y="46.5" width="6" height="16" rx="3"/>'],
+      ["abdomen", '<rect x="22" y="35.5" width="16" height="20" rx="4"/>'],
+      ["neutro", '<rect x="21" y="57" width="18" height="7" rx="3"/>'],
+      ["perna", '<rect x="20" y="65.5" width="9" height="28" rx="4.5"/><rect x="31" y="65.5" width="9" height="28" rx="4.5"/>'],
+      ["neutro", '<rect x="21" y="95.5" width="7" height="25" rx="3.5"/><rect x="32" y="95.5" width="7" height="25" rx="3.5"/>'],
+      ["neutro", '<ellipse cx="24" cy="124" rx="4.5" ry="2.5"/><ellipse cx="36" cy="124" rx="4.5" ry="2.5"/>'],
+    ];
+  }
+  function pecasCostas() {
+    return [
+      ["neutro", '<circle cx="30" cy="9" r="7"/>'],
+      ["neutro", '<rect x="27" y="15" width="6" height="5" rx="2"/>'],
+      ["ombro", '<ellipse cx="15.5" cy="25" rx="5.5" ry="5"/><ellipse cx="44.5" cy="25" rx="5.5" ry="5"/>'],
+      ["costas", '<path d="M19 21h22l-2 17.5c-5.5 3-12.5 3-18 0z"/>'],
+      ["triceps", '<rect x="8" y="31" width="7" height="14" rx="3.5"/><rect x="45" y="31" width="7" height="14" rx="3.5"/>'],
+      ["neutro", '<rect x="6.5" y="46.5" width="6" height="16" rx="3"/><rect x="47.5" y="46.5" width="6" height="16" rx="3"/>'],
+      ["lombar", '<rect x="22" y="41" width="16" height="13" rx="3.5"/>'],
+      ["gluteo", '<ellipse cx="25" cy="61" rx="5.5" ry="6"/><ellipse cx="35" cy="61" rx="5.5" ry="6"/>'],
+      ["perna", '<rect x="20" y="68.5" width="9" height="24" rx="4.5"/><rect x="31" y="68.5" width="9" height="24" rx="4.5"/>'],
+      ["panturrilha", '<rect x="21" y="94.5" width="7" height="18" rx="3.5"/><rect x="32" y="94.5" width="7" height="18" rx="3.5"/>'],
+      ["neutro", '<rect x="21.5" y="114" width="6" height="7" rx="2.5"/><rect x="32.5" y="114" width="6" height="7" rx="2.5"/>'],
+      ["neutro", '<ellipse cx="24" cy="124" rx="4.5" ry="2.5"/><ellipse cx="36" cy="124" rx="4.5" ry="2.5"/>'],
+    ];
+  }
+  function boneco(pecas, m, rotulo) {
+    return '<svg viewBox="0 0 60 132" aria-hidden="true" class="tr-boneco">' + pecas.map(function (p) {
+      var cls = p[0] === "neutro" ? "neutro" : "m n" + nivelDe(m[p[0]]);
+      return '<g class="' + cls + '"' + (p[0] === "neutro" ? "" : ' data-grupo="' + p[0] + '"') + ">" + p[1] + "</g>";
+    }).join("") + "</svg><span>" + rotulo + "</span>";
+  }
+
+  /* Ao lado dos numeros do gasto. E um botao: tocar abre as series. */
+  function mapaDoCorpo(m) {
+    if (!m) return "";
+    return '<button type="button" class="tr-mapa" data-corpo aria-label="Ver as séries de cada grupo nos últimos 14 dias">' +
+      '<span class="tr-mapa-par"><span>' + boneco(pecasFrente(), m, "frente") + "</span>" +
+      "<span>" + boneco(pecasCostas(), m, "costas") + "</span></span>" +
+      '<span class="tr-mapa-escala" aria-hidden="true"><i class="n1"></i><i class="n2"></i><i class="n3"></i><i class="n4"></i></span>' +
+      "</button>";
+  }
+
+  function modalMusculos() {
+    var m = (S.dia && S.dia.musculos) || {};
+    var grupos = Object.keys(m).sort(function (a, b) { return (m[b] || 0) - (m[a] || 0); });
+    var maior = Math.max(25, grupos.length ? m[grupos[0]] : 0);
+    abrir("Músculos nos últimos 14 dias", '' +
+      '<div class="tr-mapa-grande">' +
+        "<span>" + boneco(pecasFrente(), m, "frente") + "</span>" +
+        "<span>" + boneco(pecasCostas(), m, "costas") + "</span>" +
+      "</div>" +
+      '<ul class="tr-musc-lista">' + grupos.map(function (g) {
+        var v = m[g] || 0, n = nivelDe(v);
+        return "<li><span class=\"nome\">" + esc(rotuloGrupo(g)) + "</span>" +
+          '<span class="trilho"><i class="n' + n + '" style="width:' + Math.max(v ? 4 : 0, Math.round((v / maior) * 100)) + '%"></i></span>' +
+          '<span class="val tr-num">' + String(v).replace(".", ",") + "</span>" +
+          '<span class="niv">' + NIVEIS[n].rotulo + "</span></li>";
+      }).join("") + "</ul>" +
+      '<p class="tr-sub" style="margin-top:14px">Séries de treinos fechados nos últimos 14 dias. O músculo principal do exercício ' +
+        "conta a série inteira, os secundários contam metade. Como referência, 20 a 40 séries em 14 dias por músculo " +
+        "é a faixa que costuma ser citada pra ganho de massa. O mapa anda junto com os 14 dias: o que você treinou " +
+        "há mais tempo vai esfriando sozinho.</p>");
   }
 
   /* Numero que sobe do zero na primeira abertura. Da vida a tela sem custar
@@ -597,12 +830,20 @@
     tela.querySelectorAll("[data-perfil]").forEach(function (b) {
       b.addEventListener("click", modalPerfil);
     });
+    tela.querySelectorAll("[data-corpo]").forEach(function (b) {
+      b.addEventListener("click", modalMusculos);
+    });
+    tela.querySelectorAll("[data-dia]").forEach(function (b) {
+      b.addEventListener("click", function () { modalDia(b.dataset.dia); });
+    });
     /* O anel nasce no valor de ANTES do toque e anda ate o novo no quadro
        seguinte. Como a tela e repintada a cada check, sem isso ele pularia. */
-    var anel = tela.querySelector(".tr-anel-prog");
-    if (anel) {
+    var aneis = tela.querySelectorAll(".tr-anel-prog");
+    if (aneis.length) {
       requestAnimationFrame(function () {
-        requestAnimationFrame(function () { anel.style.strokeDashoffset = anel.dataset.alvo; });
+        requestAnimationFrame(function () {
+          aneis.forEach(function (a) { a.style.strokeDashoffset = a.dataset.alvo; });
+        });
       });
     }
     S.acabou = null;
@@ -632,7 +873,7 @@
   /* Os mesmos campos no "Gerar treino" e no "Gerar outra ficha". pre e o
      prefixo dos ids, pra os dois poderem existir sem colidir. semCasa some
      com o botao Em casa quando nao ha equipamento cadastrado. */
-  function camposGeracao(pre, semCasa) {
+  function camposGeracao(pre, semCasa, semPedido) {
     var locais = ((S.dia && S.dia.locais) || LOCAIS_PADRAO).filter(function (l) {
       return !(semCasa && l.id === "casa");
     });
@@ -649,10 +890,11 @@
       '<div class="tr-opcionais">' +
         '<label class="tr-opcional"><span>Lugar</span>' +
           '<input id="' + pre + 'LocalTxt" autocomplete="off" placeholder="' + esc(DICA_LOCAL[marcado] || "") + '"></label>' +
-        '<label class="tr-opcional"><span>Pedido</span>' +
-          '<input id="' + pre + 'Pedido" autocomplete="off" placeholder="Ex: hoje tenho 30 minutos"></label>' +
+        (semPedido ? "" : '<label class="tr-opcional"><span>Pedido</span>' +
+          '<input id="' + pre + 'Pedido" autocomplete="off" placeholder="Ex: hoje tenho 30 minutos"></label>') +
       "</div>" +
-      '<p class="tr-opcionais-nota">Os dois são opcionais e ajudam a acertar a ficha.</p>';
+      '<p class="tr-opcionais-nota">' + (semPedido ? "Opcional. Ajuda a IA a saber o que tem por perto." :
+        "Os dois são opcionais e ajudam a acertar a ficha.") + "</p>";
   }
 
   /* Liga os botoes e devolve quem le os tres campos. raiz e a tela ou a folha. */
@@ -670,7 +912,7 @@
       return {
         local: on ? on.dataset.local : "casa",
         local_texto: txt.value.trim(),
-        pedido: raiz.querySelector("#" + pre + "Pedido").value.trim(),
+        pedido: raiz.querySelector("#" + pre + "Pedido") ? raiz.querySelector("#" + pre + "Pedido").value.trim() : "",
       };
     };
   }
@@ -731,7 +973,8 @@
     var s = d.sessao;
 
     if (s && s.concluida) {
-      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total);
+      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + cartaoExtra(d);
+      ligarSessoes();
       ligarManual();
       return;
     }
@@ -739,6 +982,12 @@
     if (!s) {
       var jaFez = d.hoje_total && d.hoje_total.itens && d.hoje_total.itens.length;
       var contexto = cartaoBasal(d) + painelResumo(d.resumo);
+      if (d.extra) {
+        tela.innerHTML = contexto + cartaoDoDia(d.hoje_total) + cartaoExtra(d);
+        ligarSessoes();
+        ligarManual();
+        return;
+      }
       tela.innerHTML = contexto + cartaoDoDia(d.hoje_total) + '<section class="tr-cartao">' +
         "<h2>" + (jaFez ? "Quer um treino também?" : "Montar o treino de hoje") + "</h2>" +
         '<p class="tr-sub">A ficha olha o que você treinou nos últimos 14 dias e puxa o que está parado há mais tempo.</p>' +
@@ -755,6 +1004,18 @@
       return;
     }
 
+    // ficha do dia aberta (e a extra, se por acaso tambem houver)
+    tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoSessao(s, false) + cartaoExtra(d);
+    ligarSessoes();
+    ligarManual();
+  }
+
+  function cartaoExtra(d) { return d && d.extra ? cartaoSessao(d.extra, true) : ""; }
+
+  /* O cartao de uma ficha aberta. extra muda titulo, tempo, selo e o botao de
+     gerar outra; o resto (anel, lista, marcar, fechar) e o mesmo. */
+  function cartaoSessao(s, extra) {
+    var d = S.dia;
     var feitos = s.feitos || [];
     var ficha = s.ficha || [];
     var total = ficha.length || 1;
@@ -768,22 +1029,25 @@
 
     var R = 30, VOLTA = 2 * Math.PI * R;
     var agora = feitos.length / total;
-    var antes = S.primeira ? 0 : (S.anelDe != null ? S.anelDe : agora);
-    S.anelDe = null;
+    // o anel de cada ficha lembra de onde partiu; com duas na tela, cada uma anda a sua
+    var de = S.anelDe && S.anelDe[s.id];
+    var antes = S.primeira ? 0 : (de != null ? de : agora);
     var completo = feitos.length === ficha.length && ficha.length > 0;
+    var titulo = extra ? (completo ? "Extra feita" : "Ficha extra") : (completo ? "Tudo feito" : "Treino de hoje");
+    var minutos = extra ? d.duracao_extra : d.duracao_estimada;
 
-    tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) +
-      '<section class="tr-cartao tr-sessao' + (completo ? " completo" : "") + '">' +
+    return '<section class="tr-cartao tr-sessao' + (completo ? " completo" : "") + (extra ? " tr-extra" : "") + '"' +
+        ' data-sessao="' + (extra ? "extra" : "dia") + '">' +
       '<div class="tr-sessao-topo">' +
         '<div class="tr-anel" role="img" aria-label="' + feitos.length + " de " + ficha.length + ' exercícios feitos">' +
           '<svg viewBox="0 0 72 72" aria-hidden="true"><circle class="tr-anel-fundo" cx="36" cy="36" r="' + R + '"/>' +
             '<circle class="tr-anel-prog" cx="36" cy="36" r="' + R + '" stroke-dasharray="' + VOLTA.toFixed(2) + '"' +
             ' style="stroke-dashoffset:' + (VOLTA * (1 - antes)).toFixed(2) + '" data-alvo="' + (VOLTA * (1 - agora)).toFixed(2) + '"/></svg>' +
           '<span class="tr-num"><b>' + feitos.length + "</b>de " + ficha.length + "</span></div>" +
-        '<div class="tr-sessao-cab"><h2>' + (completo ? "Tudo feito" : "Treino de hoje") + "</h2>" +
-          '<p class="tr-tempo-vivo" data-tempo>' + textoTempo(feitos.length, d.duracao_estimada) + "</p></div>" +
+        '<div class="tr-sessao-cab"><h2>' + titulo + (extra ? '<span class="tr-selo tr-selo-extra">extra</span>' : "") + "</h2>" +
+          '<p class="tr-tempo-vivo" data-tempo>' + textoTempo(feitos.length, minutos) + "</p></div>" +
       "</div>" +
-      (musculos.length ? '<ul class="tr-musculos" aria-label="Músculos de hoje">' + musculos.map(function (g) {
+      (musculos.length ? '<ul class="tr-musculos" aria-label="Músculos desta ficha">' + musculos.map(function (g) {
         return "<li>" + esc(rotuloGrupo(g)) + "</li>";
       }).join("") + "</ul>" : "") +
       (s.motivo ? '<p class="tr-motivo">' + esc(s.motivo) + "</p>" : "") +
@@ -791,7 +1055,7 @@
         var on = feitos.indexOf(i.id) >= 0;
         // a unidade encolhe pra dose caber na coluna sem espremer o nome
         var dose = textoSerie(i).replace(" x ", "×").replace(/(\d)\s?(min|s)$/, "$1<small>$2</small>");
-        return '<li class="tr-ex' + (on ? " feito" : "") + (S.acabou === i.id ? " agora" : "") + '" data-ex="' + i.id + '"' +
+        return '<li class="tr-ex' + (on ? " feito" : "") + (S.acabou === s.id + ":" + i.id ? " agora" : "") + '" data-ex="' + i.id + '"' +
           ' role="button" tabindex="0" aria-pressed="' + on + '" aria-label="Marcar ' + esc(i.nome) + '">' +
           '<span class="tr-check" aria-hidden="true">' +
             '<span class="tr-ordem">' + (n + 1) + "</span>" + ICONE.check + "</span>" +
@@ -807,21 +1071,32 @@
             (i.descanso_s ? '<span class="tr-descanso">' + ICONE.relogio + i.descanso_s + "s</span>" : "") + "</div>" +
           "</li>";
       }).join("") + "</ol>" +
-      '<div class="tr-acoes"><button class="btn btn-largo" id="tFechar">Fechar treino</button>' +
-      '<button class="tr-link" id="tRegerar">Gerar outra ficha</button></div>' +
+      '<div class="tr-acoes"><button class="btn btn-largo" data-fechar>Fechar treino</button>' +
+      '<button class="tr-link" data-regerar>' + (extra ? "Gerar outra extra" : "Gerar outra ficha") + "</button></div>" +
       "</section>";
+  }
 
-    // a linha inteira marca: alvo grande pra mao suada no meio do treino
-    tela.querySelectorAll("[data-ex]").forEach(function (li) {
-      li.addEventListener("click", function () { alternar(s, li.dataset.ex); });
-      // teclado: a linha e um botao, entao Enter e espaco marcam
-      li.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(s, li.dataset.ex); }
+  /* Liga os cartoes de ficha que estiverem na tela. Cada um sabe de qual
+     sessao e pelo data-sessao, entao marcar na extra nunca mexe na do dia. */
+  function ligarSessoes() {
+    S.anelDe = null;
+    tela.querySelectorAll("[data-sessao]").forEach(function (sec) {
+      var extra = sec.dataset.sessao === "extra";
+      var s = extra ? S.dia.extra : S.dia.sessao;
+      if (!s) return;
+      // a linha inteira marca: alvo grande pra mao suada no meio do treino
+      sec.querySelectorAll("[data-ex]").forEach(function (li) {
+        li.addEventListener("click", function () { alternar(s, li.dataset.ex); });
+        // teclado: a linha e um botao, entao Enter e espaco marcam
+        li.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(s, li.dataset.ex); }
+        });
+      });
+      sec.querySelector("[data-fechar]").addEventListener("click", function () { modalFechar(s); });
+      sec.querySelector("[data-regerar]").addEventListener("click", function () {
+        if (extra) modalManual("mais"); else modalRegerar();
       });
     });
-    document.getElementById("tFechar").addEventListener("click", function () { modalFechar(S.dia.sessao); });
-    document.getElementById("tRegerar").addEventListener("click", modalRegerar);
-    ligarManual();
   }
 
   function textoTempo(marcados, minutos) {
@@ -835,17 +1110,19 @@
     var feitos = (sessao.feitos || []).slice();
     var i = feitos.indexOf(id);
     if (i >= 0) feitos.splice(i, 1); else feitos.push(id);
-    S.anelDe = ((sessao.feitos || []).length) / ((sessao.ficha || []).length || 1);
-    S.acabou = i >= 0 ? null : id;
-    S.dia.sessao.feitos = feitos;
+    var extra = !!(S.dia.extra && sessao.id === S.dia.extra.id);
+    S.anelDe = {};
+    S.anelDe[sessao.id] = ((sessao.feitos || []).length) / ((sessao.ficha || []).length || 1);
+    S.acabou = i >= 0 ? null : sessao.id + ":" + id;
+    sessao.feitos = feitos;
     pintar();
     try {
       var r = await pedir("/sessoes/" + sessao.id + "/feitos", json("PUT", { feitos: feitos }));
       // o "Fechar treino" le daqui; antes ficava o valor de quando a tela abriu
       if (r && typeof r.duracao_estimada === "number") {
-        S.dia.duracao_estimada = r.duracao_estimada;
-        var vivo = tela.querySelector("[data-tempo]");
-        if (vivo) vivo.textContent = textoTempo((S.dia.sessao.feitos || []).length, r.duracao_estimada);
+        if (extra) S.dia.duracao_extra = r.duracao_estimada; else S.dia.duracao_estimada = r.duracao_estimada;
+        var vivo = tela.querySelector('[data-sessao="' + (extra ? "extra" : "dia") + '"] [data-tempo]');
+        if (vivo) vivo.textContent = textoTempo((sessao.feitos || []).length, r.duracao_estimada);
       }
     } catch (err) { avisar("Não salvou a marcação: " + err.message); }
   }

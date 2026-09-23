@@ -84,6 +84,7 @@ create table if not exists treino_sessoes (
   observacao    text default '',
   concluida     smallint default 0,
   -- 'ficha' = gerada pela IA; 'manual' = atividade que voce lancou na mao
+  -- 'extra' = ficha a mais no dia, gerada a partir do que voce disse que quer treinar
   origem        text default 'ficha',
   -- quando voce manda gerar de novo, a anterior fica e aponta pra nova
   regerada_de   uuid references treino_sessoes(id) on delete set null,
@@ -96,7 +97,7 @@ alter table treino_sessoes add constraint treino_sessoes_esforco_check
 
 alter table treino_sessoes drop constraint if exists treino_sessoes_origem_check;
 alter table treino_sessoes add constraint treino_sessoes_origem_check
-  check (origem in ('ficha', 'manual'));
+  check (origem in ('ficha', 'manual', 'extra'));
 
 create index if not exists idx_treino_sessoes_data on treino_sessoes(data desc);
 
