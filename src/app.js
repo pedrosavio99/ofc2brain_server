@@ -15,6 +15,7 @@ import { exigirPin, rotaDeAcesso, pinAtivo } from "./acesso.js";
 import trabalhoRouter from "../modulos/trabalho/servidor/index.js";
 import conversaRouter from "../modulos/conversa/servidor/index.js";
 import treinoRouter from "../modulos/treino/servidor/index.js";
+import metasRouter from "../modulos/metas/servidor/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -87,6 +88,9 @@ app.get("/api", (_req, res) => {
       "GET    /conversa/api/alma",
       "PUT    /conversa/api/alma              { perfil }",
       "POST   /conversa/api/destilar          { forcar? }",
+      "--- modulo metas ---",
+      "GET    /metas/api/health",
+      "GET    /metas/api/hoje                 (metas do dia ja verificadas)",
     ],
   });
 });
@@ -99,6 +103,7 @@ app.use(docsRouter);
 app.use("/trabalho", trabalhoRouter);
 app.use("/conversa", conversaRouter);
 app.use("/treino", treinoRouter);
+app.use("/metas", metasRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

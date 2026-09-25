@@ -1,0 +1,150 @@
+/* Balao de metas do dia. Usa os tokens do estilos.css (--superficie, --texto,
+   --sucesso...), entao acompanha o tema claro/escuro sozinho. */
+
+.bm {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  /* acima da barra do topo (30), abaixo da cortina (40), do menu (50),
+     da visao sinaptica (80) e da abertura (999) */
+  z-index: 35;
+  font-family: var(--fonte);
+}
+
+/* ---------- o balao ---------- */
+
+.bm-botao {
+  position: relative;
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  border: 1px solid rgba(207, 196, 255, .28);
+  /* fundo escuro SEMPRE, igual a abertura: o desenho e lavanda e sumiria no claro */
+  background: radial-gradient(circle at 50% 40%, #1A1030 0%, #0B0714 70%);
+  box-shadow: 0 6px 20px rgba(88, 86, 214, .35), 0 1px 3px rgba(0, 0, 0, .4);
+  display: grid; place-items: center;
+  padding: 0; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  animation: bm-flutuar 3.4s ease-in-out infinite;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.bm-botao img {
+  width: 34px; height: 34px;
+  user-select: none; -webkit-user-drag: none; pointer-events: none;
+}
+.bm-botao:active { transform: scale(.94); }
+.bm.aberto .bm-botao {
+  /* parado quando aberto: painel balancando junto cansa a leitura */
+  animation-play-state: paused;
+  box-shadow: 0 6px 24px rgba(88, 86, 214, .55), 0 1px 3px rgba(0, 0, 0, .4);
+}
+
+@keyframes bm-flutuar {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bm-botao { animation: none; }
+  .bm-painel { transition: none; }
+}
+
+/* o selinho "1/2" no canto do balao */
+.bm-selo {
+  position: absolute; top: -3px; right: -3px;
+  min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--acento); color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 22px; text-align: center;
+  border: 2px solid var(--fundo);
+  font-variant-numeric: tabular-nums;
+}
+.bm-selo.completo { background: var(--sucesso); }
+.bm-selo[hidden] { display: none; }
+
+/* ---------- o mini painel ---------- */
+
+.bm-painel {
+  position: absolute; right: 0; bottom: 66px;
+  width: min(290px, calc(100vw - 32px));
+  background: var(--superficie);
+  color: var(--texto);
+  border: 1px solid var(--separador);
+  border-radius: var(--r-grande);
+  box-shadow: var(--sombra), 0 12px 40px rgba(0, 0, 0, .18);
+  padding: 12px;
+  transform-origin: bottom right;
+  opacity: 0; transform: translateY(6px) scale(.97);
+  pointer-events: none;
+  transition: opacity .18s ease, transform .22s cubic-bezier(.32, .72, 0, 1);
+}
+.bm.aberto .bm-painel { opacity: 1; transform: none; pointer-events: auto; }
+
+.bm-cab {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 2px 4px 10px;
+}
+.bm-cab strong { font-size: 15px; font-weight: 700; }
+.bm-cab span { font-size: 12px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+
+.bm-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+.bm-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px; border-radius: var(--r-card);
+  background: var(--superficie-2);
+  color: inherit; text-decoration: none;
+}
+a.bm-item:active { opacity: .7; }
+
+/* avatar ou marcador redondo a esquerda */
+.bm-figura {
+  position: relative; flex: none;
+  width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--acento-eco); color: var(--acento);
+}
+.bm-figura img {
+  width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+  background: var(--superficie);
+}
+.bm-figura svg { width: 22px; height: 22px; }
+/* nao feita: o boneco fica apagado ate voce fazer */
+.bm-item.pendente .bm-figura img,
+.bm-item.erro .bm-figura img { filter: grayscale(1); opacity: .6; }
+
+/* o foguinho da ofensiva, pendurado no avatar */
+.bm-fogo {
+  position: absolute; right: -6px; bottom: -4px;
+  display: inline-flex; align-items: center; gap: 1px;
+  padding: 1px 5px 1px 3px;
+  border-radius: var(--r-pill);
+  background: var(--superficie); border: 1px solid var(--separador);
+  font-size: 11px; font-weight: 700; line-height: 16px;
+  color: var(--alerta);
+  font-variant-numeric: tabular-nums;
+}
+.bm-fogo.apagado { color: var(--texto-3); }
+.bm-fogo.apagado .bm-chama { filter: grayscale(1); opacity: .55; }
+
+.bm-texto { flex: 1; min-width: 0; }
+.bm-texto strong { display: block; font-size: 14px; font-weight: 600; }
+.bm-texto span {
+  display: block; font-size: 12px; color: var(--texto-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* marcador de estado a direita */
+.bm-marca {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 13px; font-weight: 800; line-height: 1;
+}
+.bm-item.feita .bm-marca     { background: var(--sucesso); color: #fff; }
+.bm-item.andamento .bm-marca { background: var(--alerta); color: #fff; }
+.bm-item.pendente .bm-marca  { border: 2px solid var(--texto-3); }
+.bm-item.erro .bm-marca      { background: var(--perigo); color: #fff; }
+
+.bm-aviso { font-size: 13px; color: var(--texto-2); padding: 6px 4px; }
+.bm-aviso button {
+  margin-left: 6px; border: 0; background: none; padding: 0;
+  color: var(--acento); font: inherit; font-weight: 600; cursor: pointer;
+}
