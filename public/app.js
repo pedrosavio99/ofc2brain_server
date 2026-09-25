@@ -516,17 +516,47 @@ function tamanhoDaBase() {
 }
 
 function atualizarResumoTopo() {
-  var el = $("#resumoTopo");
-  if (S.carregando) { el.textContent = "Carregando…"; return; }
   var n = S.notas.length;
   var lig = 0;
   S.notas.forEach(function (i) { lig += relsDe(i).length; });
   lig = Math.round(lig / 2);
   var tam = tamanhoDaBase();
+
+  /* Layout novo: a faixa de numeros abaixo da barra. Sem ela no HTML, cai no
+     texto antigo, pra nenhum passo da troca deixar a pagina quebrada. */
+  var faixa = $("#faixaResumo");
+  if (faixa) {
+    var c = S.carregando;
+    faixa.classList.toggle("carregando", !!c);
+    $("#numNotas").textContent = c ? "–" : n.toLocaleString("pt-BR");
+    $("#rotNotas").textContent = n === 1 ? "nota" : "notas";
+    $("#numLigacoes").textContent = c ? "–" : lig.toLocaleString("pt-BR");
+    $("#rotLigacoes").textContent = lig === 1 ? "ligação" : "ligações";
+    // sem a funcao armazenamento() no banco nao ha tamanho; o traco e honesto
+    $("#numEspaco").textContent = c || !tam ? "–" : tam;
+    return;
+  }
+
+  var el = $("#resumoTopo");
+  if (!el) return;
+  if (S.carregando) { el.textContent = "Carregando…"; return; }
   el.textContent = n === 0 ? "Nenhuma nota ainda."
     : n + " " + (n === 1 ? "nota" : "notas") + " · " + lig + " " + (lig === 1 ? "ligação" : "ligações") +
       (tam ? " · " + tam : "");
 }
+
+/* Atalhos da faixa. Ligacoes abre a visao sinaptica pelo mesmo botao da barra
+   (sem conhecer o sinapse.js por dentro). Espaco abre a tela de armazenamento,
+   que antes so se achava no menu. */
+(function () {
+  var lig = document.getElementById("statLigacoes");
+  var esp = document.getElementById("statEspaco");
+  if (lig) lig.addEventListener("click", function () {
+    var b = document.getElementById("btnSinapse");
+    if (b) b.click();
+  });
+  if (esp) esp.addEventListener("click", function () { telaArmazenamento(); });
+})();
 
 /* Dentro de uma area aberta: so os tipos que existem nela. */
 function chipsDeTipo() {

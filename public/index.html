@@ -9,6 +9,7 @@
 <!-- so a pagina inicial: o estilos.css e compartilhado com os modulos -->
 <link rel="stylesheet" href="/inicio.css" />
 <title>Segundo cérebro</title>
+<link rel="icon" type="image/svg+xml" href="/cerebro-mini.svg" />
 <!-- o SVG comeca a baixar junto com o HTML, senao a abertura pisca vazia -->
 <link rel="preload" as="image" href="/cerebro.svg" />
 <style>
@@ -39,7 +40,10 @@
 
 <header class="barra" id="barra">
   <div class="barra-int">
-    <span class="barra-titulo">Segundo cérebro</span>
+    <span class="barra-marca">
+      <img src="/cerebro-mini.svg" alt="" width="22" height="22" draggable="false" />
+      <span>Segundo cérebro</span>
+    </span>
     <div class="barra-acoes">
       <button class="icone-btn" id="btnSinapse" aria-label="Ver sinapses" title="Ver sinapses">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -56,8 +60,23 @@
 </header>
 
 <main class="envolucro">
-  <h1 class="titulao">Segundo cérebro</h1>
-  <p class="subtitulao" id="resumoTopo">Carregando…</p>
+  <!-- o nome visivel mora na barra; o h1 fica pra leitor de tela -->
+  <h1 class="so-leitor">Segundo cérebro</h1>
+
+  <div class="faixa-resumo carregando" id="faixaResumo">
+    <div class="stat">
+      <span class="stat-num" id="numNotas">–</span>
+      <span class="stat-rot" id="rotNotas">notas</span>
+    </div>
+    <button class="stat" id="statLigacoes" type="button" aria-label="Ver ligações na visão sináptica">
+      <span class="stat-num" id="numLigacoes">–</span>
+      <span class="stat-rot" id="rotLigacoes">ligações</span>
+    </button>
+    <button class="stat" id="statEspaco" type="button" aria-label="Ver armazenamento">
+      <span class="stat-num" id="numEspaco">–</span>
+      <span class="stat-rot">espaço</span>
+    </button>
+  </div>
 
   <div class="busca" id="caixaBusca">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
