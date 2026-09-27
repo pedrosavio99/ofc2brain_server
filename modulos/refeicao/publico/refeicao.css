@@ -1,0 +1,169 @@
+/* Refeicao - so o que e especifico do modulo.
+   Tokens, barra, sheet, botoes .btn e toast vem do /estilos.css do Segundo
+   Cerebro, carregado antes. Mesma receita do treino.css. */
+
+/* Cores dos macros, que so existem aqui. Mesmo mecanismo de tema do app. */
+:root { --proteina: #5856D6; --carbo: #FF9500; --gordura: #FF2D55; }
+html[data-tema="escuro"] { --proteina: #5E5CE6; --carbo: #FF9F0A; --gordura: #FF375F; }
+@media (prefers-color-scheme: dark) {
+  html[data-tema="sistema"] { --proteina: #5E5CE6; --carbo: #FF9F0A; --gordura: #FF375F; }
+}
+
+/* ---------- barra ---------- */
+
+.barra .voltar-barra { display: flex; align-items: center; gap: 2px; color: var(--acento);
+  text-decoration: none; font-size: 17px; padding: 6px 8px 6px 4px; }
+.barra .voltar-barra svg { width: 19px; height: 19px; }
+.barra-int { position: relative; }
+.barra .barra-titulo { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; }
+
+.dia-nav .dia-rotulo { font-size: 15px; font-weight: 600; color: var(--texto); min-width: 86px; }
+.dia-nav button { padding: 6px 10px; border-radius: 8px; color: var(--acento); font-size: 20px; line-height: 1; }
+.dia-nav button:disabled { color: var(--texto-3); cursor: default; }
+
+/* ---------- pagina ---------- */
+
+main.envolucro { display: grid; gap: 14px; align-content: start; }
+.rf-cabeca { padding: 4px 2px 0; }
+.rf-cabeca .subtitulao { margin-bottom: 2px; }
+
+.card { background: var(--superficie); border-radius: var(--r-grande); padding: 16px;
+  box-shadow: var(--sombra); }
+
+.rotulo { display: block; font-weight: 600; margin-bottom: 8px; font-size: 15.5px; }
+
+/* o .nota do app e um cartao de nota; aqui, nota e texto de apoio */
+.nota { margin: 0; padding: 0; background: none; border-radius: 0; box-shadow: none;
+  text-align: left; font-size: 13px; color: var(--texto-2); transition: none; }
+.nota:active { transform: none; }
+
+.titulo-secao { margin: 8px 4px 8px; font-size: 13px; font-weight: 600; color: var(--texto-2);
+  text-transform: uppercase; letter-spacing: .04em; }
+
+textarea, input[type="text"], input[type="number"], input[type="date"], select {
+  width: 100%; border: 1.5px solid var(--separador); border-radius: 12px;
+  background: var(--superficie-2); padding: 10px 12px; outline: none; font-size: 15px;
+}
+textarea { resize: vertical; min-height: 84px; }
+textarea:focus, input:focus, select:focus { border-color: var(--acento); box-shadow: 0 0 0 3px var(--acento-eco); }
+
+.linha-acoes { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.contador { font-size: 12px; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+
+.botao { border: 0; border-radius: var(--r-pill); padding: 9px 16px; cursor: pointer;
+  background: var(--superficie-2); font-weight: 600; font-size: 15px; }
+.botao.primario { background: var(--acento); color: #fff; }
+.botao.perigo { color: var(--perigo); }
+.botao.fino { padding: 6px 12px; font-size: 13px; font-weight: 500; }
+.botao:disabled { opacity: .5; cursor: default; }
+.botao:not(:disabled):active { transform: scale(.97); }
+.botao-link { border: 0; background: none; padding: 0; cursor: pointer; color: var(--acento); font-size: 13px; font-weight: 500; }
+.botao-link.perigo { color: var(--perigo); }
+
+.aviso { border-radius: var(--r-card); padding: 10px 14px; font-size: 13px;
+  background: color-mix(in srgb, var(--alerta) 14%, var(--superficie));
+  border: 1px solid color-mix(in srgb, var(--alerta) 40%, transparent); }
+
+/* ---------- resumo + ciclo de 14 dias ---------- */
+
+.resumo { display: grid; gap: 12px; }
+.resumo-kcal { display: flex; align-items: baseline; gap: 6px; }
+.resumo-kcal strong { font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.resumo-kcal span { color: var(--texto-2); }
+
+.macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.macro { display: grid; gap: 4px; }
+.macro-topo { display: flex; justify-content: space-between; font-size: 12px; color: var(--texto-2); }
+.macro-topo b { color: var(--texto); font-variant-numeric: tabular-nums; }
+.macro-barra { height: 5px; border-radius: 3px; background: var(--superficie-2); overflow: hidden; }
+.macro-barra i { display: block; height: 100%; border-radius: 3px; }
+
+/* A faixa do ciclo: uma barra por dia, como a tr-faixa do treino. */
+.semana { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; align-items: end; height: 68px; }
+.semana button { border: 0; background: none; padding: 0; cursor: pointer; height: 100%;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; }
+.semana i { width: 100%; max-width: 22px; border-radius: 4px 4px 2px 2px; background: var(--acento-eco); min-height: 3px; }
+.semana button.atual i { background: var(--acento); }
+.semana span { font-size: 9px; color: var(--texto-3); }
+.semana button.atual span { color: var(--texto); font-weight: 600; }
+.semana button:active i { opacity: .7; }
+
+/* ---------- rascunho ---------- */
+
+.rascunho { display: grid; gap: 10px; }
+.rascunho-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0 4px; }
+.rascunho-topo h2 { margin: 0; font-size: 17px; }
+
+.bloco { display: grid; gap: 10px; }
+.bloco-topo { display: flex; align-items: center; gap: 10px; }
+.bloco-topo select { width: auto; flex: 1; font-weight: 600; }
+.bloco-topo .kcal { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bloco-topo h3 { flex: 1; min-width: 0; }
+.bloco-acoes { display: flex; gap: 14px; flex-wrap: wrap; }
+.bloco-erro { color: var(--perigo); font-size: 13px; }
+
+/* O .item do app e o item do menu; aqui e a linha de alimento. O escopo
+   .itens desfaz o que vem de la (padding, hover, largura). */
+.itens { display: grid; gap: 0; border-top: 1px solid var(--separador); }
+.itens .item { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 10px 0;
+  width: auto; min-height: 0; border-bottom: 1px solid var(--separador); }
+.itens .item:hover { background: none; }
+.itens .item:last-child { border-bottom: 0; }
+.item-nome input { background: none; border-color: transparent; padding: 4px 6px; margin-left: -6px; font-weight: 600; }
+.item-nome input:focus { background: var(--superficie-2); }
+.item-kcal { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; align-self: center; }
+.item-linha { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--texto-2); }
+.item-linha input[type="number"] { width: 84px; padding: 6px 8px; font-variant-numeric: tabular-nums; }
+.item-obs { grid-column: 1 / -1; font-size: 12px; color: var(--texto-2); }
+
+.selo { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: var(--r-pill); background: var(--superficie-2); color: var(--texto-2); }
+.selo.conferir { background: color-mix(in srgb, var(--alerta) 18%, transparent); color: var(--alerta); }
+.selo.texto { background: var(--acento-eco); color: var(--acento); }
+.remover { border: 0; background: none; color: var(--texto-3); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 4px; margin-left: auto; }
+.remover:hover { color: var(--perigo); }
+
+.rodape-rascunho { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rodape-rascunho label { font-size: 13px; color: var(--texto-2); display: flex; align-items: center; gap: 8px; }
+.rodape-rascunho input[type="date"] { width: auto; }
+.rodape-rascunho .espaco { flex: 1; }
+
+/* ---------- salvas ---------- */
+
+.salva .bloco-topo h3 { margin: 0; font-size: 15px; flex: 1; }
+.salva-texto { font-size: 13px; color: var(--texto-2); margin: 0; }
+.card.vazio { padding: 28px 14px; font-size: 15px; }
+
+/* ---------- tamanho do prato (P M G) ---------- */
+
+.tamanhos { display: inline-flex; padding: 2px; gap: 2px; border-radius: 9px;
+  background: var(--superficie-2); flex: none; }
+.tamanhos button { border: 0; background: none; cursor: pointer; min-width: 30px; padding: 4px 8px;
+  border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--texto-2); }
+.tamanhos button.ativo { background: var(--superficie); color: var(--texto); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+
+/* ---------- folha (o modal do app) ---------- */
+
+.rf-veu { position: fixed; inset: 0; z-index: 49; background: rgba(0,0,0,.45);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+.rf-veu.aberto { opacity: 1; pointer-events: auto; }
+
+.rf-dia-kcal { display: flex; align-items: baseline; gap: 6px; }
+.rf-dia-kcal strong { font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.rf-dia-kcal span { color: var(--texto-2); }
+.rf-dia-macros { margin: 2px 0 12px; font-size: 14px; color: var(--texto-2); }
+.rf-dia-lista { border-top: 1px solid var(--separador); margin-bottom: 16px; }
+.rf-dia-linha { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 11px 0; border-bottom: 1px solid var(--separador); }
+.rf-dia-linha b { display: block; font-size: 15.5px; font-weight: 600; }
+.rf-dia-linha span { display: block; font-size: 13px; color: var(--texto-2); }
+.rf-dia-linha em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rf-folha-carregando { color: var(--texto-2); padding: 8px 0 16px; }
+.sheet .btn-largo { margin: 4px 0 20px; }
+
+/* ---------- miudos ---------- */
+
+.girando { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px;
+  border: 2px solid currentColor; border-right-color: transparent; animation: gira .8s linear infinite; margin-right: 6px; }
+@keyframes gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .girando { animation-duration: 2s; } }

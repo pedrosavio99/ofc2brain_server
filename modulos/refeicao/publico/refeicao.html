@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="sistema">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<!-- Reaproveita os tokens e componentes do Segundo Cerebro.
+     refeicao.css so acrescenta o que e especifico daqui. -->
+<link rel="stylesheet" href="/estilos.css" />
+<link rel="stylesheet" href="/refeicao/refeicao.css" />
+<title>Refeições</title>
+<link rel="icon" type="image/svg+xml" href="/cerebro-mini.svg" />
+<script>
+  // Antes da primeira pintura, senao o tema escuro pisca branco.
+  try { document.documentElement.dataset.tema = localStorage.getItem("2brain-tema") || "sistema"; } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="barra" id="barra">
+  <div class="barra-int">
+    <a class="voltar-barra" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      <span class="voltar-txt">Segundo cérebro</span>
+    </a>
+    <span class="barra-titulo">Refeições</span>
+    <nav class="dia-nav barra-acoes" aria-label="Escolher dia">
+      <button type="button" id="diaAntes" aria-label="Dia anterior">‹</button>
+      <button type="button" id="diaRotulo" class="dia-rotulo" title="Voltar para hoje">Hoje</button>
+      <button type="button" id="diaDepois" aria-label="Próximo dia">›</button>
+    </nav>
+  </div>
+</header>
+
+<main class="envolucro">
+  <div class="rf-cabeca">
+    <h1 class="titulao">Refeições</h1>
+    <p class="subtitulao">Escreva como comeu; a conta é do sistema.</p>
+  </div>
+
+  <div id="aviso" class="aviso" hidden></div>
+
+  <!-- resumo do dia + o ciclo de 14 dias -->
+  <section class="card resumo" aria-live="polite">
+    <div class="resumo-kcal"><strong id="totKcal">–</strong><span>kcal</span></div>
+    <div class="macros" id="totMacros"></div>
+    <div class="semana" id="semana" aria-label="Ciclo de 14 dias"></div>
+  </section>
+
+  <!-- escrever -->
+  <section class="card" id="cardEscrever">
+    <label for="texto" class="rotulo">Como foi sua refeição?</label>
+    <textarea id="texto" rows="4" maxlength="2000"
+      placeholder="Ex.: almocei arroz, feijão, um bife e salada. Ou o dia todo: de manhã pão com ovo e café com leite, almoço marmita de frango, à noite um açaí de 500 ml."></textarea>
+    <div class="linha-acoes">
+      <span class="contador" id="contador">0/2000</span>
+      <button type="button" class="botao primario" id="btnAnalisar">Calcular</button>
+    </div>
+  </section>
+
+  <!-- rascunho: separar e medir -->
+  <section id="rascunho" hidden></section>
+
+  <!-- refeicoes salvas no dia -->
+  <section>
+    <h2 class="titulo-secao" id="tituloDia">Hoje</h2>
+    <div id="listaDia"></div>
+  </section>
+</main>
+
+<!-- Folha unica, na .sheet do app: fundo, animacao e o comportamento em tela
+     grande ja vem do estilos.css, como no treino. O veu escuro e a parte nossa. -->
+<div class="rf-veu" id="veu"></div>
+<aside class="sheet" id="folha" role="dialog" aria-modal="true">
+  <div class="puxador"></div>
+  <div class="sheet-cab">
+    <h3 id="folhaTitulo"></h3>
+    <button class="icone-btn" id="btnFecharFolha" aria-label="Fechar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="sheet-corpo" id="folhaCorpo"></div>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="/pin.js"></script>
+<script src="/refeicao/refeicao.js"></script>
+</body>
+</html>

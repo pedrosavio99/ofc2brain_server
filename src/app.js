@@ -16,6 +16,7 @@ import trabalhoRouter from "../modulos/trabalho/servidor/index.js";
 import conversaRouter from "../modulos/conversa/servidor/index.js";
 import treinoRouter from "../modulos/treino/servidor/index.js";
 import metasRouter from "../modulos/metas/servidor/index.js";
+import refeicaoRouter from "../modulos/refeicao/servidor/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -88,6 +89,14 @@ app.get("/api", (_req, res) => {
       "GET    /conversa/api/alma",
       "PUT    /conversa/api/alma              { perfil }",
       "POST   /conversa/api/destilar          { forcar? }",
+      "--- modulo refeicao ---",
+      "GET    /refeicao                       (tela do modulo)",
+      "GET    /refeicao/api/health",
+      "POST   /refeicao/api/analisar          { texto } (separa e mede)",
+      "POST   /refeicao/api/refeicoes         { data?, refeicoes } (grava, recalcula tudo)",
+      "GET    /refeicao/api/dia               ?data=",
+      "GET    /refeicao/api/dias              ?ate=&quantos=14",
+      "GET    /refeicao/api/ciclos            ?n=26",
       "--- modulo metas ---",
       "GET    /metas/api/health",
       "GET    /metas/api/hoje                 (metas do dia ja verificadas)",
@@ -104,6 +113,7 @@ app.use("/trabalho", trabalhoRouter);
 app.use("/conversa", conversaRouter);
 app.use("/treino", treinoRouter);
 app.use("/metas", metasRouter);
+app.use("/refeicao", refeicaoRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

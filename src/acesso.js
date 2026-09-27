@@ -45,7 +45,7 @@ export function conferirPin(valor) {
    segmento so": /ideias, /insight e /backup tambem tem um segmento e SAO dados.
    Sem a entrada, a pagina do modulo cai no 401 e o navegador mostra o JSON cru
    em vez da tela. Foi o que aconteceu quando o treino entrou. */
-const CASCA = ["/", "/trabalho", "/conversa", "/treino"];
+const CASCA = ["/", "/trabalho", "/conversa", "/treino", "/refeicao"];
 const ESTATICO = /\.(js|mjs|css|html|svg|png|jpe?g|gif|webp|ico|webmanifest|woff2?|ttf|map)$/i;
 
 /** Este caminho pode ser servido sem PIN? Puro. */
