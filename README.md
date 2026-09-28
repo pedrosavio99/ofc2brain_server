@@ -7,6 +7,9 @@ com você em cima disso.
 Não é um app de notas com IA colada por cima. A diferença está em três decisões de arquitetura
 que atravessam o projeto inteiro, e que vale explicar antes de qualquer instrução de instalação.
 
+<img width="1312" height="1199" alt="image" src="https://github.com/user-attachments/assets/26d49568-28b0-4365-99ab-e995e03d14ec" />
+
+
 ## Por que ele funciona assim
 
 ### 1. A IA sugere, o código decide
