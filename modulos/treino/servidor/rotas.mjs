@@ -277,8 +277,8 @@ export async function rotear(req, res, rota, url) {
       modo: "extra", feitosHoje,
       rejeitada: extraAberta ? extraAberta.ficha : null,
     });
-    exigir(gerada.ficha.length, 502, "O modelo nao devolveu exercicio nenhum valido.",
-      "Tente de novo; se repetir, troque o local ou reescreva o pedido.");
+    exigir(gerada.ficha.length, 502, "Nao consegui montar a ficha extra.",
+      (gerada.falhas || []).join(" | ") || "Tente de novo ou reescreva o pedido.");
 
     const sessao = await criarSessao({
       origem: "extra",
@@ -319,8 +319,8 @@ export async function rotear(req, res, rota, url) {
          o "gerar outra" devolvia quase a mesma. */
       rejeitada: anterior && !anterior.concluida ? anterior.ficha : null,
     });
-    exigir(gerada.ficha.length, 502, "O modelo nao devolveu exercicio nenhum valido.",
-      "Tente de novo; se repetir, revise os equipamentos cadastrados.");
+    exigir(gerada.ficha.length, 502, "Nao consegui montar a ficha de hoje.",
+      (gerada.falhas || []).join(" | ") || "Revise os equipamentos cadastrados.");
 
     const sessao = await criarSessao({
       ficha: gerada.ficha,

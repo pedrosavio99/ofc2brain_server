@@ -9,11 +9,17 @@
  * O QUE ELE NAO DECIDE: o total. Esse sai de calcularItem() em nutricao.mjs,
  * pra porcao corrigida na tela refazer a conta sem nova chamada.
  *
- * Diferente da separacao, aqui NAO tem fallback inventado: caloria chutada por
- * regra fixa seria pior que erro honesto. Falhou, a refeicao volta com erro e
- * a tela deixa tentar de novo so ela.
+ * Degraus, na ordem: Gemini (TODAS as chaves e modelos do .env) e, se nenhum
+ * responder, Groq. Nao existe terceiro degrau: caloria chutada por regra fixa
+ * seria pior que erro honesto. Falhou nos dois, a refeicao volta com o MOTIVO
+ * de cada tentativa e a tela deixa tentar de novo so ela.
+ *
+ * Por que percorrer chave e modelo: usar so o primeiro de cada faz uma chave
+ * sem cota derrubar a medicao inteira em milissegundos.
  */
-import { gerarJSON } from "./ia/gemini.mjs";
+import {
+  gemini, groq, porQue, chavesGemini, modelosGemini, chavesGroq, modelosGroq,
+} from "../../../src/ia-rapida.js";
 import { calcularItem, somar, tipoValido, tamanhoValido, TIPOS } from "./nutricao.mjs";
 
 const SISTEMA = [
@@ -62,18 +68,69 @@ export function normalizarMedicao(dados) {
   })).filter((it) => it.nome && it.gramas > 0);
 }
 
+/* Orcamento: as refeicoes sao medidas em PARALELO, entao o teto aqui e por
+   refeicao e ja conta com os 60 s da funcao na Vercel. */
+const PRAZO_GEMINI = Number(process.env.REFEICAO_PRAZO_GEMINI_MS || 15000);
+const TETO_GEMINI = Number(process.env.REFEICAO_TETO_GEMINI_MS || 24000);
+const PRAZO_GROQ = Number(process.env.REFEICAO_PRAZO_GROQ_MS || 12000);
+const TETO_GROQ = Number(process.env.REFEICAO_TETO_GROQ_MS || 15000);
+
+/** Percorre modelo x chave ate alguem responder ou o teto acabar. */
+async function percorrer(chaves, modelos, teto, prazo, chamar, motivos) {
+  const fim = Date.now() + teto;
+  if (!chaves.length) { motivos.push("sem chave no .env"); return null; }
+  for (const modelo of modelos) {
+    for (let i = 0; i < chaves.length; i++) {
+      if (Date.now() >= fim) { motivos.push(`${modelo}: tempo esgotado`); return null; }
+      const rotulo = modelo + (chaves.length > 1 ? ` (chave ${i + 1})` : "");
+      try {
+        const dados = await chamar(chaves[i], modelo,
+          Math.min(prazo, Math.max(2000, fim - Date.now())));
+        return { dados, modelo: rotulo };
+      } catch (e) {
+        motivos.push(porQue(e, rotulo));
+      }
+    }
+  }
+  return null;
+}
+
 export async function medirRefeicao({ tipo, texto }, hora) {
   const t = tipoValido(tipo, hora);
   const limpo = String(texto || "").trim().slice(0, 600);
-  const { dados, meta } = await gerarJSON(SISTEMA,
-    `Refeicao: ${TIPOS[t].rotulo}\nO que a pessoa escreveu: """${limpo}"""`, {
-      temperatura: 0.2,
-      maxTokens: 8192,
-      // 2 tentativas de 18 s cabem, com o Groq antes, nos 60 s da Vercel
-      prazoMs: 18000,
-    });
-  const itens = normalizarMedicao(dados);
-  if (!itens.length) throw new Error("o modelo nao devolveu nenhum item valido");
-  return { tipo: t, rotulo: TIPOS[t].rotulo, tamanho: tamanhoValido(dados && dados.tamanho),
-    texto: limpo, itens, totais: somar(itens), meta };
+  const prompt = `Refeicao: ${TIPOS[t].rotulo}\nO que a pessoa escreveu: """${limpo}"""`;
+  const motivos = [];
+
+  let fonte = "gemini";
+  let r = await percorrer(chavesGemini(), modelosGemini(), TETO_GEMINI, PRAZO_GEMINI,
+    (chave, modelo, prazoMs) => gemini(SISTEMA, prompt, { chave, modelo, prazoMs, temperatura: 0.2 }),
+    motivos);
+
+  if (!r) {
+    fonte = "groq";
+    r = await percorrer(chavesGroq(), modelosGroq(), TETO_GROQ, PRAZO_GROQ,
+      (chave, modelo, prazoMs) => groq(SISTEMA, prompt, { chave, modelo, prazoMs, temperatura: 0.2 }),
+      motivos);
+  }
+
+  if (!r) {
+    const erro = new Error("nenhum modelo mediu esta refeicao");
+    erro.motivos = motivos;
+    throw erro;
+  }
+
+  const itens = normalizarMedicao(r.dados);
+  if (!itens.length) {
+    const erro = new Error(`${r.modelo} respondeu sem item valido`);
+    erro.motivos = motivos.concat(`${r.modelo}: sem item valido`);
+    throw erro;
+  }
+
+  return {
+    tipo: t, rotulo: TIPOS[t].rotulo, tamanho: tamanhoValido(r.dados && r.dados.tamanho),
+    texto: limpo, itens, totais: somar(itens),
+    meta: { fonte, modelo: r.modelo },
+    // o que falhou antes de dar certo; a tela avisa quando veio do reserva
+    avisos: motivos,
+  };
 }

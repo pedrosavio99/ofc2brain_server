@@ -423,6 +423,25 @@ select.campo {
 .tr-esq-item > div { flex: 1; }
 .tr-esq-legenda { text-align: center; font-size: 14px; color: var(--texto-2); margin: 4px 0 14px; }
 
+/* ---------- progresso da geracao ---------- */
+
+.tr-prog { margin-bottom: 14px; display: grid; gap: 10px; }
+.tr-prog-tit { margin: 0; font-size: 16px; font-weight: 600; }
+.tr-prog-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tr-prog-lista li { display: flex; align-items: center; gap: 10px; font-size: 14px;
+  color: var(--texto-3); transition: color .2s ease; }
+.tr-prog-lista li.agora { color: var(--texto); font-weight: 600; }
+.tr-prog-lista li.feito { color: var(--texto-2); }
+.tr-prog-bolha { width: 14px; height: 14px; border-radius: 50%; flex: none;
+  border: 2px solid var(--separador); }
+.tr-prog-lista li.agora .tr-prog-bolha { border-color: var(--acento);
+  border-right-color: transparent; animation: gira-prog .8s linear infinite; }
+.tr-prog-lista li.feito .tr-prog-bolha { border-color: var(--texto-3); background: var(--texto-3); }
+@keyframes gira-prog { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tr-prog-lista li.agora .tr-prog-bolha { animation-duration: 2.4s; } }
+.tr-prog-tempo { margin: 0; font-size: 13px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.tr-prog-tempo b { font-size: 15px; color: var(--texto); }
+
 /* Entrada so na PRIMEIRA pintura: um momento so, nao a cada toque. */
 .tr-entra .tr-cartao { animation: entrar .35s cubic-bezier(.32,.72,0,1) both; }
 .tr-entra .tr-cartao:nth-child(2) { animation-delay: .05s; }

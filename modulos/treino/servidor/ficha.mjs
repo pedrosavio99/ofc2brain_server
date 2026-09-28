@@ -14,7 +14,16 @@
  *
  * A parte pura (resumo, blocos do prompt, normalizacao) e testavel sem rede.
  */
-import { gerarJSONDetalhado } from "../../../src/geminiClient.js";
+/* Clientes ENXUTOS, os mesmos do modulo refeicao: uma chamada, um modelo, com
+   prazo. O geminiClient.js do app percorre modelo x chave x com/sem pensamento
+   e ainda pergunta a API quais modelos existem: pode passar de minutos, e a
+   funcao da Vercel morre em 60s antes de qualquer fallback.
+   Acoplamento consciente com o modulo refeicao: se ele sair, copie os dois
+   arquivos de servidor/ia pra ca. */
+import {
+  gemini, groq, porQue, chavesGemini, modelosGemini, chavesGroq, modelosGroq,
+} from "../../../src/ia-rapida.js";
+import { fichaPorRegras } from "./ficha-regras.mjs";
 import { metValido, minutosDoItem } from "./calorias.mjs";
 import { JANELA_DIAS, hojeLocal } from "./banco.mjs";
 import { TIPOS, GRUPOS, tipoValido } from "./equipamentos.mjs";
@@ -354,22 +363,125 @@ export function promptDaFicha({ perfil, equipamentos, sessoes, pedido = "", loca
   ].filter(Boolean).join("\n\n");
 }
 
+/* Prazos. Somados dao menos de 30s, dentro do maxDuration 60 da Vercel e,
+   mais importante, dentro do que alguem aguenta esperar em pe na academia.
+   Da pra afrouxar pelo .env sem mexer em codigo. */
+/* Orcamento. Cada TENTATIVA tem prazo curto, e cada DEGRAU tem teto: com 2
+   chaves e 2 modelos, o Gemini pode tentar 4 vezes, mas para de tentar quando
+   o teto do degrau acaba. Somado da menos de 40s, dentro do maxDuration 60 da
+   Vercel e do que da pra esperar em pe na academia. */
+const PRAZO_TENTATIVA_GEMINI = Number(process.env.TREINO_PRAZO_GEMINI_MS || 12000);
+const TETO_GEMINI = Number(process.env.TREINO_TETO_GEMINI_MS || 20000);
+const PRAZO_TENTATIVA_GROQ = Number(process.env.TREINO_PRAZO_GROQ_MS || 15000);
+const TETO_GROQ = Number(process.env.TREINO_TETO_GROQ_MS || 20000);
+
+/* Prompt menor pro Groq: prompt grande e o que mais faz modelo estourar tempo
+   e devolver JSON cortado. */
+function encurtar(texto, limite = 5000) {
+  const t = String(texto || "");
+  return t.length <= limite ? t : t.slice(0, limite) + "\n\n[historico cortado para caber no modelo reserva]";
+}
+
 /**
- * Gera a ficha. Lanca quando o Gemini falha: ficha inventada por regra fixa
- * seria pior que erro honesto.
+ * Gera a ficha em tres degraus:
+ *   1. Gemini: percorre TODAS as chaves e modelos do .env, ate o teto de tempo.
+ *   2. Groq: mesma coisa, com os modelos do .env mais os padroes.
+ *   3. Regras locais, instantaneo.
+ *
+ * Duas licoes que estao no codigo de proposito:
+ * - Usar so a primeira chave e o primeiro modelo faz uma chave sem cota
+ *   derrubar o degrau inteiro em milissegundos. Por isso percorre tudo.
+ * - Insistir sem teto faz a Vercel matar a funcao em 60s e voce ficar sem
+ *   treino. Por isso cada degrau tem orcamento.
+ *
+ * O MOTIVO de cada falha volta em "passos" E entra no texto da ficha quando
+ * ela nao veio da IA principal: aviso que some em 3s nao conserta .env.
  */
 export async function gerarFicha(opcoes) {
   const local = localValido(opcoes.local);
   const prompt = promptDaFicha({ ...opcoes, local });
+  const sistema = sistemaDaFicha(local, opcoes.modo);
+  const passos = [];
 
-  /* 8192 porque com GEMINI_THINKING=HIGH o raciocinio gasta do mesmo teto da
-     resposta; com menos o JSON era cortado. 0.8 e nao 0.7: um pouco mais de
-     variacao ajuda contra ficha repetida, e as regras seguram o resto. */
-  const { dados, meta } = await gerarJSONDetalhado(sistemaDaFicha(local, opcoes.modo), prompt, {
-    temperatura: 0.8,
-    maxTokens: 8192,
+  /* Percorre modelo x chave chamando "executar". Para no primeiro sucesso, no
+     fim da lista ou quando o teto de tempo do degrau acaba. */
+  async function degrau(nome, chaves, modelos, teto, executar) {
+    const fim = Date.now() + teto;
+    if (!chaves.length) {
+      passos.push({ degrau: nome, modelo: "", ms: 0, ok: false,
+        motivo: `sem chave no .env (${nome === "gemini" ? "GEMINI_API_KEYS" : "GROQ_API_KEY"})` });
+      return null;
+    }
+    for (const modelo of modelos) {
+      for (let i = 0; i < chaves.length; i++) {
+        if (Date.now() >= fim) {
+          passos.push({ degrau: nome, modelo, ms: 0, ok: false, motivo: "tempo do degrau esgotado" });
+          return null;
+        }
+        const inicio = Date.now();
+        const rotulo = modelo + (chaves.length > 1 ? ` (chave ${i + 1})` : "");
+        try {
+          const dados = await executar(chaves[i], modelo, Math.min(
+            nome === "gemini" ? PRAZO_TENTATIVA_GEMINI : PRAZO_TENTATIVA_GROQ,
+            Math.max(2000, fim - Date.now())
+          ));
+          const limpa = normalizarFicha(dados, opcoes.equipamentos, local);
+          const ms = Date.now() - inicio;
+          if (limpa.ficha.length) {
+            passos.push({ degrau: nome, modelo: rotulo, ms, ok: true });
+            return { limpa, modelo: rotulo, ms };
+          }
+          passos.push({ degrau: nome, modelo: rotulo, ms, ok: false, motivo: `${rotulo}: veio sem exercicio valido` });
+        } catch (e) {
+          passos.push({ degrau: nome, modelo: rotulo, ms: Date.now() - inicio, ok: false, motivo: porQue(e, rotulo) });
+        }
+      }
+    }
+    return null;
+  }
+
+  const comGemini = await degrau("gemini", chavesGemini(), modelosGemini(), TETO_GEMINI,
+    (chave, modelo, prazoMs) => gemini(sistema, prompt, { chave, modelo, prazoMs, temperatura: 0.8 }));
+  if (comGemini) {
+    return { ...comGemini.limpa, meta: { provedor: "gemini", modelo: comGemini.modelo, fonte: "gemini" },
+      prompt, passos, falhas: passos.filter((p) => !p.ok).map((p) => p.motivo) };
+  }
+
+  const comGroq = await degrau("groq", chavesGroq(), modelosGroq(), TETO_GROQ,
+    (chave, modelo, prazoMs) => groq(sistema, encurtar(prompt), { chave, modelo, prazoMs, temperatura: 0.6 }));
+
+  const porques = passos.filter((p) => !p.ok).map((p) => p.motivo).join("; ");
+
+  if (comGroq) {
+    return {
+      ...comGroq.limpa,
+      // o porque fica no texto da ficha, que nao some da tela
+      motivo: "(modelo reserva: " + comGroq.modelo + ") " + comGroq.limpa.motivo +
+        "\n\nA IA principal nao respondeu: " + porques + ".",
+      meta: { provedor: "groq", modelo: comGroq.modelo, fonte: "groq" },
+      prompt, passos, falhas: passos.filter((p) => !p.ok).map((p) => p.motivo),
+    };
+  }
+
+  // 3. sem rede: o que o proprio app sabe sobre os ultimos 14 dias
+  const inicio = Date.now();
+  const crua = fichaPorRegras({
+    equipamentos: opcoes.equipamentos,
+    sessoes: opcoes.sessoes,
+    perfil: opcoes.perfil,
+    local,
+    modo: opcoes.modo,
+    feitosHoje: opcoes.feitosHoje,
+    hoje: opcoes.hoje,
   });
+  const limpa = normalizarFicha(crua, opcoes.equipamentos, local);
+  passos.push({ degrau: "regras", modelo: "catalogo local", ms: Date.now() - inicio,
+    ok: limpa.ficha.length > 0, motivo: limpa.ficha.length ? "" : "sem exercicio possivel aqui" });
 
-  const limpa = normalizarFicha(dados, opcoes.equipamentos, local);
-  return { ...limpa, meta, prompt };
+  return {
+    ...limpa,
+    motivo: crua.motivo + "\n\nPor que nenhuma IA entrou: " + porques + ". Conserte isso no .env e gere outra.",
+    meta: { provedor: "regras", modelo: "catalogo local", fonte: "regras" },
+    prompt, passos, falhas: passos.filter((p) => !p.ok).map((p) => p.motivo),
+  };
 }

@@ -11,8 +11,7 @@
  * So separa. Nao mede, nao mexe em quantidade, copia o trecho como voce escreveu.
  * Nunca falha pra fora: o pior caso e o texto inteiro virar uma refeicao.
  */
-import { chatJSON } from "./ia/groq.mjs";
-import { explicarFalha } from "./ia/json.mjs";
+import { groq, porQue, chavesGroq, modelosGroq } from "../../../src/ia-rapida.js";
 import { TIPOS, tipoValido, tipoPelaHora } from "./nutricao.mjs";
 
 export const MAX_TEXTO = 2000;
@@ -126,20 +125,34 @@ export async function separarRefeicoes(texto, hora) {
   const pelaRegra = separarPorRegra(limpo, hora);
   if (pelaRegra.length >= 2) return { refeicoes: pelaRegra, fonte: "regra", erro: "" };
 
-  try {
-    const { dados, meta } = await chatJSON(sistema(hora), `Relato: """${limpo}"""`, {
-      temperatura: 0.1,
-      maxTokens: 1024,
-      tentativas: 2,
-      // falhar rapido: a regra separa quando o Groq nao responde
-      prazoMs: 8000,
-    });
-    return { refeicoes: normalizarSeparacao(dados, limpo, hora), fonte: "ia", erro: "", meta };
-  } catch (e) {
-    return {
-      refeicoes: separarPorRegra(limpo, hora),
-      fonte: "regra",
-      erro: explicarFalha(e, "Groq", "GROQ_MODEL_RAPIDA", "GROQ_API_KEY"),
-    };
+  /* Percorre modelo x chave: usar so o primeiro de cada fazia uma chave sem
+     cota derrubar a separacao inteira. Prazo curto e teto: a regra separa
+     bem, entao nao vale segurar a tela esperando modelo. */
+  const chaves = chavesGroq();
+  const modelos = modelosGroq();
+  const fim = Date.now() + Number(process.env.REFEICAO_TETO_SEPARAR_MS || 12000);
+  const motivos = [];
+
+  for (const modelo of modelos) {
+    for (let i = 0; i < chaves.length; i++) {
+      if (Date.now() >= fim) { motivos.push(`${modelo}: tempo esgotado`); break; }
+      const rotulo = modelo + (chaves.length > 1 ? ` (chave ${i + 1})` : "");
+      try {
+        const dados = await groq(sistema(hora), `Relato: """${limpo}"""`, {
+          chave: chaves[i], modelo, temperatura: 0.1, maxTokens: 1024,
+          prazoMs: Math.min(8000, Math.max(2000, fim - Date.now())),
+        });
+        return { refeicoes: normalizarSeparacao(dados, limpo, hora), fonte: "ia", erro: "",
+          meta: { modelo: rotulo }, avisos: motivos };
+      } catch (e) {
+        motivos.push(porQue(e, rotulo));
+      }
+    }
   }
+
+  return {
+    refeicoes: separarPorRegra(limpo, hora),
+    fonte: "regra",
+    erro: motivos.slice(0, 3).join("; ") || "sem chave da Groq no .env",
+  };
 }

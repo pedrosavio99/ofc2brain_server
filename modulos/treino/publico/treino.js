@@ -339,14 +339,14 @@
       dados.pedido = pedido;
       S.ultimoLocal = dados.local;
       fechar();
-      // o Gemini leva uns segundos: o esqueleto diz que a ficha esta sendo montada
-      tela.innerHTML = esqueleto("ficha");
+      var pararX = painelProgresso("Montando sua ficha extra…");
       try {
-        await pedir("/ficha/extra", json("POST", dados));
+        var rx = await pedir("/ficha/extra", json("POST", dados));
         avisar("Ficha extra pronta.");
+        avisarOrigem(rx);
       } catch (err) {
         avisar(err.message);
-      }
+      } finally { pararX(); }
       carregar();
     });
   }
@@ -1127,18 +1127,74 @@
     } catch (err) { avisar("Não salvou a marcação: " + err.message); }
   }
 
+  /* Quem montou a ficha. So fala quando NAO foi a IA principal: no caminho
+     normal o aviso seria ruido. */
+  var NOME_DEGRAU = { gemini: "IA principal", groq: "modelo reserva", regras: "seu histórico de 14 dias" };
+
+  /* Espera com cara de espera: os tres degraus na tela, o de agora girando, e o
+     cronometro. Os tempos batem com os prazos do servidor (18s e 10s), entao o
+     que aparece aqui e o que esta acontecendo la, nao enfeite.
+     Devolve a funcao que encerra o cronometro. */
+  function painelProgresso(titulo) {
+    var PASSOS = [
+      { chave: "gemini", txt: "Consultando a IA principal", ate: 18 },
+      { chave: "groq", txt: "IA principal não respondeu; chamando o modelo reserva", ate: 28 },
+      { chave: "regras", txt: "Montando pelo seu histórico dos últimos 14 dias", ate: 999 },
+    ];
+    tela.innerHTML = '<div class="card tr-prog">' +
+      '<p class="tr-prog-tit">' + esc(titulo || "Montando seu treino…") + "</p>" +
+      '<ol class="tr-prog-lista">' + PASSOS.map(function (p, i) {
+        return '<li data-passo="' + i + '"><span class="tr-prog-bolha"></span>' + esc(p.txt) + "</li>";
+      }).join("") + "</ol>" +
+      '<p class="tr-prog-tempo"><b>0s</b><span> · no máximo 30s, depois disso eu monto sem IA</span></p>' +
+      "</div>" + esqueleto("ficha").replace(/^<p class="tr-esq-legenda">[^<]*<\/p>/, "");
+
+    var t0 = Date.now();
+    var timer = setInterval(function () {
+      var s = Math.round((Date.now() - t0) / 1000);
+      var atual = 0;
+      PASSOS.forEach(function (p, i) { if (s >= p.ate) atual = i + 1; });
+      var alvo = tela.querySelector(".tr-prog-tempo b");
+      if (!alvo) return clearInterval(timer);
+      alvo.textContent = s + "s";
+      tela.querySelectorAll(".tr-prog-lista li").forEach(function (li, i) {
+        li.className = i < atual ? "feito" : i === atual ? "agora" : "";
+      });
+    }, 250);
+    tela.querySelectorAll(".tr-prog-lista li")[0].className = "agora";
+    return function () { clearInterval(timer); };
+  }
+
+  /* O que aconteceu de verdade, com modelo e tempo. So fala quando algum degrau
+     falhou: no caminho feliz o aviso seria ruido. */
+  function avisarOrigem(r) {
+    var passos = (r && r.passos) || [];
+    var ruins = passos.filter(function (p) { return !p.ok; });
+    if (!ruins.length) return;
+    var bom = passos.filter(function (p) { return p.ok; })[0];
+    var texto = ruins.map(function (p) {
+      return (NOME_DEGRAU[p.degrau] || p.degrau) + ": " + (p.motivo || "não respondeu");
+    }).join(" ");
+    if (bom) {
+      texto += " Ficha montada com " + (NOME_DEGRAU[bom.degrau] || bom.degrau) +
+        " em " + Math.max(1, Math.round(bom.ms / 1000)) + "s.";
+    }
+    avisar(texto);
+  }
+
   async function gerarFicha(dados) {
     dados = dados || { local: "casa", local_texto: "", pedido: "" };
     // lembra o local da sessao: quem pede outra ficha na praia continua na praia
     S.ultimoLocal = dados.local;
-    tela.innerHTML = esqueleto("ficha");
+    var pararProg = painelProgresso("Montando seu treino…");
     try {
       var r = await pedir("/ficha", json("POST", dados));
       if (r.descartados && r.descartados.length) {
         avisar("Ignorei " + r.descartados.length + " exercício(s) com aparelho que você não tem.");
       }
+      avisarOrigem(r);
       await carregar();
-    } catch (err) { avisar(err.message); carregar(); }
+    } catch (err) { avisar(err.message); carregar(); } finally { pararProg(); }
   }
 
   async function carregar() {

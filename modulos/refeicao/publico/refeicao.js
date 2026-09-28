@@ -128,7 +128,13 @@
   /* O consumo de um dia do ciclo, sem sair do dia aberto: a barra do grafico
      mostra a folha, e "abrir esse dia" troca a tela pra ele. */
   function folhaDoDia(data) {
-    abrirFolha(rotuloDia(data), '<p class="rf-folha-carregando"><span class="girando"></span>Carregando…</p>');
+    abrirFolha(rotuloDia(data),
+      '<div class="rf-esq-kcal"></div>' +
+      '<p class="rf-dia-macros"><span class="rf-esq-txt medio"></span></p>' +
+      '<div class="rf-dia-lista">' + [1, 2, 3].map(function () {
+        return '<div class="rf-dia-linha"><span class="rf-esq-txt medio"></span>' +
+          '<span class="rf-esq-txt kcal"></span></div>';
+      }).join("") + "</div>");
     api("/dia?data=" + data).then(function (r) {
       var t = r.totais || {};
       var linhas = (r.refeicoes || []).map(function (x) {
@@ -233,10 +239,34 @@
 
   /* ------------------------------------------------------------ dia salvo */
 
-  function carregarDia() {
+  /* Esqueleto do dia: resumo, faixa de 14 dias e os cartoes. Usa o .esqueleto
+     do app (mesma pulsacao do treino), so com a forma do que vem aqui.
+     So aparece quando o dia MUDA ou na primeira carga: depois de salvar ou
+     excluir, piscar a tela inteira seria pior que esperar. */
+  function esqueletoDia() {
+    $("#totKcal").innerHTML = '<span class="rf-esq-kcal"></span>';
+    $("#totMacros").innerHTML = [1, 2, 3].map(function () {
+      return '<div class="macro"><div class="macro-topo"><span class="rf-esq-txt"></span></div>' +
+        '<div class="macro-barra"><i class="rf-esq-barra" style="width:60%"></i></div></div>';
+    }).join("");
+    $("#semana").innerHTML = [40, 70, 25, 55, 80, 35, 60, 45, 75, 30, 65, 50, 85, 40].map(function (h) {
+      return '<button type="button" disabled><i class="rf-esq-barra" style="height:' + h + '%"></i>' +
+        '<span class="rf-esq-txt curto"></span></button>';
+    }).join("");
+    $("#listaDia").innerHTML = [1, 2].map(function () {
+      return '<article class="card salva rf-esq-card">' +
+        '<header class="salva-topo"><div class="salva-ident">' +
+          '<span class="rf-esq-txt medio"></span><span class="rf-esq-txt curto"></span>' +
+        '</div><span class="rf-esq-txt kcal"></span></header>' +
+        '<span class="rf-esq-txt longo"></span></article>';
+    }).join("");
+  }
+
+  function carregarDia(comEsqueleto) {
     $("#diaRotulo").textContent = rotuloDia(S.dia);
     $("#tituloDia").textContent = rotuloDia(S.dia);
     $("#diaDepois").disabled = S.dia >= S.hoje;
+    if (comEsqueleto) esqueletoDia();
     return Promise.all([
       api("/dia?data=" + S.dia),
       api("/dias?ate=" + S.dia + "&quantos=14"),
@@ -247,6 +277,9 @@
     }).catch(falhou);
   }
 
+  /* Card compacto: cabecalho com kcal, macros da refeicao e os itens dentro de
+     um <details> fechado. Antes cada item abria duas linhas e o dia virava um
+     rolo de cartoes colados. */
   function desenharDia(lista) {
     var alvo = $("#listaDia");
     if (!lista.length) {
@@ -254,19 +287,37 @@
       return;
     }
     alvo.innerHTML = lista.map(function (r) {
-      return '<article class="card bloco salva" data-id="' + r.id + '">' +
-        '<div class="bloco-topo"><h3>' + esc(r.rotulo || rotuloTipo(r.tipo)) +
-          (TAMANHOS[r.tamanho] && r.tamanho !== "media" ? ' <span class="selo">' + TAMANHOS[r.tamanho].nome + "</span>" : "") + "</h3>" +
-          '<span class="kcal">' + num(r.totais.kcal) + " kcal</span></div>" +
-        '<div class="itens">' + r.itens.map(function (it) {
-          return '<div class="item"><div>' + esc(it.nome) + "</div>" +
-            '<div class="item-kcal">' + num(it.kcal) + "</div>" +
-            '<div class="item-linha">' + num(it.gramas) + " g · P " + g1(it.proteina) + " · C " + g1(it.carbo) +
-            " · G " + g1(it.gordura) + "</div></div>";
-        }).join("") + "</div>" +
-        '<div class="bloco-acoes"><button type="button" class="botao-link" data-acao="editar">Corrigir porções</button>' +
-          '<button type="button" class="botao-link perigo" data-acao="excluir">Excluir</button></div>' +
-        "</article>";
+      var t = r.totais || {};
+      var nomes = r.itens.map(function (it) { return it.nome; });
+      var resumo = nomes.slice(0, 3).join(", ") + (nomes.length > 3 ? "…" : "");
+      var selo = TAMANHOS[r.tamanho] && r.tamanho !== "media"
+        ? ' <span class="selo">' + TAMANHOS[r.tamanho].nome + "</span>" : "";
+
+      return '<article class="card salva" data-id="' + r.id + '">' +
+        '<header class="salva-topo">' +
+          '<div class="salva-ident">' +
+            "<h3>" + esc(r.rotulo || rotuloTipo(r.tipo)) + selo + "</h3>" +
+            '<p class="salva-macros">P ' + g1(t.proteina) + " · C " + g1(t.carbo) + " · G " + g1(t.gordura) + "</p>" +
+          "</div>" +
+          '<span class="salva-kcal">' + num(t.kcal) + "<small>kcal</small></span>" +
+        "</header>" +
+        '<details class="salva-itens">' +
+          "<summary>" + r.itens.length + (r.itens.length === 1 ? " item" : " itens") +
+            (resumo ? ' <span class="salva-resumo">' + esc(resumo) + "</span>" : "") + "</summary>" +
+          '<div class="itens">' + r.itens.map(function (it) {
+            return '<div class="item">' +
+              '<span class="item-nome-txt">' + esc(it.nome) + "</span>" +
+              '<span class="item-kcal">' + num(it.kcal) + "</span>" +
+              '<span class="item-det">' + num(it.gramas) + " g · P " + g1(it.proteina) +
+              " · C " + g1(it.carbo) + " · G " + g1(it.gordura) + "</span>" +
+            "</div>";
+          }).join("") + "</div>" +
+        "</details>" +
+        '<div class="salva-acoes">' +
+          '<button type="button" class="botao-link" data-acao="editar">Corrigir porções</button>' +
+          '<button type="button" class="botao-link perigo" data-acao="excluir">Excluir</button>' +
+        "</div>" +
+      "</article>";
     }).join("");
     alvo._lista = lista;
   }
@@ -290,19 +341,46 @@
 
   /* ------------------------------------------------------------ calcular */
 
+  /* O Calcular passa por duas IAs (separar e medir) e demora alguns segundos.
+     Antes so o botao girava e a area do rascunho ficava vazia, entao parecia
+     que nada tinha acontecido. */
+  function esqueletoRascunho(quantos) {
+    var alvo = $("#rascunho");
+    alvo.hidden = false;
+    alvo.innerHTML = '<p class="rf-esq-legenda">Separando e medindo sua refeição…</p>' +
+      Array.apply(null, Array(quantos || 1)).map(function () {
+        return '<div class="card bloco rf-esq-card">' +
+          '<div class="salva-topo"><span class="rf-esq-txt medio"></span><span class="rf-esq-txt kcal"></span></div>' +
+          [1, 2, 3].map(function () {
+            return '<div class="rf-esq-item"><span class="rf-esq-txt longo"></span>' +
+              '<span class="rf-esq-txt curto"></span></div>';
+          }).join("") + "</div>";
+      }).join("");
+  }
+
   function analisar() {
     var texto = $("#texto").value.trim();
     if (!texto) { $("#texto").focus(); return; }
     ocupar(true, "#btnAnalisar", "Calculando…");
+    // uma caixa por "almocei/jantei" que der pra ver no texto, no minimo uma
+    esqueletoRascunho(Math.min((texto.match(/almoc|jant|caf[eé]|lanch|ceia/gi) || []).length || 1, 3));
     api("/analisar", { method: "POST", body: { texto: texto } })
       .then(function (r) {
         S.rascunho = { editando: false, data: S.dia,
           refeicoes: r.refeicoes.map(function (x) {
-            return { tipo: x.tipo, tamanho: x.tamanho, texto: x.texto, itens: x.itens || [], erro: x.erro || "" };
+            return { tipo: x.tipo, tamanho: x.tamanho, texto: x.texto, itens: x.itens || [],
+              erro: x.erro || "", fonte: x.fonte || "", modelo: x.modelo || "", avisos: x.avisos || [] };
           }) };
         desenharRascunho();
+        // separacao caiu na regra: diz por que, senao parece que a IA funcionou
+        if (r.separacao && r.separacao.erro) aviso("Separei pelas palavras do texto. " + r.separacao.erro);
       })
-      .catch(falhou)
+      .catch(function (e) {
+        // erro na analise: tirar o esqueleto, senao ele fica pulsando pra sempre
+        $("#rascunho").hidden = true;
+        $("#rascunho").innerHTML = "";
+        falhou(e);
+      })
       .then(function () { ocupar(false, "#btnAnalisar", "Calcular"); });
   }
 
@@ -334,6 +412,16 @@
     alvo.innerHTML = '<div class="rascunho">' + cabeca + blocos + rodape + "</div>";
   }
 
+  /* Quem mediu esta refeicao. So aparece quando NAO foi a IA principal: aqui o
+     numero e caloria, entao a origem importa mais que em outros lugares. */
+  function avisoOrigem(r) {
+    if (r.erro || r.fonte !== "groq") return "";
+    return '<p class="bloco-aviso">Medido pelo modelo reserva' +
+      (r.modelo ? " (" + esc(r.modelo) + ")" : "") + ", porque a IA principal não respondeu" +
+      (r.avisos && r.avisos.length ? ": " + esc(r.avisos.slice(0, 2).join("; ")) : "") +
+      ". Confira as porções.</p>";
+  }
+
   /* Leitura: o que a IA mediu, pronto pra aceitar. Falha mostra o MOTIVO
      vindo do servidor e deixa tentar de novo so esta refeicao. */
   function blocoLeitura(r, i) {
@@ -354,7 +442,7 @@
     return '<div class="card bloco salva" data-i="' + i + '">' +
       '<div class="bloco-topo"><h3>' + esc(rotuloTipo(r.tipo)) + "</h3>" +
         (r.itens.length ? chipsTamanho(r) : "") +
-        '<span class="kcal">' + num(t.kcal) + " kcal</span></div>" + corpo + "</div>";
+        '<span class="kcal">' + num(t.kcal) + " kcal</span></div>" + avisoOrigem(r) + corpo + "</div>";
   }
 
   function blocoMedido(r, i) {
@@ -369,7 +457,7 @@
         (r.itens.length ? chipsTamanho(r) : "") +
         '<span class="kcal">' + num(t.kcal) + " kcal</span></div>" +
       (r.texto ? '<p class="salva-texto">“' + esc(r.texto) + "”</p>" : "") +
-      corpo + "</div>";
+      avisoOrigem(r) + corpo + "</div>";
   }
 
   function linhaItem(it, j) {
@@ -397,7 +485,8 @@
     api("/medir", { method: "POST", body: { refeicoes: [{ tipo: ref.tipo, texto: ref.texto }] } })
       .then(function (r) {
         var m = r.refeicoes[0];
-        R.refeicoes[i] = { tipo: m.tipo, tamanho: m.tamanho, texto: m.texto, itens: m.itens || [], erro: m.erro || "" };
+        R.refeicoes[i] = { tipo: m.tipo, tamanho: m.tamanho, texto: m.texto, itens: m.itens || [],
+          erro: m.erro || "", fonte: m.fonte || "", modelo: m.modelo || "", avisos: m.avisos || [] };
         desenharRascunho();
       })
       .catch(falhou);
@@ -455,12 +544,12 @@
   $("#diaAntes").addEventListener("click", function () {
     // a janela do ciclo: mais velho que isso ja virou resumo, nao ha dia pra abrir
     if (S.dia <= diaMais(S.hoje, -13)) return;
-    S.dia = diaMais(S.dia, -1); carregarDia();
+    S.dia = diaMais(S.dia, -1); carregarDia(true);
   });
   $("#diaDepois").addEventListener("click", function () {
-    if (S.dia < S.hoje) { S.dia = diaMais(S.dia, 1); carregarDia(); }
+    if (S.dia < S.hoje) { S.dia = diaMais(S.dia, 1); carregarDia(true); }
   });
-  $("#diaRotulo").addEventListener("click", function () { S.dia = S.hoje; carregarDia(); });
+  $("#diaRotulo").addEventListener("click", function () { S.dia = S.hoje; carregarDia(true); });
   $("#semana").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-dia]");
     if (b) folhaDoDia(b.getAttribute("data-dia"));
@@ -552,6 +641,8 @@
 
   /* ------------------------------------------------------------ inicio */
 
+  esqueletoDia();
+
   Promise.all([api("/health"), api("/tipos")])
     .then(function (r) {
       var h = r[0];
@@ -563,7 +654,7 @@
       if (!h.ia.fraca) avisos.push("A IA rápida não está configurada (GROQ_API_KEY): as refeições serão separadas pelas palavras (almocei, jantei...).");
       (h.banco.avisos || []).forEach(function (a) { avisos.push(a); });
       aviso(avisos.join(" "));
-      return carregarDia();
+      return carregarDia(true);
     })
     .catch(falhou);
 })();

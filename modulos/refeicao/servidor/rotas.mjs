@@ -31,11 +31,16 @@ async function medirTodas(lista, hora) {
   const resultados = await Promise.allSettled(lista.map((r) => medirRefeicao(r, hora)));
   return resultados.map((res, i) => {
     if (res.status === "fulfilled") {
-      const { meta, ...refeicao } = res.value;
-      return { ...refeicao, erro: "" };
+      const { meta, avisos, ...refeicao } = res.value;
+      // fonte = quem mediu; avisos = o que falhou antes. A tela usa os dois.
+      return { ...refeicao, erro: "", fonte: meta.fonte, modelo: meta.modelo,
+        avisos: (avisos || []).slice(0, 3) };
     }
-    const motivo = explicarFalha(res.reason, "Gemini", "GEMINI_MODEL", "GEMINI_API_KEY");
-    console.error("[refeicao] medir falhou: " + ((res.reason && res.reason.message) || res.reason));
+    const r = res.reason || {};
+    const motivo = (r.motivos && r.motivos.length)
+      ? r.motivos.slice(0, 3).join("; ")
+      : explicarFalha(r, "Gemini", "GEMINI_MODELOS", "GEMINI_API_KEYS");
+    console.error("[refeicao] medir falhou: " + motivo);
     return {
       tipo: lista[i].tipo, texto: String(lista[i].texto).trim(), itens: [], totais: somar([]),
       erro: motivo,
