@@ -262,18 +262,83 @@
     }).join("");
   }
 
+
+  /* ------------------------------------------------------------ meta do dia */
+
+  /* O teto vem do servidor (perfil do treino + objetivo). Aqui so se desenha.
+     Sem teto, o card diz o que falta preencher no treino em vez de sumir. */
+  function desenharMeta() {
+    var m = S.meta;
+    var chips = $("#planos");
+    var det = $("#metaDetalhe");
+    var barra = $("#metaBarra");
+    if (!chips || !det || !barra) return;
+
+    if (!m) { det.textContent = "Calculando\u2026"; return; }
+
+    chips.innerHTML = m.objetivos.map(function (o) {
+      return '<button type="button" data-plano="' + o.id + '" aria-pressed="' + (o.id === m.objetivo) +
+        '" class="' + (o.id === m.objetivo ? "ativo" : "") + '">' + esc(o.rotulo) + "</button>";
+    }).join("");
+
+    if (!m.teto) {
+      barra.hidden = true;
+      det.innerHTML = '<span class="meta-falta">Sem teto: falta ' + esc((m.faltando || []).join(", ")) +
+        " no perfil do treino.</span> Complete l\u00e1 e volte aqui.";
+      return;
+    }
+
+    var kcal = (S.totais && S.totais.kcal) || 0;
+    barra.hidden = false;
+    barra.classList.toggle("estourou", kcal > m.teto);
+    barra.querySelector("i").style.width = Math.min(100, Math.round((kcal / m.teto) * 100)) + "%";
+
+    var falta = m.teto - kcal;
+    var rotulo = (m.objetivos.filter(function (o) { return o.id === m.objetivo; })[0] || {}).rotulo || "";
+    det.innerHTML = "Teto de <b>" + num(m.teto) + "</b> kcal: gasto parado <b>" + num(m.basal) + "</b>" +
+      (m.treino_dia ? " + treino <b>" + num(m.treino_dia) + "</b>/dia" : "") +
+      ", ajustado para " + esc(rotulo) + ". " +
+      (S.dia === S.hoje
+        ? (falta >= 0 ? "Faltam <b>" + num(falta) + "</b> kcal hoje. " : "Voc\u00ea passou <b>" + num(-falta) + "</b> kcal. ")
+        : "") +
+      "Estimativa: a f\u00f3rmula erra uns 10% e a caloria de treino uns 20%.";
+  }
+
+  function desenharMedia(dias) {
+    var el = $("#resumoMedia");
+    if (!el) return;
+    var media = dias && dias.media_kcal_dia;
+    if (!media) { el.textContent = ""; return; }
+    var texto = "M\u00e9dia de " + num(media) + " kcal em " + dias.dias_com_registro + " de 14 dias";
+    if (S.meta && S.meta.teto) {
+      var d = media - S.meta.teto;
+      texto += d > 0 ? " \u00b7 " + num(d) + " acima do teto" : " \u00b7 " + num(-d) + " abaixo do teto";
+    }
+    el.textContent = texto + ".";
+  }
+
+  function carregarMetas() {
+    return api("/metas").then(function (m) {
+      S.meta = m;
+      desenharMeta();
+    }).catch(function () { /* meta e complemento: sem ela o resto funciona */ });
+  }
+
   function carregarDia(comEsqueleto) {
-    $("#diaRotulo").textContent = rotuloDia(S.dia);
     $("#tituloDia").textContent = rotuloDia(S.dia);
-    $("#diaDepois").disabled = S.dia >= S.hoje;
+    // so aparece quando voce saiu de hoje pelo grafico; e a unica saida agora
+    $("#btnHoje").hidden = S.dia === S.hoje;
     if (comEsqueleto) esqueletoDia();
     return Promise.all([
       api("/dia?data=" + S.dia),
       api("/dias?ate=" + S.dia + "&quantos=14"),
     ]).then(function (r) {
+      S.totais = r[0].totais;
       desenharResumo(r[0].totais);
       desenharSemana(r[1].dias);
       desenharDia(r[0].refeicoes);
+      desenharMedia(r[1]);
+      desenharMeta();
     }).catch(falhou);
   }
 
@@ -541,15 +606,20 @@
   });
   $("#btnAnalisar").addEventListener("click", analisar);
 
-  $("#diaAntes").addEventListener("click", function () {
-    // a janela do ciclo: mais velho que isso ja virou resumo, nao ha dia pra abrir
-    if (S.dia <= diaMais(S.hoje, -13)) return;
-    S.dia = diaMais(S.dia, -1); carregarDia(true);
+
+  $("#btnHoje").addEventListener("click", function () { S.dia = S.hoje; carregarDia(true); });
+
+  $("#planos").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-plano]");
+    if (!b || !S.meta) return;
+    var antes = S.meta.objetivo;
+    S.meta.objetivo = b.getAttribute("data-plano");
+    desenharMeta();
+    api("/metas", { method: "PUT", body: { objetivo: S.meta.objetivo } })
+      .then(carregarMetas)
+      .catch(function (err) { S.meta.objetivo = antes; desenharMeta(); falhou(err); });
   });
-  $("#diaDepois").addEventListener("click", function () {
-    if (S.dia < S.hoje) { S.dia = diaMais(S.dia, 1); carregarDia(true); }
-  });
-  $("#diaRotulo").addEventListener("click", function () { S.dia = S.hoje; carregarDia(true); });
+
   $("#semana").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-dia]");
     if (b) folhaDoDia(b.getAttribute("data-dia"));
@@ -654,6 +724,7 @@
       if (!h.ia.fraca) avisos.push("A IA rápida não está configurada (GROQ_API_KEY): as refeições serão separadas pelas palavras (almocei, jantei...).");
       (h.banco.avisos || []).forEach(function (a) { avisos.push(a); });
       aviso(avisos.join(" "));
+      carregarMetas();
       return carregarDia(true);
     })
     .catch(falhou);

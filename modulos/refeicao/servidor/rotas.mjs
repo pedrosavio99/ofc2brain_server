@@ -22,6 +22,8 @@ import { medirRefeicao } from "./medir.mjs";
 import { groqConfigurado } from "./ia/groq.mjs";
 import { geminiConfigurado } from "./ia/gemini.mjs";
 import { explicarFalha } from "./ia/json.mjs";
+import { OBJETIVOS, calcularMeta, basalDiario, idadeDe, lerObjetivo, salvarObjetivo,
+  perfilDoTreino, treinoPorDia } from "./metas.mjs";
 
 const MAX_REFEICOES = 8;
 
@@ -97,6 +99,45 @@ export async function rotear(req, res, rota, url) {
       banco,
       ia,
     };
+  }
+
+  /* GET /metas -> teto de caloria do dia e de onde ele saiu.
+     Le o perfil e as sessoes do TREINO somente para leitura; nada la e
+     alterado. Sem perfil completo, teto vem null e a tela pede pra completar. */
+  if (metodo === "GET" && rota === "/metas") {
+    const [{ objetivo, faltaTabela }, perfil] = await Promise.all([lerObjetivo(), perfilDoTreino()]);
+    const treino = await treinoPorDia(diasAtras(JANELA_DIAS - 1));
+    const idade = idadeDe(perfil && perfil.nascimento);
+    const basal = basalDiario({
+      sexo: perfil && perfil.sexo,
+      pesoKg: perfil && perfil.peso_kg,
+      alturaCm: perfil && perfil.altura_cm,
+      idade,
+    });
+    const meta = calcularMeta({ basal, treinoDia: treino, objetivo });
+    // o que falta no perfil do treino, pra tela poder dizer o que pedir
+    const faltando = [];
+    if (!perfil) faltando.push("perfil do treino");
+    else {
+      if (!perfil.sexo) faltando.push("sexo");
+      if (!(Number(perfil.peso_kg) > 0)) faltando.push("peso");
+      if (!(Number(perfil.altura_cm) > 0)) faltando.push("altura");
+      if (!idade) faltando.push("nascimento");
+    }
+    return {
+      ...meta,
+      idade,
+      objetivos: Object.entries(OBJETIVOS).map(([id, o]) => ({ id, rotulo: o.rotulo })),
+      faltando,
+      // true = o SQL do refeicao_config ainda nao foi rodado
+      sem_tabela: faltaTabela,
+    };
+  }
+
+  /* PUT /metas { objetivo } */
+  if (metodo === "PUT" && rota === "/metas") {
+    const objetivo = await salvarObjetivo((corpo(req) || {}).objetivo);
+    return { ok: true, objetivo };
   }
 
   /* GET /tipos: a lista de tipos vem daqui, nao duplicada no front. */
@@ -207,7 +248,15 @@ export async function rotear(req, res, rota, url) {
       const doDia = todas.filter((r) => r.data === d);
       dias.push({ data: d, refeicoes: doDia.length, totais: totaisDoDia(doDia) });
     }
-    return { de, ate, dias };
+    /* Media por DIA REGISTRADO, nao por dia corrido: dia que voce esqueceu de
+       anotar nao e dia de zero caloria, e derrubaria a media sem motivo. */
+    const comRegistro = dias.filter((d) => d.refeicoes > 0);
+    const somaKcal = comRegistro.reduce((t, d) => t + (d.totais.kcal || 0), 0);
+    return {
+      de, ate, dias,
+      dias_com_registro: comRegistro.length,
+      media_kcal_dia: comRegistro.length ? Math.round(somaKcal / comRegistro.length) : 0,
+    };
   }
 
   /* PUT /refeicoes/:id { tipo?, itens? } -> corrige uma refeicao salva */

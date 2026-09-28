@@ -25,11 +25,8 @@
       <span class="voltar-txt">Segundo cérebro</span>
     </a>
     <span class="barra-titulo">Refeições</span>
-    <nav class="dia-nav barra-acoes" aria-label="Escolher dia">
-      <button type="button" id="diaAntes" aria-label="Dia anterior">‹</button>
-      <button type="button" id="diaRotulo" class="dia-rotulo" title="Voltar para hoje">Hoje</button>
-      <button type="button" id="diaDepois" aria-label="Próximo dia">›</button>
-    </nav>
+    <!-- a navegacao por dia saiu daqui: tocar numa barra do ciclo de 14 dias
+         faz a mesma coisa, e o botao "Voltar para hoje" fica junto do titulo -->
   </div>
 </header>
 
@@ -44,8 +41,19 @@
   <!-- resumo do dia + o ciclo de 14 dias -->
   <section class="card resumo" aria-live="polite">
     <div class="resumo-kcal"><strong id="totKcal">–</strong><span>kcal</span></div>
+    <div class="meta-barra" id="metaBarra" hidden><i></i></div>
     <div class="macros" id="totMacros"></div>
     <div class="semana" id="semana" aria-label="Ciclo de 14 dias"></div>
+    <p class="resumo-media" id="resumoMedia"></p>
+  </section>
+
+  <!-- teto de caloria, calculado com o perfil do modulo treino -->
+  <section class="card meta" id="cardMeta">
+    <div class="meta-topo">
+      <span class="rotulo">Meta do dia</span>
+      <span class="tamanhos" id="planos" role="group" aria-label="Objetivo"></span>
+    </div>
+    <p class="meta-detalhe" id="metaDetalhe">Calculando…</p>
   </section>
 
   <!-- escrever -->
@@ -64,7 +72,10 @@
 
   <!-- refeicoes salvas no dia -->
   <section>
-    <h2 class="titulo-secao" id="tituloDia">Hoje</h2>
+    <div class="dia-cabeca">
+      <h2 class="titulo-secao" id="tituloDia">Hoje</h2>
+      <button type="button" class="botao-link" id="btnHoje" hidden>Voltar para hoje</button>
+    </div>
     <div id="listaDia"></div>
   </section>
 </main>

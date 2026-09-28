@@ -17,9 +17,9 @@ html[data-tema="escuro"] { --proteina: #5E5CE6; --carbo: #FF9F0A; --gordura: #FF
 .barra-int { position: relative; }
 .barra .barra-titulo { position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; }
 
-.dia-nav .dia-rotulo { font-size: 15px; font-weight: 600; color: var(--texto); min-width: 86px; }
-.dia-nav button { padding: 6px 10px; border-radius: 8px; color: var(--acento); font-size: 20px; line-height: 1; }
-.dia-nav button:disabled { color: var(--texto-3); cursor: default; }
+/* cabeca da lista do dia: titulo + saida pra hoje quando voce navegou pelo grafico */
+.dia-cabeca { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dia-cabeca .titulo-secao { margin-right: 0; }
 
 /* ---------- pagina ---------- */
 
@@ -112,6 +112,23 @@ textarea:focus, input:focus, select:focus { border-color: var(--acento); box-sha
 .rf-esq-item:last-child { border-bottom: 0; }
 .rf-esq-legenda { text-align: center; font-size: 13px; color: var(--texto-2); margin: 2px 0 10px; }
 .sheet .rf-esq-kcal { margin-bottom: 10px; }
+
+/* ---------- meta do dia ---------- */
+
+/* quanto do teto ja foi. Passou do teto, fica ambar: nao e erro, e informacao */
+.meta-barra { height: 8px; border-radius: 5px; background: var(--superficie-2); overflow: hidden; }
+.meta-barra i { display: block; height: 100%; border-radius: 5px; background: var(--acento);
+  transition: width .3s ease; }
+.meta-barra.estourou i { background: var(--alerta); }
+
+.resumo-media { margin: 0; font-size: 12.5px; color: var(--texto-2); }
+
+.meta { display: grid; gap: 10px; }
+.meta-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.meta-topo .rotulo { margin: 0; }
+.meta-detalhe { margin: 0; font-size: 12.5px; color: var(--texto-2); line-height: 1.45; }
+.meta-detalhe b { color: var(--texto); font-variant-numeric: tabular-nums; }
+.meta-falta { color: var(--alerta); }
 
 /* ---------- rascunho ---------- */
 

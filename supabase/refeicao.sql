@@ -62,3 +62,16 @@ create table if not exists refeicao_ciclos (
 -- E este indice que faz o fechamento ser idempotente: rodar duas vezes nao
 -- duplica ciclo (o upsert com ignoreDuplicates engole o repetido).
 create unique index if not exists idx_refeicao_ciclos_inicio on refeicao_ciclos(inicio);
+
+-- --------------------------------------------------------------- config
+-- Objetivo de calorias (emagrecer, manter, ganhar). Uma linha so.
+-- Fica AQUI, no schema da refeicao: o modulo treino nao e alterado.
+create table if not exists refeicao_config (
+  id            text primary key default 'unico',
+  objetivo      text not null default 'manter',
+  atualizado_em timestamptz not null default now()
+);
+
+alter table refeicao_config drop constraint if exists refeicao_objetivo_check;
+alter table refeicao_config add constraint refeicao_objetivo_check
+  check (objetivo in ('emagrecer', 'manter', 'ganhar'));
