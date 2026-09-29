@@ -280,3 +280,33 @@ textarea:focus, input:focus, select:focus { border-color: var(--acento); box-sha
   .semana { height: 58px; gap: 3px; }
   .macros { gap: 7px; }
 }
+
+
+/* ==================== rf-card-estreito ====================
+   O card do dia e grid, e filho de grid nasce com min-width:auto. Com
+   .salva-kcal e .salva-resumo em nowrap, o texto empurrava o card, o card
+   empurrava o main e a pagina ganhava rolagem lateral. O ellipsis nunca
+   agia porque o elemento conseguia crescer.
+   Mesmo remedio do treino, so que em TODOS os niveis da arvore. */
+
+#listaDia, #listaDia .salva { min-width: 0; }
+#listaDia .salva > * { min-width: 0; }
+.salva-itens, .salva-itens > summary, .salva-topo, .salva-ident { min-width: 0; }
+.salva-ident h3 { overflow-wrap: anywhere; }
+.salva-itens > summary { flex-wrap: nowrap; }
+
+@media (max-width: 420px) {
+  /* em celular a contagem ja diz o que precisa; o resumo era o que mais esticava */
+  .salva-resumo { display: none; }
+  #listaDia .salva { padding: 12px 14px; gap: 6px; }
+  .salva-ident h3 { font-size: 14.5px; }
+  .salva-kcal { font-size: 19px; }
+  .salva-kcal small { font-size: 10px; }
+  .salva-macros { font-size: 11.5px; }
+  #listaDia .itens .item { padding: 7px 0; }
+  .item-nome-txt { font-size: 13.5px; }
+  #listaDia .item-kcal { font-size: 13.5px; }
+  .item-det { font-size: 11px; }
+  .salva-acoes { gap: 14px; }
+  .salva-acoes .botao-link { font-size: 12.5px; }
+}
