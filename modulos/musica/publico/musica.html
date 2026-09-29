@@ -1,0 +1,58 @@
+<!doctype html>
+<html data-tema="sistema" lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+  <title>Música</title>
+  <link rel="stylesheet" href="/musica/estilo.css" />
+</head>
+<body>
+<a class="voltar-2b" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Segundo cérebro</a>
+  <main class="pagina">
+    <header class="topo">
+      <h1><a href="#/">Música</a></h1>
+      <p>Seu player em cima do Sua Música</p>
+    </header>
+
+    <form class="abrir" id="formBusca" autocomplete="off" role="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="campoBusca" type="search" enterkeyhint="search"
+             placeholder="Música ou artista" aria-label="Buscar música ou artista" />
+      <button type="submit">Buscar</button>
+    </form>
+
+    <section id="tela" class="tela" aria-live="polite"></section>
+  </main>
+
+  <!-- player fixo: aparece quando a primeira musica toca -->
+  <section class="player" id="player" hidden>
+    <div class="player-barra" id="progresso" role="slider" aria-label="Posição na música" tabindex="0">
+      <i id="progressoCheio"></i>
+    </div>
+    <div class="player-linha">
+      <img id="pCapa" alt="" />
+      <div class="player-txt">
+        <strong id="pTitulo"></strong>
+        <span id="pSub"></span>
+      </div>
+      <span class="player-tempo" id="pTempo">0:00</span>
+      <div class="player-botoes">
+        <button id="bAleatorio" class="modo" aria-label="Aleatório" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M16 4h4v4M4 20L20 4M20 16v4h-4M15 15l5 5M4 4l5 5"/></svg></button>
+        <button id="bAnterior" aria-label="Anterior"><svg viewBox="0 0 24 24" class="cheio"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button id="bTocar" class="grande" aria-label="Tocar"><svg viewBox="0 0 24 24" id="iTocar" class="cheio"><path d="M8 5v14l11-7z"/></svg></button>
+        <button id="bProxima" aria-label="Próxima"><svg viewBox="0 0 24 24" class="cheio"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+        <button id="bRepetir" class="modo" aria-label="Repetir: desligado"><svg viewBox="0 0 24 24"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3"/></svg><b id="repUm" hidden>1</b></button>
+        <button id="bFila" aria-label="Fila"><svg viewBox="0 0 24 24"><path d="M4 6h12M4 12h12M4 18h8M18 15v6l4-3z"/></svg></button>
+      </div>
+    </div>
+    <div class="fila" id="fila" hidden></div>
+  </section>
+
+  <audio id="audio" preload="auto"></audio>
+  <script src="/musica/config.js"></script>
+  <script src="/musica/radio.js" type="module"></script>
+  <script src="/musica/app.js" type="module"></script>
+</body>
+</html>

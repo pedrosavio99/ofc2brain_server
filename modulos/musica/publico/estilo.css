@@ -1,0 +1,173 @@
+/* Identidade do Segundo Cerebro: system colors do iOS com acento indigo,
+   fonte do sistema, cartoes com contorno fino. Claro e escuro pelo sistema. */
+:root {
+  --fundo: #F2F2F7; --superficie: #FFFFFF; --superficie-2: #F0F0F4;
+  --texto: #1C1C1E; --texto-2: #6C6C70; --texto-3: #A1A1A6;
+  --separador: rgba(60,60,67,.13);
+  --acento: #5856D6; --acento-eco: rgba(88,86,214,.10);
+  --perigo: #FF3B30;
+  --sombra: 0 1px 2px rgba(0,0,0,.05), 0 6px 22px rgba(0,0,0,.05);
+  --vidro: rgba(255,255,255,.82);
+  --fonte: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #000; --superficie: #1C1C1E; --superficie-2: #2C2C2E;
+    --texto: #FFF; --texto-2: #98989F; --texto-3: #636366;
+    --separador: rgba(84,84,88,.4);
+    --acento: #7D7AFF; --acento-eco: rgba(125,122,255,.16);
+    --sombra: 0 1px 2px rgba(0,0,0,.4), 0 6px 22px rgba(0,0,0,.5);
+    --vidro: rgba(28,28,30,.82);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--fundo); color: var(--texto); font-family: var(--fonte); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+img { display: block; }
+
+.pagina { max-width: 760px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 16px 160px; }
+.topo h1 { font-size: 36px; letter-spacing: -.03em; margin: 8px 0 2px; }
+.topo p { margin: 0 0 20px; color: var(--texto-2); font-size: 15px; }
+
+/* colar link */
+.abrir {
+  display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px;
+  background: var(--superficie); border: 1px solid var(--separador); border-radius: 16px;
+  box-shadow: var(--sombra); height: 52px; margin-bottom: 24px;
+}
+.abrir:focus-within { border-color: var(--acento); box-shadow: 0 0 0 4px var(--acento-eco), var(--sombra); }
+.abrir svg { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--texto-3); stroke-width: 2; stroke-linecap: round; }
+.abrir input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font: inherit; font-size: 16px; color: var(--texto); }
+.abrir input::placeholder { color: var(--texto-3); }
+.abrir button { height: 40px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--acento); color: #fff; font-weight: 600; }
+
+/* titulos de secao */
+.secao { display: flex; align-items: baseline; justify-content: space-between; margin: 8px 2px 12px; }
+.secao h2 { font-size: 21px; letter-spacing: -.02em; margin: 0; }
+.secao span { font-size: 13px; color: var(--texto-2); }
+
+/* grade de CDs */
+.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-bottom: 28px; }
+.cd { background: none; border: 0; padding: 0; text-align: left; }
+.cd img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 14px; background: var(--superficie-2); box-shadow: var(--sombra); transition: transform .15s ease; }
+.cd:active img { transform: scale(.97); }
+.cd strong { display: block; font-size: 14px; margin-top: 8px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cd span { display: block; font-size: 12.5px; color: var(--texto-2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* cabecalho do CD aberto */
+.voltar { background: none; border: 0; color: var(--acento); font-weight: 600; padding: 4px 0; margin-bottom: 12px; font-size: 16px; }
+.cd-topo { display: flex; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
+.cd-topo img { width: 132px; height: 132px; border-radius: 16px; object-fit: cover; box-shadow: var(--sombra); background: var(--superficie-2); flex: none; }
+.cd-topo small { color: var(--acento); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.cd-topo h2 { font-size: 22px; letter-spacing: -.02em; margin: 4px 0; line-height: 1.2; }
+.cd-topo p { margin: 0; color: var(--texto-2); font-size: 14px; }
+.acoes { display: flex; gap: 8px; margin: 0 0 16px; flex-wrap: wrap; }
+.btn { height: 42px; padding: 0 18px; border-radius: 999px; border: 0; font-weight: 600; background: var(--acento); color: #fff; }
+.btn.suave { background: var(--acento-eco); color: var(--acento); }
+
+/* lista de faixas */
+.faixas { list-style: none; margin: 0 0 28px; padding: 4px 0; background: var(--superficie); border-radius: 18px; border: 1px solid var(--separador); }
+.faixa { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 16px; background: none; border: 0; text-align: left; }
+.faixas li + li .faixa { border-top: 1px solid var(--separador); }
+.faixa .n { width: 22px; text-align: right; font-size: 13px; color: var(--texto-3); font-variant-numeric: tabular-nums; flex: none; }
+.faixa .t { flex: 1; min-width: 0; font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.faixa.atual .t, .faixa.atual .n { color: var(--acento); font-weight: 600; }
+.faixa:active { background: var(--superficie-2); }
+
+.aviso { padding: 36px 20px; text-align: center; color: var(--texto-2); font-size: 15px; line-height: 1.5; }
+.aviso.erro { color: var(--perigo); }
+.esq { background: var(--superficie-2); border-radius: 14px; aspect-ratio: 1; animation: pulsar 1.2s ease-in-out infinite; }
+@keyframes pulsar { 50% { opacity: .5; } }
+
+/* player */
+.player {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  background: var(--vidro); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  border-top: 1px solid var(--separador); padding-bottom: env(safe-area-inset-bottom);
+}
+.player-barra { height: 4px; background: var(--separador); cursor: pointer; touch-action: none; }
+.player-barra i { display: block; height: 100%; width: 0; background: var(--acento); }
+.player-linha { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
+.player-linha img { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; background: var(--superficie-2); flex: none; }
+.player-txt { flex: 1; min-width: 0; }
+.player-txt strong { display: block; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-txt span { display: block; font-size: 12.5px; color: var(--texto-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-tempo { font-size: 12px; color: var(--texto-3); font-variant-numeric: tabular-nums; flex: none; }
+.player-botoes { display: flex; align-items: center; gap: 2px; flex: none; }
+.player-botoes button { width: 40px; height: 40px; border: 0; background: none; border-radius: 50%; display: grid; place-items: center; }
+.player-botoes button:active { background: var(--superficie-2); }
+.player-botoes svg { width: 22px; height: 22px; fill: none; stroke: var(--texto); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.player-botoes svg.cheio { fill: var(--texto); stroke: none; }
+.player-botoes .grande { width: 46px; height: 46px; background: var(--acento); }
+.player-botoes .grande svg { fill: #fff; }
+.player-botoes .grande:active { background: var(--acento); opacity: .85; }
+@media (max-width: 520px) { .player-tempo, #bAnterior, .player-botoes .modo { display: none; } }
+
+.fila { max-width: 760px; margin: 0 auto; max-height: 45vh; overflow-y: auto; padding: 0 8px 10px; }
+.fila .faixa { border-radius: 12px; }
+.fila .faixa .x { flex: none; color: var(--texto-3); font-size: 18px; padding: 0 4px; }
+.fila-topo { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px 8px; font-size: 13px; color: var(--texto-2); }
+.fila-topo button { background: none; border: 0; color: var(--perigo); font-size: 13px; }
+
+/* entrada suave, sem pular a cada render */
+.surgir { animation: surgir .4s cubic-bezier(.22,.8,.2,1) both; }
+@keyframes surgir { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
+@media (prefers-reduced-motion: reduce) { .surgir, .esq { animation: none; } }
+
+/* ---- busca, artista, aleatorio e repetir ---- */
+
+.topo h1 a { color: inherit; text-decoration: none; }
+.abrir svg circle, .abrir svg path { fill: none; }
+.abrir input::-webkit-search-cancel-button { display: none; }
+
+/* aleatorio e repetir: acesos ficam no acento, com um pontinho embaixo */
+.player-botoes .modo { position: relative; }
+.player-botoes .modo[aria-pressed="true"] svg { stroke: var(--acento); }
+.player-botoes .modo[aria-pressed="true"]::after {
+  content: ""; position: absolute; bottom: 4px; left: 50%; width: 4px; height: 4px;
+  margin-left: -2px; border-radius: 50%; background: var(--acento);
+}
+.player-botoes .modo b {
+  position: absolute; top: 9px; right: 7px; font-size: 9px; font-weight: 800; color: var(--acento);
+}
+/* no celular os dois vao pro topo da fila, que tem espaco */
+.fila-modos { display: none; gap: 6px; }
+@media (max-width: 520px) { .fila-modos { display: flex; } }
+.fila-modos button {
+  height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--separador);
+  background: none; color: var(--texto-2); font-size: 13px;
+}
+.fila-modos button[aria-pressed="true"] { background: var(--acento-eco); color: var(--acento); border-color: var(--acento); }
+
+/* artistas: fotos redondas numa linha que rola */
+.artistas { display: flex; gap: 16px; overflow-x: auto; padding: 2px 2px 8px; margin-bottom: 20px; scrollbar-width: none; }
+.artistas::-webkit-scrollbar { display: none; }
+.artista { flex: none; width: 96px; background: none; border: 0; padding: 0; text-align: center; }
+.artista img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; background: var(--superficie-2); box-shadow: var(--sombra); }
+.artista strong { display: block; font-size: 13.5px; margin-top: 8px; line-height: 1.2; }
+.artista span { display: block; font-size: 12px; color: var(--texto-2); margin-top: 2px; }
+
+/* musicas da busca: com capinha e o CD embaixo do nome */
+.faixa .mini { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: var(--superficie-2); flex: none; }
+.faixa .t small { display: block; font-size: 12.5px; color: var(--texto-2); font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
+
+/* cabecalho do artista */
+.artista-topo { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.artista-topo img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; background: var(--superficie-2); box-shadow: var(--sombra); flex: none; }
+.artista-topo h2 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 4px; }
+.artista-topo p { margin: 0; color: var(--texto-2); font-size: 14px; }
+.cd-topo p a { color: var(--acento); text-decoration: none; font-weight: 600; }
+
+/* radio ligada: o botao do modo escolhido fica aceso */
+.btn[aria-pressed="true"] { background: var(--acento, #0a84ff); color: #fff; border-color: transparent; }
+#radioAviso:empty { display: none; }
+
+
+/* volta pro 2brain. A tela veio de um site separado, entao este link nao
+   existia; sem ele nao ha saida do modulo no celular. */
+.voltar-2b { display: inline-flex; align-items: center; gap: 4px; margin: 10px 0 0 14px;
+  color: var(--acento, #0a84ff); text-decoration: none; font-size: 15px; }
+.voltar-2b svg { width: 18px; height: 18px; }

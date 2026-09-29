@@ -13,7 +13,7 @@ import { exigirPin, rotaDeAcesso, pinAtivo } from "./acesso.js";
 // Modulos externos: cada um vive inteiro em modulos/<nome>/ e so encosta no
 // app por uma linha de app.use(). Comentar as duas linhas desliga o modulo.
 import trabalhoRouter from "../modulos/trabalho/servidor/index.js";
-import musicaTesteRouter from "../modulos/musica-teste/servidor/index.js";
+import musicaRouter from "../modulos/musica/servidor/index.js";
 import conversaRouter from "../modulos/conversa/servidor/index.js";
 import treinoRouter from "../modulos/treino/servidor/index.js";
 import metasRouter from "../modulos/metas/servidor/index.js";
@@ -111,7 +111,7 @@ app.use(docsRouter);
 
 // Modulos montados por prefixo. O prefixo e o unico acoplamento.
 app.use("/trabalho", trabalhoRouter);
-app.use("/musica-teste", musicaTesteRouter); // TESTE: apagar junto com a pasta
+app.use("/musica", musicaRouter);
 app.use("/conversa", conversaRouter);
 app.use("/treino", treinoRouter);
 app.use("/metas", metasRouter);
