@@ -378,7 +378,7 @@ proximoAudio.preload = 'auto';
 
 function prepararProxima() {
   const f = S.fila[S.i + 1];
-  if (!f || !f.audio || precisaReassinar(f.audio)) return;
+  if (!f || !f.audio) return;
   if (proximoAudio.getAttribute('src') === f.audio) return;
   proximoAudio.src = f.audio;
   proximoAudio.load();
@@ -403,6 +403,7 @@ function atualizarMediaSession() {
 /* ------------------------------------------------------------- player */
 
 let tentouProxy = false;
+let tentouRenovar = false;
 
 function tocar(indice) {
   if (indice < 0 || indice >= S.fila.length) return;
@@ -415,21 +416,18 @@ function tocar(indice) {
   salvarFila();
   const f = S.fila[indice];
   tentouProxy = false;
-  // link vencido toca silencio: renova antes de mandar pro player
-  if (precisaReassinar(f.audio)) {
-    reassinar([f]).then(() => {
-      if (S.fila[S.i] === f) { audio.src = f.audio; audio.play().catch(() => {}); }
-    }).catch(() => { audio.src = f.audio; audio.play().catch(() => {}); });
-  } else {
-    audio.src = f.audio;
-    audio.play().catch(() => { /* navegador pediu um toque antes; o botao resolve */ });
-  }
+  tentouRenovar = false;
+  /* NADA de rede antes do play. No Android a permissao de tocar anda junto
+     com o gesto: um await aqui quebra a corrente e o Chrome recusa em
+     silencio. Link vencido vira tratamento de ERRO, logo abaixo. */
+  audio.src = f.audio;
+  audio.play().catch((e) => { $('#pSub').textContent = 'Não tocou: ' + e.message; });
   mostrarPlayer();
   // com a radio ligada, completa antes de acabar: nada de silencio entre lotes
   if (S.radio !== 'nao' && S.fila.length - indice <= FALTANDO_PRA_ABASTECER) abastecer(12);
   podarFila();
   // deixa a proxima pronta: com a tela apagada, buffer e o que salva a emenda
-  reassinar(S.fila.slice(indice + 1, indice + 4)).catch(() => {}).finally(prepararProxima);
+  prepararProxima();
 }
 
 function proxima(automatico) {
@@ -452,6 +450,21 @@ function proxima(automatico) {
 audio.addEventListener('error', () => {
   const f = S.fila[S.i];
   if (!f || !audio.getAttribute('src')) return;
+  /* 1o degrau: link vencido. Reabre o CD, que volta com as faixas assinadas
+     agora. O /api/assinar so existe no player antigo; o Worker nao tem. */
+  if (!tentouRenovar && f.link) {
+    tentouRenovar = true;
+    $('#pSub').textContent = 'Renovando o link…';
+    api('/api/cd?link=' + encodeURIComponent(f.link)).then((cd) => {
+      const nova = (cd.faixas || []).find((x) => x.id === f.id);
+      if (!nova) throw new Error('faixa saiu do CD');
+      f.audio = nova.audio;
+      salvarFila();
+      audio.src = f.audio;
+      audio.play().catch((e) => { $('#pSub').textContent = 'Não tocou: ' + e.message; });
+    }).catch((e) => { $('#pSub').textContent = 'Não renovou: ' + e.message; });
+    return;
+  }
   if (!tentouProxy) {
     tentouProxy = true;
     audio.src = API + '/api/audio?u=' + encodeURIComponent(f.audio);
