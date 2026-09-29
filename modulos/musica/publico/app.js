@@ -402,6 +402,32 @@ function atualizarMediaSession() {
 
 /* ------------------------------------------------------------- player */
 
+/* Tela acesa enquanto toca. Automatico: liga no play, solta no pause.
+   O que ele NAO faz: impedir o bloqueio no botao lateral nem sobreviver a
+   troca de aba. O sistema solta o wake lock nesses casos, e por isso existe
+   o religa() no visibilitychange la embaixo. */
+let travaTela = null;
+
+async function manterTelaAcesa(ligar) {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    if (ligar && !travaTela) {
+      travaTela = await navigator.wakeLock.request('screen');
+      // o sistema pode soltar sozinho; sem isto a gente acharia que segue ligado
+      travaTela.addEventListener('release', () => { travaTela = null; dep('wake lock solto'); });
+      dep('tela acesa');
+    } else if (!ligar && travaTela) {
+      const t = travaTela;
+      travaTela = null;
+      await t.release();
+      dep('tela liberada');
+    }
+  } catch (e) {
+    // bateria fraca ou aba em segundo plano: o navegador recusa, e tudo bem
+    dep('wake lock recusado: ' + e.name);
+  }
+}
+
 let tentouProxy = false;
 let tentouRenovar = false;
 
@@ -476,8 +502,8 @@ audio.addEventListener('error', () => {
   $('#pSub').textContent = 'Não tocou essa faixa. Toque em próxima pra seguir.';
 });
 audio.addEventListener('ended', () => proxima(true));
-audio.addEventListener('play', () => { icone(); atualizarMediaSession(); });
-audio.addEventListener('pause', () => { icone(); atualizarMediaSession(); });
+audio.addEventListener('play', () => { icone(); atualizarMediaSession(); manterTelaAcesa(true); });
+audio.addEventListener('pause', () => { icone(); atualizarMediaSession(); manterTelaAcesa(false); });
 audio.addEventListener('loadedmetadata', atualizarMediaSession);
 let ultimaPos = 0;
 audio.addEventListener('timeupdate', () => {
@@ -606,6 +632,8 @@ if ('mediaSession' in navigator) {
    renova a fila que vem a seguir. */
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
+  // o wake lock cai quando a aba sai de cena: religa ao voltar, se ainda toca
+  if (!audio.paused) manterTelaAcesa(true);
   atualizarMediaSession();
   reassinar(S.fila.slice(S.i, S.i + 4)).catch(() => {});
 });
