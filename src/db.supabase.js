@@ -269,3 +269,39 @@ export async function restaurarBackup(buffer, { modo = "mesclar" } = {}) {
 export async function compactar() {
   return { motor: "supabase", compactar: "no-op" };
 }
+
+/**
+ * Varias notas leves de uma vez (sem o embedding), numa UNICA ida ao banco.
+ * Substitui o padrao de chamar buscarPorId em serie, que custava uma ida por
+ * nota e ainda trazia ~8 KB de vetor que ninguem usava.
+ */
+export async function buscarVariasResumidas(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+  const { data, error } = await sb.from(TABELA).select(COLUNAS_LEVES).in("id", ids);
+  if (error) throw new Error(`buscarVariasResumidas: ${error.message}`);
+  return (data || []).map(linhaParaIdeia);
+}
+
+/**
+ * Acrescenta UMA relacao a uma nota mexendo so na coluna `relacionados`.
+ * O atualizar() generico le e reescreve a linha inteira, incluindo o embedding
+ * (~16 KB em texto) que nao mudou. Aqui vao duas idas leves: ler a coluna,
+ * gravar a coluna. E seguro rodar varias em paralelo (notas diferentes).
+ */
+export async function anexarRelacionado(id, relacionado) {
+  const { data, error } = await sb
+    .from(TABELA)
+    .select("relacionados")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(`anexarRelacionado(ler): ${error.message}`);
+  if (!data) return null;
+
+  const lista = [...(data.relacionados || []), relacionado];
+  const { error: erroGravar } = await sb
+    .from(TABELA)
+    .update({ relacionados: lista, atualizado_em: new Date().toISOString() })
+    .eq("id", id);
+  if (erroGravar) throw new Error(`anexarRelacionado(gravar): ${erroGravar.message}`);
+  return lista;
+}

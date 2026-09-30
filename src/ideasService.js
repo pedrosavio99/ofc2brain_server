@@ -103,12 +103,14 @@ function quandoEvento(n) {
 }
 
 async function hidratarCandidatas(cands) {
-  const out = [];
-  for (const c of cands) {
-    const o = await db.buscarPorId(c.id);
-    if (o) out.push({ id: o.id, area: o.area, resumo: o.resumo, score: c.score });
-  }
-  return out;
+  // Uma ida ao banco pra todas, sem o embedding. Antes era uma ida POR nota,
+  // em serie, trazendo o vetor inteiro: ate 10 round trips desperdicados.
+  if (!cands.length) return [];
+  const scorePorId = new Map(cands.map((c) => [c.id, c.score]));
+  const notas = await db.buscarVariasResumidas([...scorePorId.keys()]);
+  return notas
+    .map((o) => ({ id: o.id, area: o.area, resumo: o.resumo, score: scorePorId.get(o.id) }))
+    .sort((a, b) => b.score - a.score); // mantem a ordem por similaridade, como antes
 }
 
 /**
@@ -133,7 +135,9 @@ export async function criarIdeiaAutomaticamente(texto) {
   // 3. LLM: resumo + area + tags + tipo + data_evento + confirmacao das relacoes reais
   const hojeISO = new Date().toISOString().slice(0, 10);
   const userPrompt = montarUserPrompt({ texto, hojeISO, candidatas: candidatasComScore });
-  const analise = await chatJSON(SYSTEM_PROMPT, userPrompt);
+  // raciocinio "low": classificar nota nao precisa do modelo "pensando" longamente
+  // antes de responder; o campo so e enviado a modelos gpt-oss (ver groqClient).
+  const analise = await chatJSON(SYSTEM_PROMPT, userPrompt, { raciocinio: "low" });
 
   // 4. junta o score (calculado localmente) com o motivo (explicado pelo LLM)
   const scorePorId = new Map(candidatasComScore.map((c) => [c.id, c.score]));
@@ -163,15 +167,11 @@ export async function criarIdeiaAutomaticamente(texto) {
   // referencia de volta: a ideia antiga tambem passa a "saber" da nova (relacao nao fica de mao unica)
   // ATENCAO: o front repete esta regra em absorverNota (public/app.js) pra
   // nao precisar reler a base depois de guardar. Mudou aqui, muda la.
-  for (const rel of relacionados) {
-    await db.atualizar(rel.id, (ideiaAntiga) => ({
-      ...ideiaAntiga,
-      relacionados: [
-        ...(ideiaAntiga.relacionados || []),
-        { id: novaIdeia.id, motivo: rel.motivo, score: rel.score },
-      ],
-    }));
-  }
+  await Promise.all(
+    relacionados.map((rel) =>
+      db.anexarRelacionado(rel.id, { id: novaIdeia.id, motivo: rel.motivo, score: rel.score })
+    )
+  );
 
   return semExpoerEmbedding(novaIdeia);
 }

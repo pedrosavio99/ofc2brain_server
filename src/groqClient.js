@@ -99,20 +99,28 @@ async function umaChamada(chave, modelo, systemPrompt, userPrompt, opcoes = {}) 
      que o continuarInsight faz) serve pra insight, mas em conversa o modelo
      perde quem falou o que. */
   const historico = historicoLimpo(opcoes.mensagens);
+  const corpo = {
+    model: modelo,
+    // 0.2 continua o padrao: e o certo pra classificar nota. Conversa pede mais.
+    temperature: opcoes.temperatura ?? 0.2,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...historico,
+      { role: "user", content: userPrompt },
+    ],
+  };
+  /* Modelos gpt-oss "pensam" escondido antes de responder (raciocinio), e isso
+     custa segundos. Em tarefa curta (classificar nota) da pra pedir raciocinio
+     "low" sem perda. O campo SO e enviado a modelos gpt-oss: nos demais a API
+     recusaria com 400. Nada muda para quem nao passar a opcao. */
+  if (opcoes.raciocinio && /gpt-oss/i.test(modelo)) {
+    corpo.reasoning_effort = opcoes.raciocinio;
+  }
   const resposta = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${chave}` },
-    body: JSON.stringify({
-      model: modelo,
-      // 0.2 continua o padrao: e o certo pra classificar nota. Conversa pede mais.
-      temperature: opcoes.temperatura ?? 0.2,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...historico,
-        { role: "user", content: userPrompt },
-      ],
-    }),
+    body: JSON.stringify(corpo),
   });
 
   if (!resposta.ok) {
