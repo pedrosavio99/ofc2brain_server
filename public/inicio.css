@@ -25,7 +25,7 @@ body.pg-inicio .envolucro .subtitulao {
 
 /* ------------------------------------------------------------ busca */
 
-body.pg-inicio .envolucro .busca { margin-bottom: 12px; }
+body.pg-inicio .envolucro .busca { margin: 14px 0 12px; }
 body.pg-inicio .envolucro .busca > svg { left: 15px; top: 24px; width: 18px; height: 18px; }
 body.pg-inicio .envolucro .busca input {
   height: 48px; padding: 0 44px;
@@ -312,44 +312,43 @@ body.pg-inicio .barra-marca img {
 
 /* ------------------------------------------------ faixa de numeros */
 
-/* Um grupo so, com divisoria fina, como os blocos dos Ajustes. Sem sombra:
-   e contexto, nao acao, entao nao pode competir com a busca. */
-body.pg-inicio .envolucro .faixa-resumo {
+/* Um grupo so, com divisoria fina, como os blocos dos Ajustes. */
+.faixa-resumo {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  margin: 10px 0 16px;
+  margin: 6px 0 16px;
   background: var(--superficie);
   border: 1px solid var(--separador);
   border-radius: var(--r-card);
   overflow: hidden;
 }
-body.pg-inicio .envolucro .faixa-resumo .stat {
+.faixa-resumo .stat {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 9px 4px 8px;
+  padding: 10px 4px 9px;
   background: none; border: 0; margin: 0;
   font: inherit; color: inherit; text-align: center;
   position: relative;
 }
 /* divisoria que nao encosta nas bordas */
-body.pg-inicio .envolucro .faixa-resumo .stat + .stat::before {
+.faixa-resumo .stat + .stat::before {
   content: ""; position: absolute; left: 0; top: 12px; bottom: 12px;
   width: 1px; background: var(--separador);
 }
-body.pg-inicio .envolucro .faixa-resumo button.stat {
+.faixa-resumo button.stat {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: background .15s ease;
 }
-body.pg-inicio .envolucro .faixa-resumo button.stat:hover { background: var(--superficie-2); }
-body.pg-inicio .envolucro .faixa-resumo button.stat:active { background: var(--superficie-2); opacity: .7; }
-body.pg-inicio .envolucro .faixa-resumo button.stat:focus-visible {
+.faixa-resumo button.stat:hover { background: var(--superficie-2); }
+.faixa-resumo button.stat:active { background: var(--superficie-2); opacity: .7; }
+.faixa-resumo button.stat:focus-visible {
   outline: 2px solid var(--acento); outline-offset: -2px;
 }
 
-body.pg-inicio .envolucro .stat-num {
+.faixa-resumo .stat-num {
   font-size: 17px; font-weight: 600; letter-spacing: -.01em; line-height: 1.25;
   color: var(--texto);
   font-variant-numeric: tabular-nums;
 }
-body.pg-inicio .envolucro .stat-rot {
+.faixa-resumo .stat-rot {
   font-size: 11.5px; line-height: 1.2; color: var(--texto-2);
 }
-body.pg-inicio .envolucro .faixa-resumo.carregando .stat-num { color: var(--texto-3); }
+.faixa-resumo.carregando .stat-num { color: var(--texto-3); }

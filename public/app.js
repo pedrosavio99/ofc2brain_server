@@ -522,41 +522,22 @@ function atualizarResumoTopo() {
   lig = Math.round(lig / 2);
   var tam = tamanhoDaBase();
 
-  /* Layout novo: a faixa de numeros abaixo da barra. Sem ela no HTML, cai no
-     texto antigo, pra nenhum passo da troca deixar a pagina quebrada. */
   var faixa = $("#faixaResumo");
   if (faixa) {
     var c = S.carregando;
     faixa.classList.toggle("carregando", !!c);
-    $("#numNotas").textContent = c ? "–" : n.toLocaleString("pt-BR");
-    $("#rotNotas").textContent = n === 1 ? "nota" : "notas";
-    $("#numLigacoes").textContent = c ? "–" : lig.toLocaleString("pt-BR");
-    $("#rotLigacoes").textContent = lig === 1 ? "ligação" : "ligações";
-    // sem a funcao armazenamento() no banco nao ha tamanho; o traco e honesto
-    $("#numEspaco").textContent = c || !tam ? "–" : tam;
-    return;
+    var elNumNotas = $("#numNotas");
+    if (elNumNotas) elNumNotas.textContent = c ? "–" : n.toLocaleString("pt-BR");
+    var elRotNotas = $("#rotNotas");
+    if (elRotNotas) elRotNotas.textContent = n === 1 ? "nota" : "notas";
+    var elNumLig = $("#numLigacoes");
+    if (elNumLig) elNumLig.textContent = c ? "–" : lig.toLocaleString("pt-BR");
+    var elRotLig = $("#rotLigacoes");
+    if (elRotLig) elRotLig.textContent = lig === 1 ? "ligação" : "ligações";
+    var elEspaco = $("#numEspaco");
+    if (elEspaco) elEspaco.textContent = c || !tam ? "–" : tam;
   }
-
-  var el = $("#resumoTopo");
-  if (!el) return;
-  if (S.carregando) { el.textContent = "Carregando…"; return; }
-  el.textContent = n === 0 ? "Nenhuma nota ainda."
-    : n + " " + (n === 1 ? "nota" : "notas") + " · " + lig + " " + (lig === 1 ? "ligação" : "ligações") +
-      (tam ? " · " + tam : "");
 }
-
-/* Atalhos da faixa. Ligacoes abre a visao sinaptica pelo mesmo botao da barra
-   (sem conhecer o sinapse.js por dentro). Espaco abre a tela de armazenamento,
-   que antes so se achava no menu. */
-(function () {
-  var lig = document.getElementById("statLigacoes");
-  var esp = document.getElementById("statEspaco");
-  if (lig) lig.addEventListener("click", function () {
-    var b = document.getElementById("btnSinapse");
-    if (b) b.click();
-  });
-  if (esp) esp.addEventListener("click", function () { telaArmazenamento(); });
-})();
 
 /* Dentro de uma area aberta: so os tipos que existem nela. */
 function chipsDeTipo() {
@@ -1304,6 +1285,30 @@ function telaInsightAvancado() {
    Menu
    ============================================================ */
 function abrirMenu() {
+  var n = S.notas.length;
+  var lig = 0;
+  S.notas.forEach(function (i) { lig += relsDe(i).length; });
+  lig = Math.round(lig / 2);
+  var tam = tamanhoDaBase();
+  var c = S.carregando;
+
+  var blocoResumo =
+    '<p class="grupo-titulo">Resumo</p>' +
+    '<div class="faixa-resumo' + (c ? " carregando" : "") + '" id="faixaResumo">' +
+      '<div class="stat">' +
+        '<span class="stat-num" id="numNotas">' + (c ? "–" : n.toLocaleString("pt-BR")) + "</span>" +
+        '<span class="stat-rot" id="rotNotas">' + (n === 1 ? "nota" : "notas") + "</span>" +
+      "</div>" +
+      '<button class="stat" id="statLigacoes" type="button" aria-label="Ver ligações na visão sináptica">' +
+        '<span class="stat-num" id="numLigacoes">' + (c ? "–" : lig.toLocaleString("pt-BR")) + "</span>" +
+        '<span class="stat-rot" id="rotLigacoes">' + (lig === 1 ? "ligação" : "ligações") + "</span>" +
+      "</button>" +
+      '<button class="stat" id="statEspaco" type="button" aria-label="Ver armazenamento">' +
+        '<span class="stat-num" id="numEspaco">' + (c || !tam ? "–" : tam) + "</span>" +
+        '<span class="stat-rot">espaço</span>' +
+      "</button>" +
+    "</div>";
+
   var tema = document.documentElement.dataset.tema;
   var check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>';
   var opcoesTema = Object.keys(TEMAS).map(function (k) {
@@ -1312,6 +1317,7 @@ function abrirMenu() {
   }).join("");
 
   abrirSheet("Opções",
+    blocoResumo +
     '<p class="grupo-titulo">Aparência</p><div class="grupo">' + opcoesTema + "</div>" +
     '<p class="grupo-titulo">Suas notas</p><div class="grupo">' +
       '<button class="item" id="mGarimpo">' +
@@ -1345,6 +1351,10 @@ function abrirMenu() {
   $("#sheetCorpo").querySelectorAll("[data-tema]").forEach(function (b) {
     b.addEventListener("click", function () { aplicarTema(b.dataset.tema); abrirMenu(); });
   });
+  var statLig = $("#sheetCorpo #statLigacoes");
+  if (statLig) statLig.addEventListener("click", function () { fecharSheet(); abrirSinapse(); });
+  var statEsp = $("#sheetCorpo #statEspaco");
+  if (statEsp) statEsp.addEventListener("click", function () { telaArmazenamento(); });
   // definido em garimpo.js, carregado depois deste arquivo
   $("#mGarimpo").addEventListener("click", function () { telaGarimpo(); });
   $("#mSinapse").addEventListener("click", function () { fecharSheet(); abrirSinapse(); });
