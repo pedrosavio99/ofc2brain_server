@@ -86,16 +86,17 @@ export async function lerPerfil() {
  */
 export async function salvarPerfil(campos) {
   const atual = await lerPerfil();
-  const novoPeso = campos.peso_kg != null && Number(campos.peso_kg) > 0
-    && Number(campos.peso_kg) !== Number(atual.peso_kg);
+  const informouPeso = campos.peso_kg != null && Number(campos.peso_kg) > 0;
+  const pesoMudou = informouPeso && Number(campos.peso_kg) !== Number(atual.peso_kg);
+  const deveRegistrarPesagem = informouPeso && (campos.forcar_pesagem || pesoMudou || !atual.peso_em);
 
   const linha = {
     id: "unico",
     nascimento: campos.nascimento ?? atual.nascimento,
     altura_cm: campos.altura_cm != null ? Number(campos.altura_cm) : atual.altura_cm,
     sexo: campos.sexo ?? atual.sexo,
-    peso_kg: campos.peso_kg != null ? Number(campos.peso_kg) : atual.peso_kg,
-    peso_em: novoPeso ? new Date().toISOString() : atual.peso_em,
+    peso_kg: informouPeso ? Number(campos.peso_kg) : atual.peso_kg,
+    peso_em: deveRegistrarPesagem ? new Date().toISOString() : atual.peso_em,
     restricoes: campos.restricoes ?? atual.restricoes,
     nivel: campos.nivel ?? atual.nivel,
     atualizado_em: new Date().toISOString(),
@@ -103,7 +104,7 @@ export async function salvarPerfil(campos) {
 
   const { data, error } = await sb.from("treino_perfil").upsert(linha, { onConflict: "id" }).select("*").single();
   if (error) throw new ErroHttp(500, `salvarPerfil: ${error.message}`);
-  if (novoPeso) await registrarPesagem(linha.peso_kg);
+  if (deveRegistrarPesagem) await registrarPesagem(linha.peso_kg);
   return data;
 }
 
@@ -217,6 +218,44 @@ export async function atualizarSessao(id, campos) {
 
 /* --------------------------------------------------------------- ciclos */
 
+/** Soma N dias a uma data YYYY-MM-DD em UTC puro, evitando bugs de fuso ou horario de verao. */
+export function adicionarDias(dataISO, n) {
+  const d = new Date(dataISO + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Diferenca em dias inteiros entre duas datas YYYY-MM-DD. */
+export function diferencaDias(dataInicioISO, dataFimISO) {
+  const d1 = new Date(dataInicioISO + "T12:00:00Z").getTime();
+  const d2 = new Date(dataFimISO + "T12:00:00Z").getTime();
+  return Math.round((d2 - d1) / 86400000);
+}
+
+/**
+ * Data de ancoragem inicial dos ciclos de 14 dias.
+ * Todos os ciclos sao janelas contiguas de 14 dias a partir daqui:
+ * Ciclo 0: [ancora, ancora + 13d]
+ * Ciclo 1: [ancora + 14d, ancora + 27d]
+ * etc.
+ */
+export async function obterDataAncora(agora = new Date()) {
+  const { data: primeiroCiclo } = await sb.from("treino_ciclos")
+    .select("inicio").order("inicio", { ascending: true }).limit(1).maybeSingle();
+  if (primeiroCiclo && primeiroCiclo.inicio) return primeiroCiclo.inicio;
+
+  const { data: primeiraSessao } = await sb.from("treino_sessoes")
+    .select("data").order("data", { ascending: true }).limit(1).maybeSingle();
+  if (primeiraSessao && primeiraSessao.data) return primeiraSessao.data;
+
+  const perfil = await lerPerfil();
+  if (perfil && perfil.criado_em) {
+    return new Date(perfil.criado_em).toISOString().slice(0, 10);
+  }
+
+  return hojeLocal(agora);
+}
+
 export async function listarCiclos(limite = 26) {
   const { data, error } = await sb.from("treino_ciclos")
     .select("*").order("inicio", { ascending: false }).limit(limite);
@@ -224,50 +263,157 @@ export async function listarCiclos(limite = 26) {
   return data || [];
 }
 
-/** As que ja sairam da janela e portanto viram resumo. */
-export async function sessoesVencidas(agora = new Date()) {
-  const { data, error } = await sb.from("treino_sessoes")
-    .select("*").lt("data", diasAtras(JANELA_DIAS - 1, agora));
-  if (error) throw new ErroHttp(500, `sessoesVencidas: ${error.message}`);
-  return data || [];
+/**
+ * Panorama do ciclo ATUAL de 14 dias (em andamento).
+ */
+export async function obterCicloAtual(agora = new Date()) {
+  const hoje = hojeLocal(agora);
+  const ancora = await obterDataAncora(agora);
+  const diff = diferencaDias(ancora, hoje);
+  const k = Math.max(0, Math.floor(diff / JANELA_DIAS));
+  const inicio = adicionarDias(ancora, k * JANELA_DIAS);
+  const fim = adicionarDias(inicio, JANELA_DIAS - 1);
+  const diaNoCiclo = Math.min(JANELA_DIAS, Math.max(1, diferencaDias(inicio, hoje) + 1));
+  const diasRestantes = Math.max(0, JANELA_DIAS - diaNoCiclo);
+
+  const { data: sessoes, error } = await sb.from("treino_sessoes")
+    .select("*")
+    .gte("data", inicio)
+    .lte("data", fim);
+  if (error) throw new ErroHttp(500, `obterCicloAtual: ${error.message}`);
+
+  const concluidas = (sessoes || []).filter((s) => s.concluida);
+  const esforcos = concluidas.map((s) => ({ leve: 1, moderado: 2, pesado: 3 }[String(s.esforco || "").toLowerCase()]))
+    .filter(Boolean);
+
+  return {
+    numero: k + 1,
+    inicio,
+    fim,
+    hoje,
+    dia_atual: diaNoCiclo,
+    dias_totais: JANELA_DIAS,
+    dias_restantes: diasRestantes,
+    treinos: concluidas.length,
+    minutos: concluidas.reduce((t, s) => t + (Number(s.duracao_min) || 0), 0),
+    calorias: concluidas.reduce((t, s) => t + (Number(s.calorias) || 0), 0),
+    esforco_medio: esforcos.length
+      ? Math.round((esforcos.reduce((a, b) => a + b, 0) / esforcos.length) * 100) / 100
+      : null,
+  };
 }
 
 /**
- * Fecha os ciclos vencidos: grava o resumo e PODA as sessoes.
- *
- * Ordem importa: grava primeiro, apaga depois. Se apagasse antes e a gravacao
- * falhasse, o periodo sumia sem deixar rastro, e isso e irreversivel.
- *
- * Idempotente: o indice unico em inicio faz o ignoreDuplicates engolir um
- * ciclo ja gravado, entao rodar duas vezes nao duplica nem estraga nada.
- *
- * @returns {Promise<{ciclos:number, sessoes:number}>}
+ * Analisa os intervalos de 14 em 14 dias e finaliza automaticamente os ciclos cujo
+ * periodo ja expirou (fim < hoje).
+ * Consolida o resumo em treino_ciclos e poda as sessoes antigas finalizadas.
  */
-export async function fecharCiclosVencidos(agrupar, agora = new Date()) {
-  const vencidas = await sessoesVencidas(agora);
-  if (!vencidas.length) return { ciclos: 0, sessoes: 0 };
+export async function fecharCiclosVencidos(arg1, arg2) {
+  const agora = arg1 instanceof Date ? arg1 : arg2 instanceof Date ? arg2 : new Date();
+  const hoje = hojeLocal(agora);
+  const ancora = await obterDataAncora(agora);
+  const diff = diferencaDias(ancora, hoje);
+  const kAtual = Math.max(0, Math.floor(diff / JANELA_DIAS));
 
-  const ciclos = agrupar(vencidas, JANELA_DIAS);
-  if (!ciclos.length) return { ciclos: 0, sessoes: 0 };
+  let ciclosFechados = 0;
+  let sessoesPodadas = 0;
 
+  // Itera por todos os ciclos passados de 14 dias que ja terminaram (i = 0 ate kAtual - 1)
+  for (let i = 0; i < kAtual; i++) {
+    const inicio = adicionarDias(ancora, i * JANELA_DIAS);
+    const fim = adicionarDias(inicio, JANELA_DIAS - 1);
+
+    if (fim < hoje) {
+      const { data: cicloExistente } = await sb.from("treino_ciclos")
+        .select("*").eq("inicio", inicio).maybeSingle();
+
+      const { data: sessoesPeriodo } = await sb.from("treino_sessoes")
+        .select("*").gte("data", inicio).lte("data", fim);
+
+      const temSessoes = sessoesPeriodo && sessoesPeriodo.length > 0;
+
+      if (!cicloExistente || temSessoes) {
+        const concluidas = (sessoesPeriodo || []).filter((s) => s.concluida);
+        const esforcos = concluidas.map((s) => ({ leve: 1, moderado: 2, pesado: 3 }[String(s.esforco || "").toLowerCase()]))
+          .filter(Boolean);
+
+        const treinosCalc = concluidas.length + (cicloExistente ? (cicloExistente.treinos || 0) : 0);
+        const minutosCalc = concluidas.reduce((t, s) => t + (Number(s.duracao_min) || 0), 0) +
+          (cicloExistente ? (cicloExistente.minutos || 0) : 0);
+        const caloriasCalc = concluidas.reduce((t, s) => t + (Number(s.calorias) || 0), 0) +
+          (cicloExistente ? (cicloExistente.calorias || 0) : 0);
+
+        let esforcoMedio = null;
+        if (esforcos.length) {
+          esforcoMedio = Math.round((esforcos.reduce((a, b) => a + b, 0) / esforcos.length) * 100) / 100;
+        } else if (cicloExistente && cicloExistente.esforco_medio) {
+          esforcoMedio = cicloExistente.esforco_medio;
+        }
+
+        const perfil = await lerPerfil();
+        const linha = {
+          inicio,
+          fim,
+          treinos: treinosCalc,
+          minutos: minutosCalc,
+          calorias: caloriasCalc,
+          esforco_medio: esforcoMedio,
+          peso_kg: cicloExistente && cicloExistente.peso_kg ? cicloExistente.peso_kg : perfil.peso_kg,
+        };
+
+        const { error: errUpsert } = await sb.from("treino_ciclos")
+          .upsert(linha, { onConflict: "inicio" });
+        if (errUpsert) throw new ErroHttp(500, `fecharCiclosVencidos: ${errUpsert.message}`);
+
+        ciclosFechados++;
+      }
+
+      if (temSessoes) {
+        const { error: errPoda } = await sb.from("treino_sessoes")
+          .delete().gte("data", inicio).lte("data", fim);
+        if (!errPoda) sessoesPodadas += sessoesPeriodo.length;
+      }
+    }
+  }
+
+  // Limpa ciclos sobrepostos ou desalinhados da grade de 14 dias
+  const { data: todosCiclos } = await sb.from("treino_ciclos").select("id, inicio");
+  if (todosCiclos && todosCiclos.length) {
+    const invalidos = todosCiclos.filter((c) => {
+      const d = diferencaDias(ancora, c.inicio);
+      return d < 0 || d % JANELA_DIAS !== 0;
+    }).map((c) => c.id);
+    if (invalidos.length) {
+      await sb.from("treino_ciclos").delete().in("id", invalidos);
+    }
+  }
+
+  return { ciclos: ciclosFechados, sessoes: sessoesPodadas };
+}
+
+/** Fechamento antecipado manual do ciclo atual se solicitado pelo usuario. */
+export async function forcarFecharCicloAtual(agora = new Date()) {
+  const hoje = hojeLocal(agora);
+  const cicloAtual = await obterCicloAtual(agora);
   const perfil = await lerPerfil();
-  const linhas = ciclos.map((c) => ({
-    inicio: c.inicio, fim: c.fim,
-    treinos: c.treinos, minutos: c.minutos, calorias: c.calorias,
-    esforco_medio: c.esforco_medio,
-    // o peso do fechamento: sem ele, a linha do tempo de peso perde referencia
+
+  const linha = {
+    inicio: cicloAtual.inicio,
+    fim: hoje,
+    treinos: cicloAtual.treinos,
+    minutos: cicloAtual.minutos,
+    calorias: cicloAtual.calorias,
+    esforco_medio: cicloAtual.esforco_medio,
     peso_kg: perfil.peso_kg,
-  }));
+  };
 
-  const { error: erroCiclo } = await sb.from("treino_ciclos")
-    .upsert(linhas, { onConflict: "inicio", ignoreDuplicates: true });
-  if (erroCiclo) throw new ErroHttp(500, `fecharCiclos: ${erroCiclo.message}`);
+  const { error: errUpsert } = await sb.from("treino_ciclos")
+    .upsert(linha, { onConflict: "inicio" });
+  if (errUpsert) throw new ErroHttp(500, `forcarFecharCiclo: ${errUpsert.message}`);
 
-  const corte = diasAtras(JANELA_DIAS - 1, agora);
-  const { error: erroPoda } = await sb.from("treino_sessoes").delete().lt("data", corte);
-  if (erroPoda) throw new ErroHttp(500, `podar: ${erroPoda.message}`);
+  await sb.from("treino_sessoes").delete().gte("data", cicloAtual.inicio).lte("data", hoje);
 
-  return { ciclos: linhas.length, sessoes: vencidas.length };
+  return { ok: true, ciclo_fechado: linha };
 }
 
 /* --------------------------------------------------------- equipamentos */

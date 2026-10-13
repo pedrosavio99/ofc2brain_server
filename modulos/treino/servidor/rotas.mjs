@@ -18,7 +18,7 @@ import { atualizarSessao } from "./banco.mjs";
 import { caloriasDaSessao, basalDiario, idadeDe, percentualDoDia,
   comparativoDoCiclo, sequenciaDeDias, duracaoEstimada } from "./calorias.mjs";
 import { analisarAtividade } from "./atividade.mjs";
-import { listarCiclos, fecharCiclosVencidos } from "./banco.mjs";
+import { listarCiclos, fecharCiclosVencidos, obterCicloAtual, forcarFecharCicloAtual } from "./banco.mjs";
 import { agruparEmCiclos, resumoDoCiclo } from "./calorias.mjs";
 import { caloriasDoBloco, metValido } from "./calorias.mjs";
 
@@ -85,7 +85,7 @@ export async function rotear(req, res, rota, url) {
   if (req.method === "POST" && rota === "/pesagem") {
     const peso = numeroEntre((req.body || {}).peso_kg, 30, 400, "Peso em kg");
     exigir(peso, 400, "Informe o peso em kg.");
-    const perfil = await salvarPerfil({ peso_kg: peso });
+    const perfil = await salvarPerfil({ peso_kg: peso, forcar_pesagem: true });
     return { ok: true, perfil, faltam_dias: diasAtePesagem(perfil) };
   }
 
@@ -155,13 +155,13 @@ export async function rotear(req, res, rota, url) {
 
        O catch e obrigatorio: limpeza que derruba a tela e pior que lixo
        acumulado, e o proximo acesso tenta de novo. */
-    const podou = await fecharCiclosVencidos(agruparEmCiclos).catch((e) => {
+    const podou = await fecharCiclosVencidos().catch((e) => {
       console.error("[treino] fechamento de ciclo falhou: " + e.message);
       return null;
     });
 
-    const [perfil, equipamentos, doDia, sessoes] = await Promise.all([
-      lerPerfil(), listarEquipamentos(), sessoesDeHoje(), listarSessoes(),
+    const [perfil, equipamentos, doDia, sessoes, cicloAtual] = await Promise.all([
+      lerPerfil(), listarEquipamentos(), sessoesDeHoje(), listarSessoes(), obterCicloAtual(),
     ]);
     // a ficha governa a tela de treino; as avulsas entram no total do dia
     const sessao = doDia.find((x) => x.origem === "ficha") || null;
@@ -200,6 +200,7 @@ export async function rotear(req, res, rota, url) {
       // sem equipamento nao da pra montar ficha: a tela manda cadastrar antes
       pode_gerar: equipamentos.length > 0,
       sessao,
+      ciclo_atual: cicloAtual,
       /* O panorama vem junto, com zeros quando nao ha nada. Painel que so
          aparece depois do primeiro treino esconde justamente de quem mais
          precisa de referencia: quem esta comecando. */
@@ -213,8 +214,8 @@ export async function rotear(req, res, rota, url) {
       // so da pra pedir extra sem ficha do dia aberta: duas abertas confundem
       pode_extra: !(sessao && !sessao.concluida),
       /* O dia INTEIRO, somando ficha e avulsas. Antes a tela mostrava so a
-         ultima sessao criada, entao uma corrida lancada depois do treino
-         escondia a ficha e o numero do dia ficava so o dela. */
+          ultima sessao criada, entao uma corrida lancada depois do treino
+          escondia a ficha e o numero do dia ficava so o dela. */
       hoje_total: {
         calorias: concluidas.reduce((t, x) => t + (Number(x.calorias) || 0), 0),
         minutos: concluidas.reduce((t, x) => t + (Number(x.duracao_min) || 0), 0),
@@ -510,12 +511,25 @@ export async function rotear(req, res, rota, url) {
   /* ---------------------------------------------------------- ciclos */
 
   if (req.method === "GET" && rota === "/ciclos") {
-    return { ciclos: await listarCiclos(Number(url.searchParams.get("n")) || 26) };
+    await fecharCiclosVencidos().catch((e) => console.error("[treino] fechamento falhou: " + e.message));
+    const [ciclos, cicloAtual] = await Promise.all([
+      listarCiclos(Number(url.searchParams.get("n")) || 26),
+      obterCicloAtual(),
+    ]);
+    return { ciclos, ciclo_atual: cicloAtual };
   }
 
-  /* Fechamento manual, pra quando voce quiser forcar sem abrir o dia. */
+  /* Fechamento de ciclos: vencidos automaticamente, ou o atual antecipado se pedido. */
   if (req.method === "POST" && rota === "/ciclos/fechar") {
-    return { ok: true, ...(await fecharCiclosVencidos(agruparEmCiclos)) };
+    const corpo = req.body || {};
+    if (corpo.forcar_atual) {
+      const res = await forcarFecharCicloAtual();
+      const [ciclos, cicloAtual] = await Promise.all([listarCiclos(26), obterCicloAtual()]);
+      return { ok: true, ...res, ciclos, ciclo_atual: cicloAtual };
+    }
+    const res = await fecharCiclosVencidos();
+    const [ciclos, cicloAtual] = await Promise.all([listarCiclos(26), obterCicloAtual()]);
+    return { ok: true, ...res, ciclos, ciclo_atual: cicloAtual };
   }
 
   throw new ErroHttp(404, "Rota nao encontrada no modulo treino.");

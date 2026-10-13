@@ -158,14 +158,135 @@
       (primeira ? "" : '<button class="btn btn-suave btn-largo" id="pDepois" style="margin-top:8px">Agora não</button>'));
 
     document.getElementById("pSalvar").addEventListener("click", async function (e) {
+      var val = document.getElementById("pPeso").value;
+      if (!val || Number(val) <= 0) { avisar("Informe seu peso em kg."); return; }
       e.target.disabled = true;
       try {
-        await pedir("/pesagem", json("POST", { peso_kg: document.getElementById("pPeso").value }));
+        await pedir("/pesagem", json("POST", { peso_kg: val }));
+        try { sessionStorage.removeItem("treino_adiou_pesagem"); } catch (err) {}
+        jaPerguntou.peso = true;
         fechar(); avisar("Peso atualizado."); carregar();
       } catch (err) { avisar(err.message); e.target.disabled = false; }
     });
     var depois = document.getElementById("pDepois");
-    if (depois) depois.addEventListener("click", fechar);
+    if (depois) {
+      depois.addEventListener("click", function () {
+        try { sessionStorage.setItem("treino_adiou_pesagem", "1"); } catch (err) {}
+        fechar();
+      });
+    }
+  }
+
+  function formatarIntervalo(inicio, fim) {
+    if (!inicio || !fim) return "";
+    var d1 = new Date(inicio + "T12:00:00Z");
+    var d2 = new Date(fim + "T12:00:00Z");
+    var str1 = d1.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" });
+    var str2 = d2.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+    return str1 + " a " + str2;
+  }
+
+  async function modalCiclos() {
+    abrir("Ciclos e resumos", '<div class="tr-carregando" style="padding:30px 10px;text-align:center">Carregando ciclos…</div>');
+    try {
+      var r = await pedir("/ciclos");
+      var cAtual = r.ciclo_atual || (S.dia && S.dia.ciclo_atual);
+      var ciclos = r.ciclos || [];
+
+      var pctAtual = cAtual ? Math.min(100, Math.round((cAtual.dia_atual / cAtual.dias_totais) * 100)) : 0;
+      var rotuloEsforcoAtual = cAtual && cAtual.esforco_medio
+        ? ({ 1: "leve", 2: "moderado", 3: "pesado" }[Math.round(cAtual.esforco_medio)] || cAtual.esforco_medio + "/3")
+        : "—";
+
+      var htmlAtual = cAtual ? (
+        '<div class="tr-ciclo-card destaque">' +
+          '<div class="tr-ciclo-cab">' +
+            '<span class="tr-ciclo-titulo">Ciclo ' + cAtual.numero + '</span>' +
+            '<span class="tr-ciclo-badge ativo">Em andamento</span>' +
+          '</div>' +
+          '<p class="tr-ciclo-datas">' + formatarIntervalo(cAtual.inicio, cAtual.fim) + '</p>' +
+          '<div class="tr-ciclo-barra"><i style="width:' + pctAtual + '%"></i></div>' +
+          '<p class="tr-sub" style="margin:0 0 8px;font-size:13px">Dia ' + cAtual.dia_atual + ' de ' + cAtual.dias_totais +
+            ' · Finaliza automaticamente em ' + cAtual.dias_restantes + (cAtual.dias_restantes === 1 ? ' dia' : ' dias') + '</p>' +
+          '<div class="tr-ciclo-grid">' +
+            '<div><b>' + (cAtual.treinos || 0) + '</b><span>' + (cAtual.treinos === 1 ? 'treino' : 'treinos') + '</span></div>' +
+            '<div><b>' + kcal(cAtual.calorias) + '</b><span>kcal</span></div>' +
+            '<div><b>' + (cAtual.minutos || 0) + '</b><span>min</span></div>' +
+          '</div>' +
+          '<div class="tr-ciclo-rodape">' +
+            '<span>Esforço médio: <strong>' + rotuloEsforcoAtual + '</strong></span>' +
+            '<button class="tr-mini" id="cFecharAgora">fechar agora</button>' +
+          '</div>' +
+        '</div>'
+      ) : '';
+
+      var htmlPassados = '';
+      if (!ciclos.length) {
+        htmlPassados = '<div class="vazio" style="padding:20px 8px"><p>Nenhum ciclo fechado ainda. Os ciclos fecham automaticamente a cada 14 dias.</p></div>';
+      } else {
+        htmlPassados = ciclos.map(function (c, idx) {
+          var num = ciclos.length - idx;
+          var rotuloEsforco = { 1: "leve", 2: "moderado", 3: "pesado" }[Math.round(c.esforco_medio || 0)] || (c.esforco_medio ? c.esforco_medio + "/3" : "—");
+          return '<div class="tr-ciclo-card">' +
+            '<div class="tr-ciclo-cab">' +
+              '<span class="tr-ciclo-titulo">Ciclo ' + num + '</span>' +
+              '<span class="tr-ciclo-badge fechado">Finalizado</span>' +
+            '</div>' +
+            '<p class="tr-ciclo-datas">' + formatarIntervalo(c.inicio, c.fim) + '</p>' +
+            '<div class="tr-ciclo-grid">' +
+              '<div><b>' + (c.treinos || 0) + '</b><span>' + (c.treinos === 1 ? 'treino' : 'treinos') + '</span></div>' +
+              '<div><b>' + kcal(c.calorias) + '</b><span>kcal</span></div>' +
+              '<div><b>' + (c.minutos || 0) + '</b><span>min</span></div>' +
+            '</div>' +
+            '<div class="tr-ciclo-rodape">' +
+              '<span>Esforço: <strong>' + rotuloEsforco + '</strong></span>' +
+              (c.peso_kg ? '<span>Peso: <strong>' + c.peso_kg + ' kg</strong></span>' : '') +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      abrir("Ciclos e resumos", '' +
+        '<p class="tr-sub" style="margin-top:0">Intervalos fixos de 14 dias com fechamento automático. Os resumos de quinzenas passadas ficam salvos aqui.</p>' +
+        htmlAtual +
+        '<h4 style="margin:20px 0 10px;font-size:15px;color:var(--texto-2);font-weight:600">Ciclos anteriores</h4>' +
+        htmlPassados +
+        '<div style="margin-top:18px;display:flex;flex-direction:column;gap:8px">' +
+          '<button class="btn btn-suave btn-largo" id="cAtualizarPeso">Atualizar meu peso</button>' +
+          '<button class="btn btn-largo" id="cFecharModal">Fechar</button>' +
+        '</div>');
+
+      var btnFecharAgora = document.getElementById("cFecharAgora");
+      if (btnFecharAgora) {
+        btnFecharAgora.addEventListener("click", async function () {
+          if (!confirm("Deseja fechar o ciclo atual antecipadamente? Um novo ciclo de 14 dias começará.")) return;
+          try {
+            btnFecharAgora.disabled = true;
+            await pedir("/ciclos/fechar", json("POST", { forcar_atual: true }));
+            avisar("Ciclo fechado com sucesso.");
+            await carregar();
+            modalCiclos();
+          } catch (err) {
+            avisar(err.message);
+            btnFecharAgora.disabled = false;
+          }
+        });
+      }
+
+      var btnPeso = document.getElementById("cAtualizarPeso");
+      if (btnPeso) {
+        btnPeso.addEventListener("click", function () {
+          fechar();
+          modalPesagem();
+        });
+      }
+
+      var btnFecharModal = document.getElementById("cFecharModal");
+      if (btnFecharModal) btnFecharModal.addEventListener("click", fechar);
+
+    } catch (err) {
+      abrir("Ciclos e resumos", '<div class="vazio"><h3>Não deu pra carregar</h3><p>' + esc(err.message) + '</p></div>');
+    }
   }
 
   /* Cadastro de equipamento em DOIS passos: a IA rascunha, voce confere.
@@ -566,19 +687,23 @@
      Dia sem treino vira um tracinho: e o buraco que conta a historia. */
   function painelResumo(r) {
     if (!r) return "";
+    var cAtual = S.dia && S.dia.ciclo_atual;
     var maior = r.maior_dia || 1;
+    var subtitulo = r.treinos
+      ? r.treinos + (r.treinos === 1 ? " treino, " : " treinos, ") + r.minutos + " min no total"
+      : "Nenhum treino ainda neste ciclo.";
+    if (cAtual) {
+      subtitulo += " · Dia " + cAtual.dia_atual + " de " + cAtual.dias_totais + " (" + cAtual.dias_restantes + (cAtual.dias_restantes === 1 ? " dia restante)" : " dias restantes)");
+    }
     var numeros = [
       [kcal(r.calorias), "kcal no ciclo"],
       [r.treinos ? kcal(r.media_calorias) : "0", "kcal por treino"],
       [String(r.sequencia || 0), r.sequencia === 1 ? "dia seguido" : "dias seguidos"],
     ];
     return '<section class="tr-cartao tr-painel">' +
-      "<h2>Últimos " + r.dias + " dias</h2>" +
-      '<p class="tr-sub" style="margin:0">' +
-        (r.treinos
-          ? r.treinos + (r.treinos === 1 ? " treino, " : " treinos, ") + r.minutos + " min no total"
-          : "Nenhum treino ainda neste ciclo.") +
-      "</p>" +
+      '<div class="tr-painel-topo"><h2>Últimos ' + r.dias + ' dias</h2>' +
+        '<button type="button" class="tr-mini" id="btnVerCiclos">ver resumos</button></div>' +
+      '<p class="tr-sub" style="margin:0">' + esc(subtitulo) + '</p>' +
       '<div class="tr-faixa">' +
         r.linha.map(function (d) {
           var alt = d.treinou ? Math.max(Math.round((d.calorias / maior) * 100), 12) : 0;
@@ -835,6 +960,9 @@
     });
     tela.querySelectorAll("[data-dia]").forEach(function (b) {
       b.addEventListener("click", function () { modalDia(b.dataset.dia); });
+    });
+    tela.querySelectorAll("#btnVerCiclos").forEach(function (b) {
+      b.addEventListener("click", modalCiclos);
     });
     /* O anel nasce no valor de ANTES do toque e anda ate o novo no quadro
        seguinte. Como a tela e repintada a cada check, sem isso ele pularia. */
@@ -1212,10 +1340,12 @@
          A tela vazia ja tem botao pra abrir na mao, entao ninguem fica sem
          caminho por causa disso. */
       var livre = !aberta();
+      var adiouHoje = false;
+      try { adiouHoje = sessionStorage.getItem("treino_adiou_pesagem") === "1"; } catch (err) {}
       if (livre && !S.dia.pronto && !jaPerguntou.perfil) {
         jaPerguntou.perfil = true;
         modalPerfil();
-      } else if (livre && S.dia.pronto && S.dia.pesagem && S.dia.pesagem.pedir && !jaPerguntou.peso) {
+      } else if (livre && S.dia.pronto && S.dia.pesagem && S.dia.pesagem.pedir && !jaPerguntou.peso && !adiouHoje) {
         jaPerguntou.peso = true;
         modalPesagem();
       }
@@ -1228,6 +1358,8 @@
 
   document.getElementById("btnPerfil").addEventListener("click", modalPerfil);
   document.getElementById("btnEquipamentos").addEventListener("click", modalListaEquipamentos);
+  var btnOpcoes = document.getElementById("btnOpcoes");
+  if (btnOpcoes) btnOpcoes.addEventListener("click", modalCiclos);
 
   var elData = document.getElementById("trData");
   if (elData) {

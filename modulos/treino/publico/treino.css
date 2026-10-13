@@ -565,3 +565,99 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
 .tr-musc-lista .trilho i { display: block; height: 100%; border-radius: var(--r-pill); }
 .tr-musc-lista .val { text-align: right; font-weight: 700; }
 .tr-musc-lista .niv { font-size: 12.5px; color: var(--texto-2); }
+
+/* ---- ciclos e resumos ---- */
+.tr-painel-topo { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.tr-painel-topo h2 { margin: 0; }
+
+.tr-ciclo-card {
+  background: var(--superficie-2);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.tr-ciclo-card.destaque {
+  border: 1px solid var(--acento);
+  background: var(--superficie);
+}
+.tr-ciclo-cab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.tr-ciclo-titulo {
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.tr-ciclo-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  letter-spacing: .02em;
+}
+.tr-ciclo-badge.ativo {
+  background: rgba(0, 122, 255, 0.12);
+  color: var(--acento);
+}
+.tr-ciclo-badge.fechado {
+  background: rgba(52, 199, 89, 0.12);
+  color: var(--sucesso);
+}
+.tr-ciclo-datas {
+  font-size: 13px;
+  color: var(--texto-2);
+  margin: 0 0 8px;
+}
+.tr-ciclo-barra {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--separador);
+  margin: 8px 0 10px;
+  overflow: hidden;
+}
+.tr-ciclo-barra i {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--acento);
+  transition: width .3s ease;
+}
+.tr-ciclo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  text-align: center;
+}
+.tr-ciclo-grid > div {
+  background: var(--superficie);
+  padding: 8px 4px;
+  border-radius: 10px;
+}
+.tr-ciclo-card.destaque .tr-ciclo-grid > div {
+  background: var(--superficie-2);
+}
+.tr-ciclo-grid b {
+  display: block;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+.tr-ciclo-grid span {
+  font-size: 11px;
+  color: var(--texto-2);
+}
+.tr-ciclo-rodape {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--separador);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--texto-2);
+}
