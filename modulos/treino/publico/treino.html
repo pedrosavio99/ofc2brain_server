@@ -20,11 +20,14 @@
 
 <header class="barra" id="barra">
   <div class="barra-int">
-    <a class="voltar voltar-barra" href="/">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
-      <span class="voltar-txt">Segundo cérebro</span>
-    </a>
-    <span class="barra-titulo">Treino</span>
+    <div class="barra-marca-bloco">
+      <a class="barra-marca" href="/" title="Ir para início do Segundo cérebro">
+        <img src="/cerebro-mini.svg" alt="" width="22" height="22" draggable="false" />
+        <span class="barra-marca-nome">Segundo cérebro</span>
+      </a>
+      <span class="barra-separador-modulo" aria-hidden="true">/</span>
+      <span class="barra-modulo-atual">Treino</span>
+    </div>
     <div class="barra-acoes">
       <button class="icone-btn" id="btnEquipamentos" aria-label="Equipamentos" title="Seus equipamentos">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -37,6 +40,11 @@
         </svg>
       </button>
       <button class="icone-btn" id="btnOpcoes" aria-label="Opções e ciclos" title="Opções e resumos dos ciclos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+        </svg>
+      </button>
+      <button class="icone-btn btn-menu-eco" id="btnMenuEco" aria-label="Menu do ecossistema" title="Menu do ecossistema">
         <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
       </button>
     </div>
@@ -71,6 +79,7 @@
 <div class="tr-aviso" id="aviso" hidden></div>
 
 <script src="/pin.js"></script>
+<script src="/navegacao.js"></script>
 <script src="/treino/treino.js"></script>
 </body>
 </html>

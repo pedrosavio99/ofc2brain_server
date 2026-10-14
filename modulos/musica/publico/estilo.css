@@ -28,7 +28,7 @@ html, body { margin: 0; background: var(--fundo); color: var(--texto); font-fami
 button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 img { display: block; }
 
-.pagina { max-width: 760px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 16px 160px; }
+.pagina { max-width: 760px; margin: 0 auto; padding: 14px 16px 160px; }
 .topo h1 { font-size: 36px; letter-spacing: -.03em; margin: 8px 0 2px; }
 .topo p { margin: 0 0 20px; color: var(--texto-2); font-size: 15px; }
 

@@ -17,26 +17,25 @@ import { ErroHttp } from "./banco.mjs";
 import { chatJSONDetalhado } from "../../../src/groqClient.js";
 import { escolherTom, instrucaoDoTom, tokensDoTom } from "./tom.mjs";
 import { gerarJSONDetalhado, temGemini } from "../../../src/geminiClient.js";
+import { obterContextoEcossistema } from "./ecossistema.mjs";
 import * as db from "../../../src/db.js";
 
 const SISTEMA = `Voce e o segundo cerebro dessa pessoa. Voce nao e assistente, nao e atendente e nao e terapeuta: voce e a parte da cabeca dela que guardou tudo e lembra.
 
 Como falar:
-- Portugues do Brasil, conversa de verdade. Frase curta. Sem travessao.
+- Portugues do Brasil, conversa de verdade, inteligente e parceira. Frase direta. Sem travessao.
 - Sem "posso ajudar", sem "que interessante", sem resumir o que ela acabou de dizer.
-
-(Como responder ESTE turno vem mais abaixo, no bloco de instrucao. Ele manda sobre
-o resto: se ele disser para nao dar contraponto, nao de contraponto.)
+- Se ela perguntar sobre mais de um assunto na mesma mensagem (ex: treino e notas), responda aos dois tópicos com clareza, dividindo em parágrafos separados.
 
 O que voce sabe:
-- Voce so conhece as notas que te deram neste turno. Se nao tem nota sobre o assunto, diga isso e fale do que voce sabe dela.
-- Nunca invente uma nota, uma data ou um numero. Citar errado e pior que nao citar.
-- Referencie pelo conteudo, nunca por id.
-- Cada nota vem com a idade dela entre parenteses (hoje, ontem, ha 5 dias). USE essa
-  palavra. Nota de hoje nao e "aquela vez que voce escreveu": e de hoje, e tratar
-  como antiga faz voce parecer que nao leu.
+- Alem das notas guardadas na memoria, voce esta CONECTADO ao ecossistema: voce tem acesso direto as REFEICOES dela (calorias consumidas hoje, macros, itens do cafe/almoco/jantar), aos TREINOS dela (se treinou hoje, exercicios da ficha, series, status concluido, calorias, progresso do ciclo de 14 dias) e ao modulo de MUSICA.
+- Use essas informacoes com total naturalidade:
+  * Treino: se ela treinou hoje e concluiu, fale com entusiasmo dos exercicios que ela fez e das calorias gastas. Se estiver na reta final do ciclo de treinos (ultimos dias), mencione o progresso do ciclo para motivar! NUNCA despeje peso ou altura do nada, a menos que ela pergunte diretamente sobre peso.
+  * Notas / Memória: cite o que ela guardou com base nas notas fornecidas no bloco de notas, usando o conteudo real e a idade (ontem, ha 3 dias, etc.). Se hoje nao houver nota nova, diga claramente mas comente as notas recentes que ela tem. NUNCA diga que a base esta vazia se houver notas listadas no bloco.
+  * Musica: se ela pedir pra tocar musica, botar um som ou pedir algo pra ouvir no treino ou foco, reaja como parceiro e inclua OBRIGATORIAMENTE no final a tag [TOCAR_MUSICA: artista ou estilo ou musica].
+- Nunca invente uma nota, uma data, uma caloria ou um exercicio que nao conste nos dados reais.
 
-Formato: UMA mensagem so, inteira. Quem conversa em blocos curtos e a mensagem rapida que ja chegou antes de voce; voce e a resposta que ela estava cobrindo. Pode ter varios paragrafos. Nao repita o que a mensagem rapida disse, continue dali.
+Formato: UMA mensagem so, inteira. Quem conversa em blocos curtos e a mensagem rapida que ja chegou antes de voce; voce e a resposta que ela estava cobrindo. Pode ter varios paragrafos bem estruturados. Nao repita o que a mensagem rapida disse, continue dali.
 
 Responda SOMENTE com JSON:
 {"mensagem": "texto inteiro aqui"}`;
@@ -52,12 +51,14 @@ export function historicoParaMensagens(turnos) {
 }
 
 /** Monta o prompt do turno. Puro, pra dar pra testar sem rede. */
-export function montarPrompt({ tracos, panorama, bloco, texto, hojeISO, tom }) {
+export function montarPrompt({ tracos, panorama, bloco, blocoEcossistema, texto, hojeISO, tom }) {
   return `Hoje e ${hojeISO}.
 
 ${blocoDaAlma(tracos)}
 
 ${blocoDoPanorama(panorama)}
+
+${blocoEcossistema || ""}
 
 ${bloco}
 
@@ -136,6 +137,24 @@ export async function rotear(req, url) {
   if (req.method === "GET" && rota === "/health") {
     const banco = await banco_checar();
     return { status: banco.ok ? "ok" : "degradado", modulo: "conversa", banco };
+  }
+
+  // ---- ecossistema: resumo de refeicoes, treinos e musica ----
+  if (req.method === "GET" && rota === "/ecossistema") {
+    return await obterContextoEcossistema();
+  }
+
+  // ---- busca musical para o player integrado da conversa ----
+  if (req.method === "GET" && rota === "/musica/busca") {
+    const q = url.searchParams.get("q") || "";
+    const workerUrl = "https://teste-sm.pedro-sarmento-455.workers.dev/api/busca?q=" + encodeURIComponent(q);
+    try {
+      const resp = await fetch(workerUrl);
+      const d = await resp.json().catch(() => ({}));
+      return d;
+    } catch (e) {
+      return { ok: false, erro: e.message, musicas: [], artistas: [], cds: [] };
+    }
   }
 
   // ---- sessao ----
@@ -285,7 +304,7 @@ export async function rotear(req, url) {
       .map((n, i) => (n ? { ...n, embedding: undefined, score: i < qtdFortes ? 1 : 0 } : null))
       .filter(Boolean);
 
-    const [alma, tracos, anteriores, panorama, tom] = await Promise.all([
+    const [alma, tracos, anteriores, panorama, tom, ecossistema] = await Promise.all([
       lerAlma(),
       banco.listarTracos({}),
       banco.ultimosTurnos(conversaId, 20),
@@ -295,6 +314,8 @@ export async function rotear(req, url) {
          mais um segundo de espera antes de o modelo forte nem comecar. Nunca lanca,
          entao nao precisa de catch: erro vira heuristica la dentro. */
       escolherTom({ texto: turnoPessoa.texto, notas }),
+      // Visão conectada do ecossistema: refeições, treinos e música
+      obterContextoEcossistema().catch(() => null),
     ]);
     // o turno atual vai no prompt, entao sai do historico pra nao aparecer duas vezes
     const historico = historicoParaMensagens(anteriores.filter((t) => t.ordem < Number(ordem)));
@@ -302,6 +323,7 @@ export async function rotear(req, url) {
     const prompt = montarPrompt({
       tracos,
       panorama,
+      blocoEcossistema: ecossistema && ecossistema.blocoTexto,
       bloco: janelaDoTurno
         ? blocoDoPeriodo(janelaDoTurno, notas, Number(turnoPessoa.meta.totalPeriodo) || notas.length)
         : blocoDeNotas(notas),

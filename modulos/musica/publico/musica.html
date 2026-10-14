@@ -6,10 +6,33 @@
   <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
   <title>Música</title>
+  <link rel="icon" type="image/svg+xml" href="/cerebro-mini.svg" />
+  <link rel="stylesheet" href="/estilos.css" />
   <link rel="stylesheet" href="/musica/estilo.css" />
+  <script>
+    try { document.documentElement.dataset.tema = localStorage.getItem("2brain-tema") || "sistema"; } catch (e) {}
+  </script>
 </head>
 <body>
-<a class="voltar-2b" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Segundo cérebro</a>
+
+<header class="barra" id="barra">
+  <div class="barra-int">
+    <div class="barra-marca-bloco">
+      <a class="barra-marca" href="/" title="Ir para início do Segundo cérebro">
+        <img src="/cerebro-mini.svg" alt="" width="22" height="22" draggable="false" />
+        <span class="barra-marca-nome">Segundo cérebro</span>
+      </a>
+      <span class="barra-separador-modulo" aria-hidden="true">/</span>
+      <span class="barra-modulo-atual">Música</span>
+    </div>
+    <div class="barra-acoes">
+      <button class="icone-btn btn-menu-eco" id="btnMenuEco" aria-label="Menu do ecossistema" title="Menu do ecossistema">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
   <main class="pagina">
     <header class="topo">
       <h1><a href="#/">Música</a></h1>
@@ -52,6 +75,7 @@
 
   <audio id="audio" preload="auto"></audio>
   <script src="/musica/config.js"></script>
+  <script src="/navegacao.js"></script>
   <script src="/musica/radio.js" type="module"></script>
   <script src="/musica/app.js" type="module"></script>
 </body>

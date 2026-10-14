@@ -20,18 +20,26 @@
 
 <header class="barra" id="barra">
   <div class="barra-int">
-    <a class="voltar voltar-barra" href="/">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
-      Segundo cérebro
-    </a>
-    <span class="barra-titulo">Trabalho</span>
+    <div class="barra-marca-bloco">
+      <a class="barra-marca" href="/" title="Ir para início do Segundo cérebro">
+        <img src="/cerebro-mini.svg" alt="" width="22" height="22" draggable="false" />
+        <span class="barra-marca-nome">Segundo cérebro</span>
+      </a>
+      <span class="barra-separador-modulo" aria-hidden="true">/</span>
+      <span class="barra-modulo-atual">Trabalho</span>
+    </div>
     <div class="barra-acoes">
-      <button class="icone-btn" id="btnAtualizar" aria-label="Atualizar" title="Atualizar">
+      <button class="icone-btn" id="btnAtualizar" aria-label="Atualizar" title="Atualizar tarefas">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 11a8 8 0 10-2.3 6"/><path d="M20 5v6h-6"/>
         </svg>
       </button>
-      <button class="icone-btn" id="btnOpcoes" aria-label="Opções">
+      <button class="icone-btn" id="btnOpcoes" aria-label="Opções de trabalho" title="Opções de trabalho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>
+        </svg>
+      </button>
+      <button class="icone-btn btn-menu-eco" id="btnMenuEco" aria-label="Menu do ecossistema" title="Menu do ecossistema">
         <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
       </button>
     </div>
@@ -87,6 +95,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="/pin.js"></script>
+<script src="/navegacao.js"></script>
 <script src="/trabalho/trabalho.js"></script>
 </body>
 </html>

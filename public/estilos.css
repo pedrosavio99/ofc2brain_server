@@ -538,3 +538,231 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 @media (max-width: 380px) { .titulao { font-size: 30px; } .envolucro { padding: 0 12px 64px; } }
+
+/* ===================== Identidade e Hierarquia da Barra (Ecossistema) ===================== */
+.barra-marca-bloco {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.barra-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding-left: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--texto);
+  text-decoration: none;
+  user-select: none;
+  transition: opacity .15s ease;
+  flex-shrink: 0;
+}
+.barra-marca:hover { opacity: .85; }
+.barra-marca:active { transform: scale(.98); }
+.barra-marca img {
+  width: 22px;
+  height: 22px;
+  display: block;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.barra-separador-modulo {
+  color: var(--texto-3);
+  font-size: 14px;
+  font-weight: 400;
+  opacity: .6;
+  user-select: none;
+}
+
+.barra-modulo-atual {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--acento);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eco-modulo-item {
+  position: relative;
+  text-decoration: none;
+}
+.eco-modulo-item.ativo {
+  background: var(--acento-eco);
+  border-radius: var(--r-item, 10px);
+}
+.eco-modulo-item.ativo strong {
+  color: var(--acento);
+}
+.badge-modulo-atual {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+  background: var(--acento);
+  color: #fff;
+  font-weight: 700;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  vertical-align: middle;
+}
+.eco-check {
+  color: var(--acento);
+  display: flex;
+  align-items: center;
+}
+.eco-check svg {
+  width: 20px;
+  height: 20px;
+}
+.eco-seta {
+  width: 16px;
+  height: 16px;
+  color: var(--texto-3);
+  opacity: .5;
+}
+
+@media (max-width: 480px) {
+  .barra-marca-nome {
+    display: none;
+  }
+}
+
+/* ===================== Card do Player de Música no Chat Conversa ===================== */
+.cv-musica-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--superficie-2);
+  border: 1px solid var(--separador);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  transition: transform .15s ease, border-color .15s ease;
+}
+.cv-musica-card:hover {
+  border-color: var(--acento);
+}
+.cv-musica-capa {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--superficie);
+  flex-shrink: 0;
+}
+.cv-musica-info {
+  flex: 1;
+  min-width: 0;
+}
+.cv-musica-titulo {
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--texto);
+  display: block;
+}
+.cv-musica-artista {
+  font-size: 12.5px;
+  color: var(--texto-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  margin-top: 1px;
+}
+.cv-musica-acoes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.cv-musica-play-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--acento);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  border: none;
+  cursor: pointer;
+  transition: transform .1s ease, opacity .15s ease;
+}
+.cv-musica-play-btn:active {
+  transform: scale(.92);
+}
+.cv-musica-play-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+.cv-musica-link-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--texto-2);
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+  transition: background .15s ease;
+}
+.cv-musica-link-btn:hover {
+  background: var(--acento-eco);
+  color: var(--acento);
+}
+.cv-musica-link-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===================== Sugestões de Conversa (Ecossistema) ===================== */
+.cv-sugestoes {
+  margin: 20px auto 16px;
+  max-width: 480px;
+  text-align: center;
+  animation: surgir .3s ease;
+}
+.cv-sugestoes-rotulo {
+  font-size: 13.5px;
+  color: var(--texto-2);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.cv-sugestoes-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.cv-chip {
+  background: var(--superficie);
+  border: 1px solid var(--separador);
+  border-radius: var(--r-pill);
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--texto);
+  cursor: pointer;
+  transition: all .15s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.cv-chip:hover {
+  background: var(--acento-eco);
+  border-color: var(--acento);
+  color: var(--acento);
+  transform: translateY(-1px);
+}
+.cv-chip:active {
+  transform: scale(.96);
+}

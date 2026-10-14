@@ -104,21 +104,27 @@ export function fraseDoAchado(resumo, textoPessoa = "") {
 
 /** A fala da camada 1 quando o pedido foi por data. Pura. */
 export function frasePeriodo(janela, quantas) {
-  if (!quantas) return `Não tem nota nenhuma sua de ${janela.rotulo}.`;
+  if (!quantas) return `Não achei nota nova registrada de ${janela.rotulo}. Deixa eu ver o que você tem de recente.`;
   const n = quantas === 1 ? "1 nota sua" : `${quantas} notas suas`;
   return `Peguei ${n} de ${janela.rotulo}. Deixa eu ler.`;
 }
 
 /** As notas do periodo viradas em texto. Pura. */
-export function blocoDoPeriodo(janela, notas, total, agora = new Date()) {
-  if (!notas.length) {
-    return `Ele pediu as notas de ${janela.rotulo} e NAO existe nenhuma nesse periodo. ` +
-      `Diga isso com todas as letras. Nao troque por nota de outra data e nao invente que achou.`;
-  }
+export function blocoDoPeriodo(janela, notas, total, agora = new Date(), recentes = []) {
   const linha = (n, i) =>
     `${i + 1}. [${n.area || "sem área"}] ${n.resumo || "(sem resumo)"}\n` +
     `   guardada em ${String(n.criado_em).slice(0, 10)} (${rotuloDaNota(n.criado_em, agora)})\n` +
     `   texto: ${corta(n.texto_original, 700)}`;
+
+  if (!notas.length) {
+    let extra = "";
+    if (recentes && recentes.length) {
+      extra = `\n\nNo entanto, a base DELE TEM NOTAS RECENTES (cite com as datas reais de quando foram guardadas):\n` +
+        recentes.map(linha).join("\n");
+    }
+    return `Ele perguntou pelas notas de ${janela.rotulo} e NAO existe nenhuma nota registrada nessa data específica. ` +
+      `Diga claramente que nessa data específica não há registros novos. Mas NUNCA afirme que ele não tem notas ou que a base está zerada, pois ele tem centenas de notas.${extra}`;
+  }
   const aviso = total > notas.length
     ? `\n\n(São ${total} no período; estas são as ${notas.length} mais recentes. Diga que tem mais se ele perguntar.)`
     : "";
@@ -224,11 +230,22 @@ export async function recuperar(texto, { buscar = 40, maxFortes = 20, maxFracas 
     const usadas = doPeriodo.slice(0, MAX_POR_PERIODO)
       // tudo que esta na janela E do assunto pedido: nao ha tangente aqui
       .map((n) => ({ ...n, embedding: undefined, score: 1 }));
+    let recentes = [];
+    if (doPeriodo.length === 0) {
+      try {
+        const todas = await db.listarTodas();
+        todas.sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
+        recentes = todas.slice(0, 5).map((n) => ({ ...n, embedding: undefined, score: 1 }));
+      } catch {
+        // sem rede/banco
+      }
+    }
+
     const resumo = { ...resumirAchado(usadas), periodo: janela.rotulo, cortou, totalPeriodo: doPeriodo.length };
     return {
-      notas: usadas, fortes: usadas, fracas: [], resumo, janela,
+      notas: usadas.length ? usadas : recentes, fortes: usadas.length ? usadas : recentes, fracas: [], resumo, janela,
       frase: frasePeriodo(janela, doPeriodo.length),
-      bloco: blocoDoPeriodo(janela, usadas, doPeriodo.length),
+      bloco: blocoDoPeriodo(janela, usadas, doPeriodo.length, agora, recentes),
     };
   }
 

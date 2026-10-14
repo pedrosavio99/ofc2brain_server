@@ -47,15 +47,160 @@
      sobre conteudo: e so sinal de vida. Quem fala de nota e a camada 1. */
   var ABERTURAS = ["Deixa eu ver aqui", "Peraí", "Hmm, deixa eu olhar", "Já te falo"];
 
+  var cvAudio = document.getElementById("cvAudio");
+  var musicaTocandoAgora = null;
+
+  function esc(s) {
+    return String(s || "").replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
   function esperar(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   function paraBaixo() { corpo.scrollTop = corpo.scrollHeight; }
 
+  async function anexarCardMusica(container, termo) {
+    var card = document.createElement("div");
+    card.className = "cv-musica-card";
+    card.innerHTML =
+      '<img class="cv-musica-capa" src="/cerebro-mini.svg" alt="" />' +
+      '<div class="cv-musica-info">' +
+        '<strong class="cv-musica-titulo">Buscando: ' + esc(termo) + '...</strong>' +
+        '<span class="cv-musica-artista">Sua Música</span>' +
+      '</div>' +
+      '<div class="cv-musica-acoes">' +
+        '<a href="/musica#/busca/' + encodeURIComponent(termo) + '" class="cv-musica-link-btn" title="Ouvir no Módulo Música">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>' +
+        '</a>' +
+      '</div>';
+    container.appendChild(card);
+    paraBaixo();
+
+    try {
+      var r = await pedir("/musica/busca?q=" + encodeURIComponent(termo), {}, 8000);
+      var faixas = (r && r.musicas && r.musicas.length) ? r.musicas : [];
+      var cds = (r && r.cds && r.cds.length) ? r.cds : [];
+
+      if (!faixas.length && !cds.length) {
+        card.querySelector(".cv-musica-titulo").textContent = termo;
+        card.querySelector(".cv-musica-artista").textContent = "Abra para buscar no módulo Música";
+        return;
+      }
+
+      var faixa = faixas[0] || {
+        titulo: cds[0].titulo,
+        artista: cds[0].artista,
+        capa: cds[0].capa,
+        link: cds[0].link,
+      };
+
+      var capaEl = card.querySelector(".cv-musica-capa");
+      if (faixa.capa) capaEl.src = faixa.capa;
+      card.querySelector(".cv-musica-titulo").textContent = faixa.titulo || termo;
+      card.querySelector(".cv-musica-artista").textContent = faixa.artista || "Sua Música";
+
+      // Botão de Play / Pause interativo
+      var acoes = card.querySelector(".cv-musica-acoes");
+      var btnPlay = document.createElement("button");
+      btnPlay.className = "cv-musica-play-btn";
+      btnPlay.setAttribute("aria-label", "Tocar");
+      btnPlay.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+      acoes.insertBefore(btnPlay, acoes.firstChild);
+
+      function atualizarIcone(tocando) {
+        btnPlay.innerHTML = tocando
+          ? '<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'
+          : '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+      }
+
+      btnPlay.addEventListener("click", function () {
+        if (!cvAudio) return;
+        if (musicaTocandoAgora === faixa && !cvAudio.paused) {
+          cvAudio.pause();
+          atualizarIcone(false);
+        } else {
+          if (faixa.audio) {
+            cvAudio.src = faixa.audio;
+            cvAudio.play().then(function () {
+              musicaTocandoAgora = faixa;
+              atualizarIcone(true);
+            }).catch(function (e) {
+              console.warn("Autoplay:", e);
+            });
+          } else {
+            window.location.href = "/musica#" + (faixa.link ? "/cd/" + faixa.link : "/busca/" + encodeURIComponent(termo));
+          }
+        }
+      });
+
+      if (cvAudio) {
+        cvAudio.addEventListener("pause", function () {
+          if (musicaTocandoAgora === faixa) atualizarIcone(false);
+        });
+        cvAudio.addEventListener("ended", function () {
+          if (musicaTocandoAgora === faixa) atualizarIcone(false);
+        });
+      }
+
+      // Tenta tocar automaticamente
+      if (faixa.audio) {
+        cvAudio.src = faixa.audio;
+        cvAudio.play().then(function () {
+          musicaTocandoAgora = faixa;
+          atualizarIcone(true);
+        }).catch(function () {});
+      }
+    } catch (e) {
+      console.warn("Falha ao buscar musica:", e);
+    }
+  }
+
+  function verificarSugestoesIniciais() {
+    var existentes = fluxo.querySelectorAll(".cv-bolha");
+    if (existentes.length === 0 && !fluxo.querySelector(".cv-sugestoes")) {
+      var caixa = document.createElement("div");
+      caixa.className = "cv-sugestoes";
+      caixa.innerHTML =
+        '<p class="cv-sugestoes-rotulo">Pergunte ao seu Segundo Cérebro:</p>' +
+        '<div class="cv-sugestoes-chips">' +
+          '<button type="button" class="cv-chip">🥗 O que comi hoje?</button>' +
+          '<button type="button" class="cv-chip">🏋️ Qual meu treino de hoje?</button>' +
+          '<button type="button" class="cv-chip">🔥 Quantas calorias consumi?</button>' +
+          '<button type="button" class="cv-chip">🎵 Toca um forró pra animar</button>' +
+        '</div>';
+      caixa.querySelectorAll(".cv-chip").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var textoLimpo = btn.textContent.replace(/^[^\w\s]+/, "").trim();
+          campo.value = textoLimpo;
+          caixa.remove();
+          enviar();
+        });
+      });
+      fluxo.appendChild(caixa);
+      paraBaixo();
+    }
+  }
+
   function bolha(texto, quem) {
+    var s = fluxo.querySelector(".cv-sugestoes");
+    if (s) s.remove();
+
     var d = document.createElement("div");
     d.className = "cv-bolha " + quem;
-    // textContent e nao innerHTML: o texto vem do modelo e das suas notas.
-    d.textContent = texto;
-    fluxo.appendChild(d); paraBaixo(); return d;
+
+    var matchMusica = quem === "cerebro" ? String(texto || "").match(/\[TOCAR_MUSICA:\s*([^\]]+)\]/i) : null;
+    var textoLimpo = String(texto || "").replace(/\[TOCAR_MUSICA:\s*([^\]]+)\]/gi, "").trim();
+
+    d.textContent = textoLimpo || (matchMusica ? "Separei esse som pra você ouvir:" : "");
+    fluxo.appendChild(d);
+    paraBaixo();
+
+    if (matchMusica && matchMusica[1]) {
+      anexarCardMusica(d, matchMusica[1].trim());
+    }
+
+    return d;
   }
 
   function status(texto, comPontos) {
@@ -138,6 +283,7 @@
         var h = await pedir("/historico?conversa_id=" + encodeURIComponent(salvo) + "&n=30", {});
         conversaId = salvo;
         (h.turnos || []).forEach(function (t) { bolha(t.texto, t.papel === "pessoa" ? "pessoa" : "cerebro"); });
+        if (!(h.turnos || []).length) verificarSugestoesIniciais();
         return;
       } catch (e) {
         // conversa sumiu do banco (faxina dos 90 dias, base trocada). Abre outra.
@@ -146,6 +292,7 @@
     var nova = await pedir("/sessao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
     conversaId = nova.id;
     try { localStorage.setItem(CHAVE_SESSAO, conversaId); } catch (e) {}
+    verificarSugestoesIniciais();
   }
 
   /* A conversa guardada no navegador pode ter morrido no banco: base trocada,
@@ -496,6 +643,7 @@
     try {
       var h = await pedir("/historico?conversa_id=" + encodeURIComponent(id) + "&n=50", {});
       (h.turnos || []).forEach(function (t) { bolha(t.texto, t.papel === "pessoa" ? "pessoa" : "cerebro"); });
+      if (!(h.turnos || []).length) verificarSugestoesIniciais();
     } catch (e) { erro(e.message); }
     campo.focus();
   }

@@ -156,6 +156,23 @@ export function janelaDoTexto(texto, agora = new Date()) {
     return { ...janela(agora, dias, dias + 1, `últimos ${n} ${rel[2]}`), termos: [rel[0]] };
   }
 
+  // 2b. Expressões de período sem número explícito ("última semana", "últimas semanas", "últimos dias", "último mês")
+  if (/\b(?:na|da|pela|nessa|a|minha)?\s*ultim[oa]\s+semana\b/.test(cru)) {
+    return { ...janela(agora, 7, 8, "última semana"), termos: ["ultima semana"] };
+  }
+  if (/\b(?:nas|das|pelas|nessas|minhas)?\s*ultim[oa]s\s+semanas\b/.test(cru)) {
+    return { ...janela(agora, 14, 15, "últimas semanas"), termos: ["ultimas semanas"] };
+  }
+  if (/\b(?:nos|dos|pelos|nesses)?\s*ultim[oa]s\s+dias\b/.test(cru)) {
+    return { ...janela(agora, 7, 8, "últimos dias"), termos: ["ultimos dias"] };
+  }
+  if (/\b(?:no|do|pelo|nesse|o)?\s*ultim[oa]\s+mes\b/.test(cru)) {
+    return { ...janela(agora, 30, 31, "último mês"), termos: ["ultimo mes"] };
+  }
+  if (/\b(?:nos|dos|pelos|nesses)?\s*ultim[oa]s\s+meses\b/.test(cru)) {
+    return { ...janela(agora, 60, 61, "últimos meses"), termos: ["ultimos meses"] };
+  }
+
   // 3. duas palavras. Vem antes das soltas: "semana passada" nao e "semana".
   const doisEm = (a, b) => {
     for (let i = 0; i < tok.length - 1; i++) {
