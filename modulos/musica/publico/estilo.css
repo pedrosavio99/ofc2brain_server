@@ -171,3 +171,101 @@ img { display: block; }
 .voltar-2b { display: inline-flex; align-items: center; gap: 4px; margin: 10px 0 0 14px;
   color: var(--acento, #0a84ff); text-decoration: none; font-size: 15px; }
 .voltar-2b svg { width: 18px; height: 18px; }
+
+/* ============================================================
+   Grid Inteligente e UX/UI para Tela Web / Desktop (Música)
+   GARANTIA: Em telas mobile (< 900px), nada é alterado.
+   ============================================================ */
+@media (min-width: 900px) {
+  .pagina {
+    max-width: 1280px;
+    padding: 20px 32px 180px;
+  }
+
+  .topo h1 {
+    font-size: 40px;
+  }
+
+  .abrir {
+    max-width: 720px;
+    height: 54px;
+    margin-bottom: 28px;
+  }
+
+  /* Grid Inteligente de Álbuns / CDs */
+  .grade {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 22px;
+    margin-bottom: 36px;
+  }
+
+  .cd img {
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+
+  .cd:hover img {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  }
+
+  /* Visual do CD Aberto */
+  .cd-topo {
+    gap: 28px;
+    margin-bottom: 24px;
+    align-items: center;
+  }
+
+  .cd-topo img {
+    width: 180px;
+    height: 180px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+  }
+
+  .cd-topo h2 {
+    font-size: 30px;
+  }
+
+  /* Lista de Faixas */
+  .faixas {
+    border-radius: 20px;
+    padding: 6px 0;
+  }
+
+  .faixa {
+    padding: 13px 22px;
+    transition: background .12s ease;
+  }
+
+  .faixa:hover {
+    background: var(--superficie-2);
+  }
+
+  /* Player Fixo Desktop */
+  .player-linha {
+    max-width: 1280px;
+    padding: 12px 32px;
+  }
+
+  .player-linha img {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+  }
+
+  .player-botoes button {
+    width: 44px;
+    height: 44px;
+    transition: transform .1s ease, background .15s ease;
+  }
+
+  .player-botoes button:hover {
+    background: var(--superficie-2);
+  }
+
+  .fila {
+    max-width: 1280px;
+    padding: 0 32px 14px;
+  }
+}
+

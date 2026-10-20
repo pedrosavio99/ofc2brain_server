@@ -203,3 +203,72 @@
   font-size: 12px; font-weight: 700; color: var(--texto-2);
   background: var(--superficie-2); border-radius: var(--r-pill); padding: 3px 9px;
 }
+
+/* ============================================================
+   Grid Inteligente e UX/UI para Tela Web / Desktop (Conversa)
+   GARANTIA: Em telas mobile (< 900px), nada é alterado.
+   ============================================================ */
+@media (min-width: 900px) {
+  .cv-corpo {
+    max-width: 1060px;
+    padding: 24px 32px 16px;
+    height: calc(100dvh - 134px);
+  }
+
+  .cv-fluxo {
+    gap: 16px;
+  }
+
+  .cv-bolha {
+    max-width: 68%;
+    padding: 13px 18px;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .cv-rodape {
+    padding: 12px 32px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .cv-caixa {
+    max-width: 1060px;
+    padding: 8px 10px 8px 20px;
+    border-radius: 26px;
+    box-shadow: var(--sombra);
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+
+  .cv-caixa:focus-within {
+    border-color: var(--acento);
+    box-shadow: 0 0 0 3px var(--acento-eco), var(--sombra);
+  }
+
+  .cv-caixa textarea {
+    font-size: 16.5px;
+  }
+
+  /* Painel da Alma em Desktop: modal centralizado elegante */
+  .cv-folha {
+    align-items: center;
+    justify-items: center;
+  }
+
+  .cv-folha-int {
+    border-radius: var(--r-grande);
+    max-width: 640px;
+    padding: 24px;
+    box-shadow: 0 16px 54px rgba(0,0,0,.3);
+  }
+
+  /* Gaveta lateral de conversas no desktop com mais largura */
+  .cv-gaveta-int {
+    width: 380px;
+    padding: 20px 16px;
+  }
+
+  .cv-item-abrir {
+    font-size: 15px;
+    padding: 12px 10px;
+  }
+}
+

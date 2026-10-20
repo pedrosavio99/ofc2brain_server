@@ -148,3 +148,15 @@ a.bm-item:active { opacity: .7; }
   margin-left: 6px; border: 0; background: none; padding: 0;
   color: var(--acento); font: inherit; font-weight: 600; cursor: pointer;
 }
+
+@media (min-width: 900px) {
+  .bm {
+    right: calc(32px + env(safe-area-inset-right));
+    bottom: 32px;
+  }
+  .bm-painel {
+    bottom: 74px;
+    width: 320px;
+  }
+}
+

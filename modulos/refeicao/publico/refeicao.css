@@ -310,3 +310,77 @@ textarea:focus, input:focus, select:focus { border-color: var(--acento); box-sha
   .salva-acoes { gap: 14px; }
   .salva-acoes .botao-link { font-size: 12.5px; }
 }
+
+/* ============================================================
+   Grid Inteligente e UX/UI para Tela Web / Desktop (Refeições)
+   GARANTIA: Em telas mobile (< 960px), nada é alterado.
+   ============================================================ */
+@media (min-width: 960px) {
+  .rf-envolucro {
+    max-width: 1280px;
+    padding: 0 32px 80px;
+    display: grid;
+    grid-template-columns: 460px 1fr;
+    column-gap: 32px;
+    row-gap: 18px;
+    align-items: start;
+  }
+
+  .rf-envolucro .rf-cabeca {
+    grid-column: 1 / -1;
+    padding: 8px 2px 4px;
+  }
+
+  .rf-envolucro .aviso {
+    grid-column: 1 / -1;
+  }
+
+  /* Painel Esquerdo: Resumo, Meta do dia, Caixa de escrever */
+  .rf-envolucro .card.resumo {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 22px 20px;
+  }
+
+  .rf-envolucro .card.meta {
+    grid-column: 1;
+    grid-row: 3;
+    padding: 18px 20px;
+  }
+
+  .rf-envolucro #cardEscrever {
+    grid-column: 1;
+    grid-row: 4;
+    padding: 20px;
+    box-shadow: var(--sombra);
+  }
+
+  .rf-envolucro #rascunho {
+    grid-column: 1;
+    grid-row: 5;
+  }
+
+  /* Painel Direito: Histórico das refeições de hoje em grid inteligente */
+  .rf-envolucro .rf-secao-dia {
+    grid-column: 2;
+    grid-row: 2 / span 6;
+  }
+
+  .rf-envolucro #listaDia {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+  }
+
+  .rf-envolucro #listaDia .card.salva {
+    padding: 18px 20px;
+    transition: transform .12s ease, box-shadow .15s ease, border-color .15s ease;
+    border: 1px solid var(--separador);
+  }
+
+  .rf-envolucro #listaDia .card.salva:hover {
+    border-color: var(--acento);
+    box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  }
+}
+

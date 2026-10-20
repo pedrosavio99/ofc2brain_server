@@ -766,3 +766,133 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
 .cv-chip:active {
   transform: scale(.96);
 }
+
+/* ============================================================
+   Ajustes Inteligentes de Layout para Web / Desktop (min-width: 860px / 960px)
+   GARANTIA: Em visão mobile (telas < 860px), nada é alterado.
+   ============================================================ */
+
+/* Navbar Desktop */
+@media (max-width: 859px) {
+  .barra-modulos-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 860px) {
+  .barra-int {
+    max-width: 1280px;
+    padding: 8px 32px;
+    gap: 20px;
+  }
+
+  .barra-marca-nome {
+    display: inline !important;
+    font-size: 15.5px;
+  }
+
+  .barra-modulo-atual {
+    font-size: 15.5px;
+  }
+
+  .barra-modulos-desktop {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--superficie-2);
+    padding: 4px 6px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--separador);
+    margin: 0 auto;
+  }
+
+  .barra-desktop-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 13px;
+    border-radius: var(--r-pill);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--texto-2);
+    text-decoration: none;
+    transition: all .16s ease;
+    white-space: nowrap;
+  }
+
+  .barra-desktop-item:hover {
+    color: var(--texto);
+    background: var(--superficie);
+  }
+
+  .barra-desktop-item.ativo {
+    color: var(--acento);
+    font-weight: 600;
+    background: var(--superficie);
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+
+  .barra-desktop-ico {
+    display: flex;
+    align-items: center;
+  }
+
+  .barra-desktop-ico svg {
+    width: 15px;
+    height: 15px;
+    display: block;
+  }
+}
+
+/* Grids e Espaçamentos em Telas Médias e Grandes */
+@media (min-width: 960px) {
+  .envolucro {
+    max-width: 1280px;
+    padding: 24px 32px 80px;
+  }
+
+  /* Em desktop, chips quebram em linhas ordenadas evitando overflow horizontal */
+  .faixa-chips {
+    margin: 0 0 10px;
+  }
+  .faixa-chips::after {
+    display: none;
+  }
+  .chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    padding: 0 0 6px;
+    margin: 0;
+  }
+  .chips.periodo {
+    margin: 0 0 12px;
+    padding: 0;
+  }
+
+  /* Grid Inteligente de Cards: substitui a coluna única estreita por layout adaptativo */
+  .lista {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px;
+  }
+
+  .lista.duas {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px;
+  }
+
+  /* Sheet em telas grandes vira um modal elegante e centralizado com largura confortável */
+  .sheet {
+    width: 540px;
+    max-height: 86vh;
+    border-radius: 20px;
+    box-shadow: 0 12px 48px rgba(0,0,0,.28);
+  }
+
+  .sheet-cab {
+    padding: 16px 20px 14px;
+  }
+
+  .sheet-corpo {
+    padding: 0 20px 20px;
+  }
+}

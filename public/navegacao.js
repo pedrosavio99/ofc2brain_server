@@ -271,6 +271,24 @@
       barraInt.appendChild(acoes);
     }
 
+    // 4. Navegação desktop entre módulos (visível apenas em telas desktop via CSS)
+    var navDesktop = barraInt.querySelector(".barra-modulos-desktop");
+    if (!navDesktop) {
+      navDesktop = document.createElement("nav");
+      navDesktop.className = "barra-modulos-desktop";
+      navDesktop.setAttribute("aria-label", "Módulos do ecossistema");
+      navDesktop.innerHTML = MODULOS.map(function (m) {
+        var ativo = m.id === moduloAtualId;
+        return (
+          '<a href="' + m.rota + '" class="barra-desktop-item ' + (ativo ? "ativo" : "") + '" title="' + m.descricao + '">' +
+            '<span class="barra-desktop-ico">' + m.icone + '</span>' +
+            '<span class="barra-desktop-nome">' + m.nome + '</span>' +
+          '</a>'
+        );
+      }).join("");
+      barraInt.insertBefore(navDesktop, acoes);
+    }
+
     // Garante que o botão de Menu do Ecossistema exista
     var btnEco = barraInt.querySelector("#btnMenuEco, #btnMenu");
     if (!btnEco && !isInicio) {

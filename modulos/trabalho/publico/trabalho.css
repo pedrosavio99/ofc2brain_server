@@ -126,3 +126,45 @@
 /* Rodape da ordem de execucao: separado da lista, porque e acao, nao conteudo. */
 .tr-plano-pe { border-top: 1px solid var(--separador); margin-top: 18px; padding-top: 14px; }
 .tr-plano-pe .tr-desc { margin: 2px 0 0; }
+
+/* ============================================================
+   Grid Inteligente e UX/UI para Tela Web / Desktop (Trabalho)
+   GARANTIA: Em telas mobile (< 900px), nada é alterado.
+   ============================================================ */
+@media (min-width: 900px) {
+  .tb-envolucro {
+    max-width: 1280px;
+    padding: 0 32px 80px;
+  }
+
+  .tb-envolucro .titulao {
+    font-size: 36px;
+    margin-top: 14px;
+  }
+
+  /* Grid Inteligente de tarefas por grupo */
+  .tb-envolucro .tr-grupo .lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 14px;
+  }
+
+  .tb-envolucro .tr-tarefa {
+    background: var(--superficie);
+    border: 1px solid var(--separador);
+    border-radius: var(--r-card);
+    transition: transform .12s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+
+  .tb-envolucro .tr-tarefa:hover {
+    border-color: var(--acento);
+    box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  }
+
+  /* Barra de seleção com design sofisticado e centrado */
+  .tr-barra-plano {
+    padding: 10px 16px 10px 22px;
+    box-shadow: 0 12px 36px rgba(0,0,0,.22);
+  }
+}
+

@@ -661,3 +661,66 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
   font-size: 12.5px;
   color: var(--texto-2);
 }
+
+/* ============================================================
+   Grid Inteligente e UX/UI para Tela Web / Desktop (Treino)
+   GARANTIA: Em telas mobile (< 960px), nada é alterado.
+   ============================================================ */
+@media (min-width: 960px) {
+  .tr-corpo {
+    max-width: 1280px;
+    padding: 0 32px 80px;
+  }
+
+  .tr-cabeca {
+    padding: 10px 2px 20px;
+  }
+
+  /* Grid de 2 colunas para o dashboard de treino */
+  .tr-corpo #tela {
+    display: grid;
+    grid-template-columns: 1.35fr 400px;
+    column-gap: 32px;
+    row-gap: 20px;
+    align-items: start;
+  }
+
+  /* Ficha ativa ou gerador de treino ocupam a coluna principal (esquerda) */
+  .tr-corpo #tela > .tr-sessao,
+  .tr-corpo #tela > .tr-cartao:not(.tr-energia):not(.tr-painel):not(.tr-feito-hoje) {
+    grid-column: 1;
+    grid-row: 1 / span 5;
+  }
+
+  /* Widgets de apoio (calorias gastas, resumo de 14 dias, atividade de hoje) na lateral (direita) */
+  .tr-corpo #tela > .tr-energia {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .tr-corpo #tela > .tr-painel {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .tr-corpo #tela > .tr-feito-hoje {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  /* Cartões com acabamento desktop elegante */
+  .tr-cartao {
+    padding: 24px 22px;
+  }
+
+  /* Exercícios dentro da ficha com visual arejado e hover */
+  .tr-exercicio {
+    transition: background .12s ease;
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .tr-exercicio:hover {
+    background: var(--superficie-2);
+  }
+}
+

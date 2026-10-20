@@ -734,7 +734,7 @@
      do treino escondia a ficha e o numero do dia virava so o da corrida. */
   function cartaoDoDia(t) {
     if (!t || !t.itens || !t.itens.length) return "";
-    return '<section class="tr-cartao">' +
+    return '<section class="tr-cartao tr-feito-hoje">' +
       '<div class="tr-treino-cab"><h2>Feito hoje</h2>' +
         '<span class="tr-conta"><b class="tr-num">' + kcal(t.calorias) + "</b> kcal</span></div>" +
       '<p class="tr-sub" style="margin:0">' + t.minutos + " min" +
