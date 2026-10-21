@@ -18,6 +18,7 @@ import conversaRouter from "../modulos/conversa/servidor/index.js";
 import treinoRouter from "../modulos/treino/servidor/index.js";
 import metasRouter from "../modulos/metas/servidor/index.js";
 import refeicaoRouter from "../modulos/refeicao/servidor/index.js";
+import trendradarRouter from "../modulos/trendradar/servidor/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -101,6 +102,15 @@ app.get("/api", (_req, res) => {
       "--- modulo metas ---",
       "GET    /metas/api/health",
       "GET    /metas/api/hoje                 (metas do dia ja verificadas)",
+      "--- modulo trendradar ---",
+      "GET    /trendradar                     (tela do modulo)",
+      "GET    /trendradar/api/health",
+      "GET    /trendradar/api/itens           ?objetivo=todos|carreira|saas|empresas|agente",
+      "GET    /trendradar/api/cotas",
+      "POST   /trendradar/api/ia/modelo       { modelo }",
+      "POST   /trendradar/api/investigar      { termo, tipoEntidade, frente?, icpPagador? }",
+      "POST   /trendradar/api/importar-csv    { nome?, frente?, csv }",
+      "POST   /trendradar/api/relatorio       { ids?, frente?, objetivo? }",
     ],
   });
 });
@@ -116,6 +126,7 @@ app.use("/conversa", conversaRouter);
 app.use("/treino", treinoRouter);
 app.use("/metas", metasRouter);
 app.use("/refeicao", refeicaoRouter);
+app.use("/trendradar", trendradarRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

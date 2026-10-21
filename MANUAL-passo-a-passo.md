@@ -157,13 +157,30 @@ A Vercel puxa o codigo de um repositorio Git. Passo a passo:
    em build command nem output dir; o `vercel.json` ja cuida do roteamento.
 
 ### 5.3. Cadastrar as variaveis de ambiente
-Antes de clicar em Deploy, abra **Environment Variables** e adicione (uma a
-uma, Name/Value):
+Antes de clicar em Deploy (ou em **Settings > Environment Variables** do projeto na Vercel), adicione as variaveis abaixo:
+
+**1. Variaveis Principais do 2brain (nucleo + IA compartilhada por todos os modulos, incluindo o TrendRadar):**
 ```
 SUPABASE_URL          https://xxxxxxxx.supabase.co
 SUPABASE_SECRET_KEY   sb_secret_...
-GEMINI_API_KEYS       sua_chave_gemini
-GROQ_API_KEY          gsk_sua_chave_groq
+GEMINI_API_KEYS       chave1,chave2,chave3
+GEMINI_MODELOS        gemini-3.5-flash-lite,gemini-3.1-flash-lite
+GEMINI_THINKING       HIGH
+MODELO_EMBEDDING      gemini-embedding-001
+GROQ_API_KEY          gsk_chave1,gsk_chave2,gsk_chave3
+GROQ_CHAT_MODEL       openai/gpt-oss-120b
+GROQ_MODEL_RELINK     openai/gpt-oss-120b
+PIN_ACESSO            (opcional: deixe vazio para aberto ou defina seu PIN)
+```
+
+**2. Variaveis dos Modulos Especializados (Trabalho, Metas e TrendRadar):**
+> O **TrendRadar** JA reaproveita automaticamente `GEMINI_API_KEYS`, `GEMINI_MODELOS`, `GROQ_API_KEY`, `GROQ_CHAT_MODEL` e `PIN_ACESSO` da lista acima. Voce so precisa adicionar as 3 chaves de coleta externa dele:
+```
+CLICKUP_API_TOKEN     pk_...                                  (Modulo Trabalho)
+DUOLINGO_USUARIO      seu_usuario                             (Modulo Metas)
+SERPAPI_KEY           sua_chave_serpapi                       (TrendRadar: Google Trends + 27 UFs)
+NEWSAPI_KEY           sua_chave_newsapi                       (TrendRadar: Noticias B2B)
+GNEWS_API_KEY         sua_chave_gnews                         (TrendRadar: Noticias complementar)
 ```
 > A porta (`PORT`) a Vercel injeta sozinha, nao precisa cadastrar.
 > Se voce ja fez o seed local, os dados JA estao no Supabase; a Vercel vai ler

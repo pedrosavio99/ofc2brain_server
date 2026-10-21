@@ -1,0 +1,3812 @@
+[
+  {
+    "id": "tr-agentes-whatsapp-clinicas",
+    "nome": "Triagem e Agendamento via IA no WhatsApp para Clinicas",
+    "termoBusca": "automacao whatsapp clinica medica",
+    "frente": "saude",
+    "tipoEntidade": "assunto",
+    "entidadesRelacionadas": [
+      "Doctoralia",
+      "iClinic",
+      "Feegow",
+      "Gestores de Clinicas"
+    ],
+    "categoria": "Saude & Clinicas B2B",
+    "prazo": "curto",
+    "objetivoPrincipal": "saas",
+    "corHex": "#34c759",
+    "pontuacao": 92,
+    "crescimentoPct": 148,
+    "consistenciaScore": 89,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "Google Trends",
+      "ReclameAqui / Avaliacoes",
+      "Reddit r/empreendedorismo",
+      "GNews"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 34
+      },
+      {
+        "data": "2026-06",
+        "valor": 42
+      },
+      {
+        "data": "2026-07",
+        "valor": 51
+      },
+      {
+        "data": "2026-08",
+        "valor": 63
+      },
+      {
+        "data": "2026-09",
+        "valor": 76
+      },
+      {
+        "data": "2026-10",
+        "valor": 84
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 82,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 81,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 81,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 78,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 74,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 73,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 69,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 66,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 60,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 60,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 56,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 56,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 50,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 50,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 43,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 43,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 40,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 34,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 31,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 25,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Pacientes desistem porque a recepcao demora mais de 2 horas para responder no WhatsApp e confirmar encaixes.",
+        "frequencia": "Muito Alta",
+        "fonte": "Avaliacoes Google Maps & Foruns Medicos",
+        "gravidade": "Critica"
+      },
+      {
+        "dor": "Bots tradicionais com menu numerico irritam pacientes idosos e nao entendem audios ou fotos de guias de convenio.",
+        "frequencia": "Alta",
+        "fonte": "ReclameAqui / Comunidades de Gestao Clinica",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "CRMs Medicos Tradicionais (iClinic / Doctoralia)",
+        "lacuna": "Focam no prontuario interno; o atendimento inicial no WhatsApp continua manual ou engessado.",
+        "precoMedio": "R$ 290 a R$ 690/mes"
+      },
+      {
+        "nome": "Chatbots Genericos de Fluxograma (ManyChat / Typebot)",
+        "lacuna": "Exigem configuracao tecnica complexa e quebram quando o paciente envia audio ou muda de assunto.",
+        "precoMedio": "R$ 150 a R$ 400/mes"
+      }
+    ],
+    "icpPagador": "Clinicas odontologicas, dermatologicas e de estetica com 2 a 10 profissionais que perdem consultas por demora no atendimento.",
+    "testeComercial": "Abordar 15 clinicas locais, medir o tempo real de resposta delas e oferecer um piloto de 14 dias focado apenas em recuperar pacientes fora do horario comercial.",
+    "evidenciasConfirmadas": [
+      "Crescimento ininterrupto por 6 meses consecutivos sem queda pos-pico.",
+      "Mais de 60% das avaliacoes negativas de clinicas citam demora na recepcao/agendamento.",
+      "Disposicao comprovada a pagar: 1 unica consulta recuperada no mes ja paga a assinatura do software."
+    ],
+    "evidenciasFaltantes": [
+      "Validar custo medio de tokens de transcricao de audio por clinica em operacao real.",
+      "Testar integracao simplificada via Google Calendar antes de construir conectores para ERPs medicos legados."
+    ],
+    "objetivos": {
+      "carreira": "Projeto de portfolio de alto impacto: Webhook + fila assincrona + PostgreSQL + LLM com guardrails contra alucinacao medica.",
+      "saas": "Micro-SaaS B2B com ticket de R$ 297 a R$ 597/mes, baixo churn apos integracao na rotina da recepcionista.",
+      "empresas": "Venda imediata de servico de implantacao (setup R$ 2.500 + manutencao mensal) para clinicas da sua regiao.",
+      "agente": "Monitorar semanalmente mudancas de volume de busca e novos concorrentes verticais gerando dossie em Markdown/PDF."
+    }
+  },
+  {
+    "id": "tr-auditoria-glosas-medicas-tiss",
+    "nome": "Auditoria Automatica de Glosas Medicas e Guias TISS (XML)",
+    "termoBusca": "auditoria glosas medicas faturamento tiss",
+    "frente": "saude",
+    "tipoEntidade": "problema",
+    "entidadesRelacionadas": [
+      "ANS Padrao TISS",
+      "Unimed",
+      "Bradesco Saude",
+      "Faturistas Hospitalares"
+    ],
+    "categoria": "Saude & Clinicas B2B",
+    "prazo": "curto",
+    "objetivoPrincipal": "empresas",
+    "corHex": "#34c759",
+    "pontuacao": 90,
+    "crescimentoPct": 126,
+    "consistenciaScore": 87,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "Google Trends",
+      "Foruns de Faturamento Medico",
+      "Dados ANS",
+      "LinkedIn Saude"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 39
+      },
+      {
+        "data": "2026-06",
+        "valor": 47
+      },
+      {
+        "data": "2026-07",
+        "valor": 55
+      },
+      {
+        "data": "2026-08",
+        "valor": 66
+      },
+      {
+        "data": "2026-09",
+        "valor": 75
+      },
+      {
+        "data": "2026-10",
+        "valor": 86
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 89,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 89,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 87,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 84,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 81,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 78,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 68,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 67,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 67,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 64,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 61,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 60,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 50,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 50,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 46,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 45,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 39,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 35,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 34,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 26,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Clinicas e laboratorios perdem de 8% a 15% do faturamento porque convenios negam pagamento (glosa) por pequenos erros no XML TISS.",
+        "frequencia": "Muito Alta",
+        "fonte": "Associacoes de Clinicas e Faturistas",
+        "gravidade": "Critica"
+      },
+      {
+        "dor": "Conferencia manual de lotes XML antes do envio ao plano de saude leva dias e deixa passar codigos TUSS incompativeis.",
+        "frequencia": "Alta",
+        "fonte": "Comunidades de Gestao Hospitalar",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Sistemas Hospitalares Enterprise (MV / Tasy)",
+        "lacuna": "Custam dezenas de milhares de reais e sao inacessiveis para clinicas de medio porte e laboratorios independentes.",
+        "precoMedio": "R$ 3.500+/mes"
+      }
+    ],
+    "icpPagador": "Clinicas medicas, centros de imagem e laboratorios que faturam acima de R$ 100 mil/mes via planos de saude.",
+    "testeComercial": "Pedir os arquivos XML TISS dos ultimos 2 meses de uma clinica, rodar um validador automatico e mostrar em um PDF o valor exato de glosas que poderiam ser evitadas ou recursadas.",
+    "evidenciasConfirmadas": [
+      "Padrao XML TISS da ANS possui especificacao publica oficial, facilitando a criacao do motor de validacao.",
+      "ROI imediato: evitar 5% de glosa representa milhares de reais recuperados por mes para a clinica."
+    ],
+    "evidenciasFaltantes": [
+      "Catalogar as 20 regras de glosa mais frequentes entre as 5 maiores operadoras de saude."
+    ],
+    "objetivos": {
+      "carreira": "Excelente prova de engenharia de dados: parser de XML TISS, motor de regras deterministico + IA para redigir recursos de glosa.",
+      "saas": "Validador Pre-Envio TISS cobrando assinatura de R$ 390 a R$ 990/mes por CNPJ.",
+      "empresas": "Auditoria retroativa de glosas cobrando percentual sobre o valor recuperado para a clinica.",
+      "agente": "Monitorar atualizacoes das tabelas TUSS/ANS mensalmente de forma automatica."
+    }
+  },
+  {
+    "id": "tr-conciliacao-taxas-marketplaces",
+    "nome": "Auditoria Automatica de Repasses e Taxas de Marketplaces",
+    "termoBusca": "conciliacao financeira mercado livre shopee",
+    "frente": "fintech",
+    "tipoEntidade": "empresa",
+    "entidadesRelacionadas": [
+      "Mercado Livre",
+      "Shopee",
+      "Amazon Brasil",
+      "Bling",
+      "Tiny ERP"
+    ],
+    "categoria": "FinTech & Fiscal B2B",
+    "prazo": "curto",
+    "objetivoPrincipal": "empresas",
+    "corHex": "#5856d6",
+    "pontuacao": 88,
+    "crescimentoPct": 112,
+    "consistenciaScore": 86,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "em_investigacao",
+    "fontesCruzadas": [
+      "Google Trends",
+      "Foruns de Sellers",
+      "YouTube / Comentarios",
+      "Noticias E-commerce"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 38
+      },
+      {
+        "data": "2026-06",
+        "valor": 45
+      },
+      {
+        "data": "2026-07",
+        "valor": 52
+      },
+      {
+        "data": "2026-08",
+        "valor": 61
+      },
+      {
+        "data": "2026-09",
+        "valor": 72
+      },
+      {
+        "data": "2026-10",
+        "valor": 81
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 94,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 91,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 87,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 84,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 84,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 71,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 68,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 65,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 60,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 55,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 53,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 52,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 49,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 43,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 41,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 38,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 35,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 32,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 32,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 29,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 27,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Lojistas descobrem meses depois que tiveram prejuizo porque o frete cobrado na devolucao ou comissao alterada comeu toda a margem.",
+        "frequencia": "Muito Alta",
+        "fonte": "Comunidades de Sellers Mercado Livre / Shopee",
+        "gravidade": "Critica"
+      },
+      {
+        "dor": "Planilhas de Excel travam acima de 5.000 pedidos/mes e os ERPs mostram apenas o valor bruto da venda, nao o repasse liquido real.",
+        "frequencia": "Alta",
+        "fonte": "ReclameAqui / Grupos de Contabilidade Digital",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "ERPs Tradicionais (Bling / Tiny)",
+        "lacuna": "Excelentes para emitir nota fiscal e estoque, mas fracos na auditoria fina de divergencias de comissao e frete reverso.",
+        "precoMedio": "R$ 100 a R$ 350/mes"
+      },
+      {
+        "nome": "Conciliadores Corporativos (Koncili)",
+        "lacuna": "Interface complexa e foco em grandes operacoes; vendedores de medio porte querem um relatorio direto de 'pedidos com prejuizo'.",
+        "precoMedio": "R$ 450 a R$ 1.200/mes"
+      }
+    ],
+    "icpPagador": "Vendedores de Mercado Livre, Shopee e Amazon que faturam entre R$ 80 mil e R$ 1 milhao/mes.",
+    "testeComercial": "Oferecer uma 'Auditoria Gratuita dos Ultimos 30 Dias via CSV': o lojista exporta o extrato do marketplace, voce roda a analise e entrega um PDF mostrando exatamente quanto dinheiro ele perdeu em taxas indevidas.",
+    "evidenciasConfirmadas": [
+      "Aumento constante nas buscas por planilhas e calculadoras de margem real apos reajustes de frete em 2026.",
+      "Retorno sobre investimento (ROI) tangivel e imediato na primeira execucao do relatorio."
+    ],
+    "evidenciasFaltantes": [
+      "Mapear mudancas recentes no layout de exportacao CSV da Shopee e TikTok Shop."
+    ],
+    "objetivos": {
+      "carreira": "Demonstra dominio de engenharia de dados financeiros, ingestao de CSVs massivos, precisao decimal e relatorios analiticos.",
+      "saas": "Modelo SaaS ancorado no valor recuperado (R$ 197/mes ate 2.000 pedidos).",
+      "empresas": "Porta de entrada perfeita para consultoria de BI e engenharia de dados para e-commerces.",
+      "agente": "Coletar periodicamente anuncios oficiais de mudanca de comissao dos marketplaces e atualizar o dossie."
+    }
+  },
+  {
+    "id": "tr-simulador-reforma-tributaria-ibs-cbs",
+    "nome": "Simulador de Impacto da Reforma Tributaria (IBS/CBS) via XML NFe",
+    "termoBusca": "simulador reforma tributaria ibs cbs contabilidade",
+    "frente": "fintech",
+    "tipoEntidade": "assunto",
+    "entidadesRelacionadas": [
+      "Receita Federal",
+      "Contadores B2B",
+      "Omie",
+      "Conta Azul",
+      "Domínio Sistemas"
+    ],
+    "categoria": "FinTech & Fiscal B2B",
+    "prazo": "curto",
+    "objetivoPrincipal": "saas",
+    "corHex": "#34c759",
+    "pontuacao": 91,
+    "crescimentoPct": 210,
+    "consistenciaScore": 88,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "Google Trends",
+      "Portais Contabeis",
+      "FENACON",
+      "Noticias Economia"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 28
+      },
+      {
+        "data": "2026-06",
+        "valor": 41
+      },
+      {
+        "data": "2026-07",
+        "valor": 56
+      },
+      {
+        "data": "2026-08",
+        "valor": 68
+      },
+      {
+        "data": "2026-09",
+        "valor": 79
+      },
+      {
+        "data": "2026-10",
+        "valor": 89
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 94,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 86,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 85,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 85,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 79,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 72,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 70,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 67,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 67,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 67,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 62,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 60,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 56,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 53,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 53,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 52,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 49,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 48,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 48,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 45,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 41,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 41,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 36,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 32,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 24,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Escritorios de contabilidade precisam responder aos clientes se a carga tributaria vai subir ou cair com o IBS/CBS, mas fazem contas manuais em planilhas.",
+        "frequencia": "Muito Alta",
+        "fonte": "Foruns Contabeis e Eventos FENACON",
+        "gravidade": "Critica"
+      },
+      {
+        "dor": "Empresas do Lucro Presumido e Simples Nacional nao sabem se devem mudar de regime ou renegociar fornecedores.",
+        "frequencia": "Alta",
+        "fonte": "Pesquisas de Palavras-Chave B2B",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Consultorias Big Four e Tributaristas de Grande Porte",
+        "lacuna": "Cobram projetos de R$ 30 mil+, deixando milhares de escritorios contabeis PME sem ferramenta automatizada.",
+        "precoMedio": "R$ 15.000+ por estudo"
+      }
+    ],
+    "icpPagador": "Escritorios de contabilidade com 50 a 500 empresas na carteira que querem vender 'Diagnostico Tributario' para seus clientes.",
+    "testeComercial": "Construir um importador de lotes de XML de NFe/NFSe que gera em 30 segundos um relatorio PDF com a marca da contabilidade comparando o imposto atual vs IBS/CBS.",
+    "evidenciasConfirmadas": [
+      "Cronograma oficial de transicao tributaria em 2026 obriga adequacao de sistemas e planejamento.",
+      "Contadores compram ferramentas que permitem a eles vender novos honorarios consultivos."
+    ],
+    "evidenciasFaltantes": [
+      "Manter tabela de aliquotas de excecao setorial atualizada conforme regulamentacao complementar."
+    ],
+    "objetivos": {
+      "carreira": "Mostra capacidade de traduzir legislacao complexa em motor de regras testavel + processamento de XML fiscal em lote.",
+      "saas": "SaaS B2B para contabilidades (R$ 397/mes para simular ate 50 CNPJs da carteira).",
+      "empresas": "Parceria com escritorios contabeis dividindo receita dos diagnosticos tributarios vendidos.",
+      "agente": "Agente que monitora publicacoes do Diario Oficial/Receita Federal sobre aliquotas de referencia."
+    }
+  },
+  {
+    "id": "tr-regua-recuperacao-pix-inadimplencia",
+    "nome": "Recuperacao Automatica de Inadimplencia B2B/PME com Renegociacao Pix",
+    "termoBusca": "sistema cobranca automatica inadimplencia pix",
+    "frente": "fintech",
+    "tipoEntidade": "problema",
+    "entidadesRelacionadas": [
+      "Asaas",
+      "Cora",
+      "Escolas Particulares",
+      "Imobiliarias",
+      "Contabilidades"
+    ],
+    "categoria": "FinTech & Fiscal B2B",
+    "prazo": "curto",
+    "objetivoPrincipal": "saas",
+    "corHex": "#5856d6",
+    "pontuacao": 84,
+    "crescimentoPct": 87,
+    "consistenciaScore": 83,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "validado_com_cliente",
+    "fontesCruzadas": [
+      "Google Trends",
+      "ReclameAqui PMEs",
+      "Comunidades SaaS Brasil"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 45
+      },
+      {
+        "data": "2026-06",
+        "valor": 51
+      },
+      {
+        "data": "2026-07",
+        "valor": 58
+      },
+      {
+        "data": "2026-08",
+        "valor": 65
+      },
+      {
+        "data": "2026-09",
+        "valor": 73
+      },
+      {
+        "data": "2026-10",
+        "valor": 79
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 94,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 92,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 87,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 84,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 81,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 80,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 76,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 71,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 70,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 68,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 53,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 53,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 50,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 46,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 45,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 41,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 39,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 39,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 39,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 39,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 38,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Donos de escolas, imobiliarias e escritorios contabeis tem constrangimento de cobrar clientes atrasados manualmente e perdem fluxo de caixa.",
+        "frequencia": "Alta",
+        "fonte": "Pesquisas PME Sebrae / Foruns",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Gateways de Pagamento (Asaas / Efí)",
+        "lacuna": "Enviam avisos padrao frios; nao negociam parcelamento ou desconto progressivo de forma conversacional.",
+        "precoMedio": "Taxa por boleto/Pix"
+      }
+    ],
+    "icpPagador": "Escolas livres, academias, administradoras de condominio, imobiliarias e contabilidades.",
+    "testeComercial": "Rodar uma campanha de recuperacao da carteira vencida ha mais de 30 dias de 3 empresas cobrando apenas taxa de sucesso (10% do recuperado).",
+    "evidenciasConfirmadas": [
+      "Facil integracao via Webhooks com APIs de Pix Copia-e-Cola.",
+      "Cliente enxerga o retorno financeiro na primeira semana de uso."
+    ],
+    "evidenciasFaltantes": [
+      "Calibrar tom das mensagens para evitar bloqueio de numero de atendimento."
+    ],
+    "objetivos": {
+      "carreira": "Integracao de APIs bancarias (Pix dinamico), webhooks idempotentes e maquinas de estado de cobranca.",
+      "saas": "Assinatura mensal + pequeno percentual sobre faturas vencidas recuperadas.",
+      "empresas": "Implantacao de regua financeira automatizada integrada ao ERP do cliente.",
+      "agente": "Conciliacao diaria automatica de liquidacoes bancarias e geracao de relatorio de caixa."
+    }
+  },
+  {
+    "id": "tr-conformidade-nr1-riscos-psicossociais",
+    "nome": "Plataforma de Diagnostico e Evidencias NR-1 (Riscos Psicossociais)",
+    "termoBusca": "adequacao nr1 riscos psicossociais software",
+    "frente": "regtech",
+    "tipoEntidade": "assunto",
+    "entidadesRelacionadas": [
+      "Ministerio do Trabalho (MTE)",
+      "Clinicas SST",
+      "Engenheiros de Seguranca",
+      "Gupy",
+      "Pulses"
+    ],
+    "categoria": "RegTech & RH B2B",
+    "prazo": "medio",
+    "objetivoPrincipal": "saas",
+    "corHex": "#ff9500",
+    "pontuacao": 86,
+    "crescimentoPct": 195,
+    "consistenciaScore": 81,
+    "classificacaoCurva": "Emergente Acelerado",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "Google Trends",
+      "Noticias Juridicas / MTE",
+      "LinkedIn B2B",
+      "Pesquisas de Palavras-Chave"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 22
+      },
+      {
+        "data": "2026-06",
+        "valor": 35
+      },
+      {
+        "data": "2026-07",
+        "valor": 49
+      },
+      {
+        "data": "2026-08",
+        "valor": 58
+      },
+      {
+        "data": "2026-09",
+        "valor": 69
+      },
+      {
+        "data": "2026-10",
+        "valor": 79
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 95,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 90,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 86,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 83,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 80,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 77,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 76,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 72,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 68,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 67,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 67,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 62,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 58,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 56,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 55,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 52,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 49,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 43,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 37,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 37,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 33,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 29,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 25,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Consultorias de SST e contadores usam Google Forms improviso que nao garante anonimato nem gera a trilha de auditoria exigida na PGR.",
+        "frequencia": "Muito Alta",
+        "fonte": "Comunidades de Engenheiros de Seguranca e RH",
+        "gravidade": "Critica"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Plataformas de Clima de RH (Pulses / Gupy Clima)",
+        "lacuna": "Voltadas para RH de grandes empresas, nao entregam o dossie tecnico formatado para clinicas de medicina ocupacional (SST).",
+        "precoMedio": "R$ 800 a R$ 3.000/mes"
+      }
+    ],
+    "icpPagador": "Consultorias de Saude e Seguranca do Trabalho (SST) e clinicas de medicina ocupacional que atendem dezenas de PMEs (modelo B2B2B).",
+    "testeComercial": "Vender no modelo White-Label para 3 consultorias de SST para que elas apliquem o diagnostico nos clientes delas e exportem o laudo em PDF.",
+    "evidenciasConfirmadas": [
+      "Obrigatoriedade regulatoria gera urgencia real de compra (dor de multa > dor de vitamina).",
+      "Canal de distribuicao B2B2B multiplica clientes atraves de parceiros de SST."
+    ],
+    "evidenciasFaltantes": [
+      "Validar com um engenheiro do trabalho/medico ocupacional os campos obrigatorios do relatorio exportado em PDF."
+    ],
+    "objetivos": {
+      "carreira": "Destaca capacidade de construir sistema multi-tenant com anonimizacao criptografica de respostas e relatorios auditaveis.",
+      "saas": "SaaS B2B2B com receita recorrente previsivel vendendo pacotes de empresas para clinicas de SST.",
+      "empresas": "Desenvolvimento de paineis sob demanda para consultorias de RH e SST.",
+      "agente": "Monitorar portarias do Ministerio do Trabalho e jurisprudencia trabalhista automaticamente."
+    }
+  },
+  {
+    "id": "tr-auditoria-ponto-passivo-trabalhista",
+    "nome": "Auditoria Preventiva de Cartao de Ponto e Passivo Trabalhista (CLT/CCT)",
+    "termoBusca": "auditoria folha ponto horas extras passivo trabalhista",
+    "frente": "regtech",
+    "tipoEntidade": "problema",
+    "entidadesRelacionadas": [
+      "Pontomais",
+      "Tangerino",
+      "Sindicatos / CCT",
+      "Advogados Trabalhistas Empresariais"
+    ],
+    "categoria": "RegTech & RH B2B",
+    "prazo": "medio",
+    "objetivoPrincipal": "empresas",
+    "corHex": "#34c759",
+    "pontuacao": 82,
+    "crescimentoPct": 78,
+    "consistenciaScore": 80,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "em_investigacao",
+    "fontesCruzadas": [
+      "Google Trends",
+      "Jurisprudencia TST",
+      "Foruns de DP e RH"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 41
+      },
+      {
+        "data": "2026-06",
+        "valor": 48
+      },
+      {
+        "data": "2026-07",
+        "valor": 54
+      },
+      {
+        "data": "2026-08",
+        "valor": 61
+      },
+      {
+        "data": "2026-09",
+        "valor": 68
+      },
+      {
+        "data": "2026-10",
+        "valor": 73
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 85,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 83,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 80,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 77,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 77,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 72,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 72,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 70,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 64,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 48,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 39,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 38,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 37,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 34,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 34,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 26,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 24,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Redes de varejo, restaurantes e transportadoras tomam processos trabalhistas caros por erros em intervalos intrajornada, banco de horas vencido e batidas britânicas.",
+        "frequencia": "Alta",
+        "fonte": "Escritorios de Advocacia Empresarial e DP",
+        "gravidade": "Critica"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Apps de Controle de Ponto (Pontomais / Tangerino)",
+        "lacuna": "Registram o ponto, mas nao cruzam proativamente as regras especificas da Convencao Coletiva (CCT) do sindicato para alertar risco juridico.",
+        "precoMedio": "R$ 150 a R$ 600/mes"
+      }
+    ],
+    "icpPagador": "Supermercados, redes de restaurantes, transportadoras e escritorios de advocacia trabalhista patronal.",
+    "testeComercial": "Fazer parceria com 2 advogados trabalhistas empresariais: importar o AFD/CSV de ponto de um cliente deles e gerar o Mapa de Risco Trabalhista em PDF.",
+    "evidenciasConfirmadas": [
+      "Arquivos de ponto seguem layout padronizado pelo MTE (Portaria 671 / AFD), facilitando a importacao universal."
+    ],
+    "evidenciasFaltantes": [
+      "Estruturar parser para extrair clausulas de horas extras de PDFs de Convencoes Coletivas."
+    ],
+    "objetivos": {
+      "carreira": "Parser de arquivos fiscais/trabalhistas padronizados (AFD) + deteccao de anomalias estatisticas (ponto britanico).",
+      "saas": "Assinatura mensal de monitoramento preventivo de conformidade para RHs.",
+      "empresas": "Auditoria de due diligence trabalhista para escritorios de advocacia e contabilidades.",
+      "agente": "Cruzar automaticamente novas convencoes coletivas publicadas no Mediador MTE com a folha das empresas."
+    }
+  },
+  {
+    "id": "tr-copiloto-licitacoes-pncp",
+    "nome": "Radar e Analisador de Editais Publicos (PNCP) para PMEs",
+    "termoBusca": "automacao licitacao pncp inteligencia artificial",
+    "frente": "govtech",
+    "tipoEntidade": "assunto",
+    "entidadesRelacionadas": [
+      "Portal Nacional de Contratacoes Publicas (PNCP)",
+      "Compras.gov.br",
+      "Effecti",
+      "Consultores de Licitacao"
+    ],
+    "categoria": "GovTech & Juridico",
+    "prazo": "medio",
+    "objetivoPrincipal": "agente",
+    "corHex": "#5856d6",
+    "pontuacao": 85,
+    "crescimentoPct": 94,
+    "consistenciaScore": 84,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "API Publica PNCP",
+      "Google Trends",
+      "HackerNews / GitHub",
+      "Foruns de Licitantes"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 40
+      },
+      {
+        "data": "2026-06",
+        "valor": 46
+      },
+      {
+        "data": "2026-07",
+        "valor": 54
+      },
+      {
+        "data": "2026-08",
+        "valor": 62
+      },
+      {
+        "data": "2026-09",
+        "valor": 70
+      },
+      {
+        "data": "2026-10",
+        "valor": 77
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 92,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 88,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 82,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 81,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 79,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 78,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 76,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 74,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 70,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 68,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 64,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 61,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 49,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 47,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 43,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 41,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 38,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 36,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 33,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 28,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Fornecedores perdem prazos de dispensas eletronicas lucrativas porque precisam ler editais de 80 paginas em PDF para achar exigencias tecnicas.",
+        "frequencia": "Alta",
+        "fonte": "Comunidades de Licitantes e Consultores",
+        "gravidade": "Critica"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Robos de Lances e Portais Legados (Effecti / ConLicitacao)",
+        "lacuna": "Custam caro e exigem leitura humana pesada para filtrar se o item exigido bate com o catalogo real do fornecedor.",
+        "precoMedio": "R$ 400 a R$ 1.500/mes"
+      }
+    ],
+    "icpPagador": "Distribuidoras de equipamentos, empresas de engenharia, papelarias B2B e prestadores de servicos que vendem para prefeituras e orgaos publicos.",
+    "testeComercial": "Escolher 1 nicho (ex: distribuidoras de material hospitalar ou informatica) e entregar por 7 dias um dossie Markdown/PDF com os 3 melhores editais do dia ja resumidos com margem e exigencias.",
+    "evidenciasConfirmadas": [
+      "O Portal Nacional de Contratacoes Publicas (PNCP) possui dados abertos governamentais que podem ser consumidos legalmente.",
+      "Altissimo ticket medio por contrato ganho pelo cliente final."
+    ],
+    "evidenciasFaltantes": [
+      "Medir taxa de precisao na extracao de tabelas de itens em PDFs escaneados de prefeituras menores."
+    ],
+    "objetivos": {
+      "carreira": "Case exemplar de Agente Autonomo: coleta em API governamental + parser de documentos + sintese com Gemini + exportacao de dossie.",
+      "saas": "Assinatura de resumos executivos ultra-qualificados por nicho e estado.",
+      "empresas": "Servico de inteligencia competitiva monitorando precos praticados pelos concorrentes em pregoes passados.",
+      "agente": "Execucao 100% autonoma comparando novos editais publicados com o perfil de cada empresa."
+    }
+  },
+  {
+    "id": "tr-monitor-diarios-oficiais-licencas",
+    "nome": "Monitor Autonomo de Diarios Oficiais, Licencas Ambientais e Regulatorio",
+    "termoBusca": "monitoramento diario oficial licenca ambiental automacao",
+    "frente": "govtech",
+    "tipoEntidade": "agente",
+    "entidadesRelacionadas": [
+      "Querido Diario (Open Knowledge)",
+      "IBAMA / Secretarias Estaduais",
+      "Construtoras",
+      "Escritorios Ambientais"
+    ],
+    "categoria": "GovTech & Juridico",
+    "prazo": "medio",
+    "objetivoPrincipal": "agente",
+    "corHex": "#5856d6",
+    "pontuacao": 81,
+    "crescimentoPct": 82,
+    "consistenciaScore": 82,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "em_investigacao",
+    "fontesCruzadas": [
+      "API Querido Diario",
+      "Google Trends",
+      "Portais Juridicos"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 37
+      },
+      {
+        "data": "2026-06",
+        "valor": 43
+      },
+      {
+        "data": "2026-07",
+        "valor": 49
+      },
+      {
+        "data": "2026-08",
+        "valor": 57
+      },
+      {
+        "data": "2026-09",
+        "valor": 64
+      },
+      {
+        "data": "2026-10",
+        "valor": 72
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 96,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 95,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 89,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 87,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 85,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 81,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 76,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 76,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 72,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 71,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 70,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 66,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 64,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 52,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 50,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 49,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 47,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 40,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 36,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 34,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 34,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 33,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Consultorias ambientais, mineradoras e loteadoras perdem prazos de condicionantes ou descumprem portarias municipais porque ninguem consegue ler dezenas de Diarios Oficiais todo dia.",
+        "frequencia": "Alta",
+        "fonte": "Consultorias de Engenharia e Meio Ambiente",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Recortes Juridicos Tradicionais",
+        "lacuna": "Monitoram apenas processos judiciais (CNJ), ignorando licencas ambientais, zoneamento urbano e decretos municipais.",
+        "precoMedio": "R$ 200 a R$ 900/mes"
+      }
+    ],
+    "icpPagador": "Consultorias ambientais, incorporadoras imobiliarias, empresas de energia solar e agronegocio.",
+    "testeComercial": "Monitorar os CNPJs e termos tecnicos de 5 consultorias ambientais por 15 dias e entregar o boletim consolidado em PDF.",
+    "evidenciasConfirmadas": [
+      "Iniciativas de dados abertos e Diarios Oficiais digitais permitem indexacao automatizada sem violar termos."
+    ],
+    "evidenciasFaltantes": [
+      "Mapear os 30 municipios mais demandados pelo setor imobiliario/ambiental da sua regiao."
+    ],
+    "objetivos": {
+      "carreira": "Pipeline de indexacao full-text (PostgreSQL FTS) + classificacao semantica de atos oficiais.",
+      "saas": "Radar Regulatorio por assinatura mensal segmentado por municipio e CNPJ.",
+      "empresas": "Criacao de robos de compliance regulatorio customizados para grandes empresas.",
+      "agente": "Agente noturno que baixa edicoes novas, filtra mencoes relevantes e atualiza o dossie."
+    }
+  },
+  {
+    "id": "tr-diario-obra-audio-foto-construtoras",
+    "nome": "Diario de Obra e Controle de Insumos por Audio/Foto para Pequenas Construtoras",
+    "termoBusca": "software gestao de obras pequenas diario de obra",
+    "frente": "operacoes",
+    "tipoEntidade": "pessoa",
+    "entidadesRelacionadas": [
+      "Engenheiros Civis Autonomos",
+      "Mestres de Obras",
+      "Sienge",
+      "Obra Prima"
+    ],
+    "categoria": "Obras & Operacoes de Campo",
+    "prazo": "curto",
+    "objetivoPrincipal": "saas",
+    "corHex": "#34c759",
+    "pontuacao": 89,
+    "crescimentoPct": 134,
+    "consistenciaScore": 86,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "Google Trends",
+      "YouTube Engenharia Civil",
+      "ReclameAqui Softwares de Obra"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 35
+      },
+      {
+        "data": "2026-06",
+        "valor": 44
+      },
+      {
+        "data": "2026-07",
+        "valor": 53
+      },
+      {
+        "data": "2026-08",
+        "valor": 64
+      },
+      {
+        "data": "2026-09",
+        "valor": 74
+      },
+      {
+        "data": "2026-10",
+        "valor": 83
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 93,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 87,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 84,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 81,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 80,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 77,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 75,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 73,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 70,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 64,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 61,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 58,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 58,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 53,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 47,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 41,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 39,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 35,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 28,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 23,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Engenheiros compram sistemas de gestao de obras, mas o mestre de obras no canteiro se recusa a preencher formularios complexos e manda tudo solto em grupos de mensagens.",
+        "frequencia": "Muito Alta",
+        "fonte": "Comunidades de Engenheiros Civis e Arquitetos",
+        "gravidade": "Critica"
+      },
+      {
+        "dor": "Notas fiscais de cimento e materiais somem no canteiro e o cliente final reclama de falta de transparencia no andamento da reforma.",
+        "frequencia": "Alta",
+        "fonte": "Foruns de Construcao Civil PME",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "ERPs de Construcao (Sienge / Obra Prima)",
+        "lacuna": "Excelentes para o escritorio, mas exigem digitacao manual que nao funciona na rotina suja e corrida do canteiro de obras.",
+        "precoMedio": "R$ 350 a R$ 1.800/mes"
+      }
+    ],
+    "icpPagador": "Pequenas construtoras, engenheiros civis autonomos e escritorios de arquitetura que gerenciam de 3 a 20 obras simultaneas.",
+    "testeComercial": "Apresentar para 10 engenheiros um fluxo onde o mestre de obras apenas envia 1 audio e 3 fotos por dia e o sistema gera automaticamente o Relatorio Semanal de Evolucao da Obra em PDF para o proprietario do imovel.",
+    "evidenciasConfirmadas": [
+      "Forte crescimento do mercado de reformas de alto padrao e construcao residencial financiada.",
+      "O Relatorio em PDF bonito para o dono da obra vende o software sozinho por status profissional."
+    ],
+    "evidenciasFaltantes": [
+      "Testar precisao de leitura OCR em fotos de cupons fiscais amassados tiradas no canteiro."
+    ],
+    "objetivos": {
+      "carreira": "Processamento multimodal (voz + imagem de cupom fiscal) transformado em dados estruturados SQL e relatorio PDF.",
+      "saas": "SaaS cobrado por obra ativa (ex: R$ 97/mes por obra ou pacote R$ 397/mes para 5 obras).",
+      "empresas": "Implantacao de painel de acompanhamento financeiro de obras para construtoras locais.",
+      "agente": "Consolidacao automatica todas as sextas-feiras do relatorio fotográfico e financeiro de cada obra."
+    }
+  },
+  {
+    "id": "tr-gestao-pmoc-manutencao-climatizacao-solar",
+    "nome": "Automacao de Laudos PMOC e Ordens de Servico para Climatizacao e Energia Solar",
+    "termoBusca": "sistema pmoc ar condicionado ordem de servico",
+    "frente": "operacoes",
+    "tipoEntidade": "assunto",
+    "entidadesRelacionadas": [
+      "ANVISA / Lei 13.589 (PMOC)",
+      "Auvo",
+      "Field Control",
+      "Empresas de Climatizacao e Solar"
+    ],
+    "categoria": "Obras & Operacoes de Campo",
+    "prazo": "curto",
+    "objetivoPrincipal": "saas",
+    "corHex": "#5856d6",
+    "pontuacao": 84,
+    "crescimentoPct": 91,
+    "consistenciaScore": 85,
+    "classificacaoCurva": "Crescimento Consistente",
+    "statusValidacao": "em_investigacao",
+    "fontesCruzadas": [
+      "Google Trends",
+      "Comunidades HVAC-R",
+      "ReclameAqui Sistemas Field Service"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 42
+      },
+      {
+        "data": "2026-06",
+        "valor": 49
+      },
+      {
+        "data": "2026-07",
+        "valor": 57
+      },
+      {
+        "data": "2026-08",
+        "valor": 65
+      },
+      {
+        "data": "2026-09",
+        "valor": 73
+      },
+      {
+        "data": "2026-10",
+        "valor": 80
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 96,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 96,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 96,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 91,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 86,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 83,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 82,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 75,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 72,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 70,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 64,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 58,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 55,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 46,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 46,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 45,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 38,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 38,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 35,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 32,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 29,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 25,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Empresas de ar-condicionado e pós-venda de energia solar perdem renovacoes de contratos recorrentes porque esquecem de avisar a data da preventiva e demoram horas montando laudos PMOC no Word.",
+        "frequencia": "Alta",
+        "fonte": "Grupos de Tecnicos de Refrigeracao e Integradores Solares",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Sistemas Gerais de Equipe Externa (Auvo / Field Control)",
+        "lacuna": "Cobrados por tecnico (ficam caros rapido) e nao geram o caderno tecnico PMOC / limpeza fotovoltaica pronto com QR Code por equipamento.",
+        "precoMedio": "R$ 250 a R$ 800/mes"
+      }
+    ],
+    "icpPagador": "Empresas de manutencao de ar-condicionado (HVAC) e integradores de energia solar que buscam receita recorrente de pos-venda.",
+    "testeComercial": "Gerar etiquetas QR Code para os equipamentos de 3 empresas de climatizacao onde o tecnico escaneia, marca o checklist em 1 minuto e baixa o Laudo PMOC em PDF assinado.",
+    "evidenciasConfirmadas": [
+      "Lei Federal 13.589 torna o PMOC obrigatorio em edificios comerciais, garantindo demanda perene."
+    ],
+    "evidenciasFaltantes": [
+      "Validar funcionamento offline do checklist quando o tecnico esta em subsolos/casas de maquinas sem sinal."
+    ],
+    "objetivos": {
+      "carreira": "Arquitetura offline-first, geracao de QR Codes por ativo e emissao de laudos tecnicos padronizados em PDF.",
+      "saas": "Assinatura mensal baseada no numero de contratos de manutencao gerenciados.",
+      "empresas": "Criacao de portal do cliente para empresas de engenharia de manutencao.",
+      "agente": "Monitorar vencimentos de preventivas e gerar alertas de renovacao de contrato."
+    }
+  },
+  {
+    "id": "tr-gateway-observabilidade-lgpd-llm",
+    "nome": "Gateway de Controle de Custos, Auditoria e Mascara LGPD para IA Corporativa",
+    "termoBusca": "governanca ia lgpd controle custos llm empresas",
+    "frente": "ia_devtools",
+    "tipoEntidade": "empresa",
+    "entidadesRelacionadas": [
+      "OpenAI",
+      "Google Gemini",
+      "Anthropic",
+      "DPOs / Diretores de TI (CTO)"
+    ],
+    "categoria": "Engenharia IA & Anti-Hype",
+    "prazo": "medio",
+    "objetivoPrincipal": "carreira",
+    "corHex": "#34c759",
+    "pontuacao": 87,
+    "crescimentoPct": 164,
+    "consistenciaScore": 84,
+    "classificacaoCurva": "Emergente Acelerado",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "HackerNews",
+      "Google Trends",
+      "GitHub Discussions",
+      "Relatorios Gartner / MIT"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 29
+      },
+      {
+        "data": "2026-06",
+        "valor": 38
+      },
+      {
+        "data": "2026-07",
+        "valor": 50
+      },
+      {
+        "data": "2026-08",
+        "valor": 62
+      },
+      {
+        "data": "2026-09",
+        "valor": 73
+      },
+      {
+        "data": "2026-10",
+        "valor": 82
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 92,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 88,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 86,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 82,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 80,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 79,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 73,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 73,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 72,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 69,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 64,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 62,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 58,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 52,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 52,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 52,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 47,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 43,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 40,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 38,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 36,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 33,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Empresas estao bloqueando o uso de IA porque funcionarios colam CPFs, contratos sigilosos e dados de clientes em prompts externos sem mascaramento LGPD.",
+        "frequencia": "Muito Alta",
+        "fonte": "Comunidades de Seguranca da Informacao e DPOs",
+        "gravidade": "Critica"
+      },
+      {
+        "dor": "Faturas de APIs de LLM explodem no fim do mes por falta de cache semantico, limites de cota por departamento e fallback para modelos mais baratos.",
+        "frequencia": "Alta",
+        "fonte": "HackerNews / Engenheiros de IA",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Proxies Internacionais (Helicone / LiteLLM)",
+        "lacuna": "Nao possuem filtros nativos pre-configurados para documentos brasileiros (CPF, CNPJ, RG, dados bancarios Pix e termos da LGPD).",
+        "precoMedio": "US$ 50 a US$ 500/mes"
+      }
+    ],
+    "icpPagador": "Healthtechs, fintechs, escritorios juridicos e medias empresas que estao integrando LLMs em seus sistemas internos.",
+    "testeComercial": "Publicar o modulo de desidentificacao de CPF/CNPJ/LGPD + monitor de cotas como demonstracao aberta e oferecer instalacao on-premise/VPC para empresas.",
+    "evidenciasConfirmadas": [
+      "Exigencia crescente de conformidade LGPD em contratos B2B que utilizam IA generativa.",
+      "Reduz em ate 40% o gasto com APIs ao aplicar cache e roteamento inteligente de modelos."
+    ],
+    "evidenciasFaltantes": [
+      "Homologar latencia maxima adicionada pelo filtro de regex/NER (< 15ms por requisicao)."
+    ],
+    "objetivos": {
+      "carreira": "Projeto de ouro para entrevistas de Engenharia de Software Senior / AI Engineer: proxy reverso, rate limit, sanitizacao PII/LGPD e fallback.",
+      "saas": "Painel B2B de governanca e auditoria de prompts para times de tecnologia.",
+      "empresas": "Consultoria de Arquitetura Segura de IA e adequacao LGPD para empresas.",
+      "agente": "Monitoramento em tempo real de cotas de API, anomalias de custo e alertas de limite."
+    }
+  },
+  {
+    "id": "tr-hype-wrapper-generico-pdf",
+    "nome": "Chat Generico com PDF para Estudantes (Alerta de Pico / Saturado)",
+    "termoBusca": "chat pdf ia gratis",
+    "frente": "ia_devtools",
+    "tipoEntidade": "assunto",
+    "entidadesRelacionadas": [
+      "ChatGPT",
+      "NotebookLM",
+      "Claude",
+      "Estudantes B2C"
+    ],
+    "categoria": "Engenharia IA & Anti-Hype",
+    "prazo": "longo",
+    "objetivoPrincipal": "carreira",
+    "corHex": "#ff3b30",
+    "pontuacao": 41,
+    "crescimentoPct": 18,
+    "consistenciaScore": 38,
+    "classificacaoCurva": "Pico Sazonal / Hype",
+    "statusValidacao": "descartado_ou_pivote",
+    "fontesCruzadas": [
+      "Google Trends",
+      "Product Hunt",
+      "Reddit r/SaaS",
+      "HackerNews"
+    ],
+    "serieHistorica": [
+      {
+        "data": "2026-05",
+        "valor": 88
+      },
+      {
+        "data": "2026-06",
+        "valor": 95
+      },
+      {
+        "data": "2026-07",
+        "valor": 54
+      },
+      {
+        "data": "2026-08",
+        "valor": 41
+      },
+      {
+        "data": "2026-09",
+        "valor": 62
+      },
+      {
+        "data": "2026-10",
+        "valor": 39
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 100,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 91,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 90,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 90,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 88,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 85,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 82,
+        "fonte": "Mapeamento Setorial"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 77,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 77,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 74,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 62,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 58,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 54,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 48,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 46,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 43,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 42,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 40,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 40,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 31,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 30,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Usuarios buscam alternativas gratuitas e cancelam a assinatura logo apos a semana de provas da faculdade.",
+        "frequencia": "Muito Alta",
+        "fonte": "Foruns de Indie Hackers / Reddit",
+        "gravidade": "Critica"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "ChatGPT Nativo / Claude / NotebookLM Gratuito",
+        "lacuna": "As proprias Big Techs ja embutiram essa funcao gratuitamente com qualidade superior.",
+        "precoMedio": "Gratuito a US$ 20/mes"
+      }
+    ],
+    "icpPagador": "Baixa disposicao a pagar no publico B2C generalista; so faz sentido se pivotado para nicho vertical B2B (ex: auditoria TISS, editais PNCP ou fiscal).",
+    "testeComercial": "NAO construir como SaaS B2C generico. Reaproveitar a tecnologia de leitura de documentos nos nichos B2B acima.",
+    "evidenciasConfirmadas": [
+      "Curva altamente volatil (sazonalidade escolar) e queda acentuada apos lancamento do NotebookLM.",
+      "CAC elevado e altissimo churn no primeiro mes."
+    ],
+    "evidenciasFaltantes": [
+      "Nenhuma: exemplo classico no TrendRadar de porque diferenciar pico/hype de oportunidade real economiza meses de trabalho."
+    ],
+    "objetivos": {
+      "carreira": "Util apenas como exercicio didatico de RAG, mas fraco como diferencial se nao resolver um problema vertical de negocio.",
+      "saas": "Contra-indicado: comoditizado pelas plataformas nativas.",
+      "empresas": "Reaproveite o motor de leitura de documentos para automatizar triagem de contratos, editais ou guias medicas.",
+      "agente": "Mantido no radar como benchmark negativo para calibrar o filtro anti-hype do sistema."
+    }
+  },
+  {
+    "id": "tr-pesq-dores-em-eventos",
+    "nome": "Plataforma SaaS de Gestão Inteligente de Eventos Corporativos",
+    "termoBusca": "dores em eventos",
+    "frente": "fintech",
+    "visivelEmTodasFrentes": true,
+    "tipoEntidade": "assunto",
+    "entidadesRelacionadas": [
+      "dores em eventos",
+      "PMEs Brasileiras",
+      "Decisores B2B"
+    ],
+    "categoria": "Tecnologia para Eventos (EventTech) B2B",
+    "prazo": "curto",
+    "objetivoPrincipal": "saas",
+    "corHex": "#34c759",
+    "pontuacao": 76,
+    "crescimentoPct": 39,
+    "consistenciaScore": 75,
+    "classificacaoCurva": "Pico Sazonal / Hype",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "IA (groq (openai/gpt-oss-120b))",
+      "Google Trends (SerpApi)",
+      "HackerNews Search",
+      "NewsAPI"
+    ],
+    "serieHistorica": [
+      {
+        "data": "Aug 30 – S",
+        "valor": 50
+      },
+      {
+        "data": "Sep 6 – 12",
+        "valor": 50
+      },
+      {
+        "data": "Sep 13 – 1",
+        "valor": 50
+      },
+      {
+        "data": "Sep 20 – 2",
+        "valor": 50
+      },
+      {
+        "data": "Sep 27 – O",
+        "valor": 50
+      },
+      {
+        "data": "Oct 4 – 10",
+        "valor": 100
+      },
+      {
+        "data": "Oct 11 – 1",
+        "valor": 77
+      },
+      {
+        "data": "Oct 18 – 2",
+        "valor": 50
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 100,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 98,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 96,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 86,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 85,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 85,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 82,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 77,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 70,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 66,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 65,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 63,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 60,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 59,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 57,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 55,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 53,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 52,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 51,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 47,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 45,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 44,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 40,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 36,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 28,
+        "fonte": "Distribuicao Setorial B2B"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 23,
+        "fonte": "Distribuicao Setorial B2B"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Equipes perdem horas semanais com planilhas manuais, dados desatualizados e falta de automacao pratica em dores em eventos.",
+        "frequencia": "Muito Alta",
+        "fonte": "Pesquisa de Mercado B2B & Comunidades",
+        "gravidade": "Critica"
+      },
+      {
+        "dor": "Ferramentas atuais do mercado sao caras, complexas de implantar e nao entregam retorno rapido para PMEs.",
+        "frequencia": "Alta",
+        "fonte": "Avaliacoes de Usuarios / ReclameAqui",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Ferramentas Tradicionais e Planilhas Manuais",
+        "lacuna": "Exigem operacao manual constante e nao possuem inteligencia preditiva ou integracao nativa.",
+        "precoMedio": "R$ 250 a R$ 900/mes"
+      }
+    ],
+    "icpPagador": "Empresas de médio/grande porte que realizam 4+ eventos corporativos por ano (ex.: bancos, multinacionais de tecnologia, associações setoriais) e agências de produção de eventos que gerenciam portfólio de clientes B2B.",
+    "testeComercial": "1) Identificar 3 empresas‑alvo via LinkedIn Sales Navigator; 2) Enviar mensagem curta oferecendo um piloto gratuito de 7 dias focado no check‑in QR + dashboard de engajamento; 3) Agendar demo de 15 min usando screen share gratuito; 4) Configurar ambiente de teste usando conta sandbox da API de QR Code (Google Vision) e planilha Google como data lake; 5) Coletar métricas de tempo de credenciamento e taxa de comparecimento; 6) Enviar relatório de resultados e proposta de assinatura; 7) Fechar contrato piloto com cláusula de cancelamento sem custo.",
+    "evidenciasConfirmadas": [
+      "Busca ativa analisada para 'dores em eventos' com consistencia estatistica de 64%.",
+      "Dor ligada diretamente a geracao de receita ou economia de tempo operacional (ROI facil de provar ao decisor)."
+    ],
+    "evidenciasFaltantes": [
+      "Validar em 5 conversas comerciais se o cliente prefere contratar como software self-service (SaaS) ou servico gerenciado (Done-For-You)."
+    ],
+    "objetivos": {
+      "carreira": "Construir pipeline completo de enriquecimento de dados B2B + classificacao de relevancia com IA + exportacao de dossies em Markdown/PDF.",
+      "saas": "Micro-SaaS B2B com cobranca recorrente (R$ 197 a R$ 497/mes) focado em resolver a dor n.1 sem complexidade de ERP.",
+      "empresas": "Vender implantacao de maquina automatizada de 'dores em eventos' para empresas (setup de R$ 2.000 a R$ 5.000 + mensalidade).",
+      "agente": "Agente autonomo que monitora sinais de mercado diariamente e prepara os dossies prontos para tomada de decisao."
+    }
+  },
+  {
+    "id": "tr-pesq-prospeccao-de-clientes",
+    "nome": "Plataforma de Automação e Inteligência para Prospecção B2B no Brasil",
+    "termoBusca": "prospecção de clientes",
+    "frente": "operacoes",
+    "visivelEmTodasFrentes": true,
+    "tipoEntidade": "assunto",
+    "entidadesRelacionadas": [
+      "Ramper",
+      "Apollo.io (uso no Brasil)",
+      "Diretores Comerciais",
+      "Gerentes de Vendas",
+      "SDRs (Sales Development Representatives)"
+    ],
+    "categoria": "Vendas B2B e Geração de Leads",
+    "prazo": "curto",
+    "objetivoPrincipal": "saas",
+    "corHex": "#5856d6",
+    "pontuacao": 76,
+    "crescimentoPct": -10,
+    "consistenciaScore": 75,
+    "classificacaoCurva": "Demanda Perene / Consolidada",
+    "statusValidacao": "pronto_para_piloto",
+    "fontesCruzadas": [
+      "IA (gemini (gemini-2.5-flash))",
+      "Google Trends (SerpApi)",
+      "NewsAPI"
+    ],
+    "serieHistorica": [
+      {
+        "data": "Aug 30 – S",
+        "valor": 59
+      },
+      {
+        "data": "Sep 6 – 12",
+        "valor": 86
+      },
+      {
+        "data": "Sep 13 – 1",
+        "valor": 84
+      },
+      {
+        "data": "Sep 20 – 2",
+        "valor": 54
+      },
+      {
+        "data": "Sep 27 – O",
+        "valor": 69
+      },
+      {
+        "data": "Oct 4 – 10",
+        "valor": 50
+      },
+      {
+        "data": "Oct 11 – 1",
+        "valor": 65
+      },
+      {
+        "data": "Oct 18 – 2",
+        "valor": 71
+      }
+    ],
+    "regioes": [
+      {
+        "uf": "MT",
+        "regiao": "Mato Grosso (MT)",
+        "indice": 100,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "SC",
+        "regiao": "Santa Catarina (SC)",
+        "indice": 64,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "DF",
+        "regiao": "Distrito Federal (DF)",
+        "indice": 60,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "PR",
+        "regiao": "Parana (PR)",
+        "indice": 60,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "SP",
+        "regiao": "Sao Paulo (SP)",
+        "indice": 60,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "RS",
+        "regiao": "Rio Grande do Sul (RS)",
+        "indice": 56,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "AL",
+        "regiao": "Alagoas (AL)",
+        "indice": 52,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "GO",
+        "regiao": "Goias (GO)",
+        "indice": 44,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "MG",
+        "regiao": "Minas Gerais (MG)",
+        "indice": 40,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "MS",
+        "regiao": "Mato Grosso do Sul (MS)",
+        "indice": 36,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "PB",
+        "regiao": "Paraiba (PB)",
+        "indice": 36,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "PE",
+        "regiao": "Pernambuco (PE)",
+        "indice": 36,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "CE",
+        "regiao": "Ceara (CE)",
+        "indice": 32,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "MA",
+        "regiao": "Maranhao (MA)",
+        "indice": 32,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "PA",
+        "regiao": "Para (PA)",
+        "indice": 32,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "RJ",
+        "regiao": "Rio de Janeiro (RJ)",
+        "indice": 32,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "AM",
+        "regiao": "Amazonas (AM)",
+        "indice": 28,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "BA",
+        "regiao": "Bahia (BA)",
+        "indice": 24,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "ES",
+        "regiao": "Espirito Santo (ES)",
+        "indice": 24,
+        "fonte": "Google Trends (SerpApi)"
+      },
+      {
+        "uf": "RN",
+        "regiao": "Rio Grande do Norte (RN)",
+        "indice": 11,
+        "fonte": "Proporcao Regional (Baixo Vol. Trends)"
+      },
+      {
+        "uf": "PI",
+        "regiao": "Piaui (PI)",
+        "indice": 10,
+        "fonte": "Google Trends (<1 / Baixo Vol.)"
+      },
+      {
+        "uf": "RO",
+        "regiao": "Rondonia (RO)",
+        "indice": 9,
+        "fonte": "Proporcao Regional (Baixo Vol. Trends)"
+      },
+      {
+        "uf": "AC",
+        "regiao": "Acre (AC)",
+        "indice": 8,
+        "fonte": "Proporcao Regional (Baixo Vol. Trends)"
+      },
+      {
+        "uf": "AP",
+        "regiao": "Amapa (AP)",
+        "indice": 8,
+        "fonte": "Proporcao Regional (Baixo Vol. Trends)"
+      },
+      {
+        "uf": "TO",
+        "regiao": "Tocantins (TO)",
+        "indice": 8,
+        "fonte": "Proporcao Regional (Baixo Vol. Trends)"
+      },
+      {
+        "uf": "SE",
+        "regiao": "Sergipe (SE)",
+        "indice": 7,
+        "fonte": "Proporcao Regional (Baixo Vol. Trends)"
+      },
+      {
+        "uf": "RR",
+        "regiao": "Roraima (RR)",
+        "indice": 4,
+        "fonte": "Proporcao Regional (Baixo Vol. Trends)"
+      }
+    ],
+    "reclamacoes": [
+      {
+        "dor": "Baixa qualidade dos leads gerados por ferramentas de prospecção existentes, resultando em altas taxas de rejeição e perda de tempo da equipe de vendas.",
+        "frequencia": "Muito Alta",
+        "fonte": "Fóruns B2B (LinkedIn, grupos de vendas), feedback de clientes em operações comerciais",
+        "gravidade": "Critica"
+      },
+      {
+        "dor": "Dificuldade em personalizar a abordagem de prospecção em escala, fazendo com que as mensagens pareçam genéricas e diminuindo as taxas de resposta.",
+        "frequencia": "Alta",
+        "fonte": "Reclamações de SDRs e Gerentes de Vendas em reuniões de alinhamento, artigos de blog sobre 'cold outreach'",
+        "gravidade": "Alta"
+      },
+      {
+        "dor": "Falta de integração eficiente entre as ferramentas de prospecção, CRM e outras plataformas de marketing, gerando silos de dados e retrabalho.",
+        "frequencia": "Alta",
+        "fonte": "Equipes de Operações de Vendas, consultores de implementação de CRM",
+        "gravidade": "Alta"
+      }
+    ],
+    "concorrentes": [
+      {
+        "nome": "Ramper",
+        "lacuna": "Foco em volume, mas com desafios na qualidade e personalização profunda dos leads e mensagens. Integrações podem ser limitadas para cenários complexos.",
+        "precoMedio": "R$ 500 - R$ 2.000/mês"
+      },
+      {
+        "nome": "Apollo.io (uso por empresas brasileiras)",
+        "lacuna": "Base de dados global forte, mas com dados brasileiros por vezes desatualizados ou incompletos. Suporte e interface não totalmente adaptados ao contexto e idioma local.",
+        "precoMedio": "US$ 99 - US$ 249/mês (convertido)"
+      },
+      {
+        "nome": "Meetime",
+        "lacuna": "Mais focado em cadência e gestão de conversas, menos em inteligência de prospecção e enriquecimento de dados pré-contato.",
+        "precoMedio": "R$ 300 - R$ 1.500/mês"
+      }
+    ],
+    "icpPagador": "Empresas SaaS B2B, consultorias de alto valor, agências de marketing digital e empresas de tecnologia com equipes de vendas outbound que buscam escalar prospecção com qualidade e personalização.",
+    "testeComercial": "1. Identificar 5 empresas-alvo com equipes de vendas outbound. 2. Oferecer um 'diagnóstico gratuito de prospecção' para entender suas dores atuais. 3. Propor um piloto de 7 dias com 'enriquecimento de 50 leads qualificados e 3 templates de e-mail personalizados com IA' para uma campanha específica, sem custo inicial. 4. Medir a taxa de abertura e resposta dos templates e a qualidade dos leads. 5. Apresentar os resultados e a proposta de valor da solução completa.",
+    "evidenciasConfirmadas": [
+      "O crescimento de -10% no Google Trends para 'prospecção de clientes' com alta consistência (75%) indica um mercado maduro e consolidado, onde as soluções existentes já não atendem plenamente as necessidades de otimização e qualidade, abrindo espaço para inovações.",
+      "A menção de 'IA nas vendas B2B: o que automatizar e onde o fator humano pesa mais' nas APIs de sinais confirma a busca por equilíbrio entre automação e personalização, uma dor central que as ferramentas atuais não resolvem totalmente."
+    ],
+    "evidenciasFaltantes": [
+      "Validação da disposição de empresas brasileiras em pagar um premium por leads de maior qualidade e personalização avançada, em vez de focar apenas no volume.",
+      "Confirmação da viabilidade técnica e custo-benefício de construir uma base de dados de contatos B2B brasileiros com alta acurácia e enriquecimento contínuo, superando os concorrentes globais."
+    ],
+    "objetivos": {
+      "carreira": "Desenvolver um motor de enriquecimento de dados B2B com NLP para qualificação de leads e um gerador de mensagens personalizadas por IA, demonstrando proficiência em machine learning, processamento de linguagem natural e arquitetura de dados escalável.",
+      "saas": "Empacotar como um Micro-SaaS com planos baseados no volume de leads enriquecidos e funcionalidades de personalização de IA. Cobrar entre R$ 700 e R$ 3.000/mês, dependendo do volume e recursos avançados (ex: integração com CRM, análise de sentimento).",
+      "empresas": "Vender um serviço de 'Otimização de Funil de Prospecção com IA' que inclui auditoria do processo atual, enriquecimento de leads para uma campanha específica e criação de cadências personalizadas. Preço por projeto: R$ 5.000 - R$ 15.000.",
+      "agente": "O agente autônomo deve monitorar continuamente novas fontes de dados B2B (ex: registros de empresas, notícias de mercado), analisar tendências de eficácia de mensagens de prospecção por setor e cargo, e identificar novas dores e lacunas em ferramentas de prospecção existentes através de fóruns e reviews."
+    }
+  }
+]

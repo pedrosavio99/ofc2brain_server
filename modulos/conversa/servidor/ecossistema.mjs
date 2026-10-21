@@ -10,6 +10,7 @@
 import * as bancoRefeicao from "../../refeicao/servidor/banco.mjs";
 import * as metasRefeicao from "../../refeicao/servidor/metas.mjs";
 import * as bancoTreino from "../../treino/servidor/banco.mjs";
+import { resumoDoRadar } from "../../trendradar/servidor/nucleo.mjs";
 
 /**
  * Obtém o panorama de refeições do usuário para contextualizar a IA.
@@ -206,6 +207,17 @@ export async function obterContextoEcossistema() {
     "Exemplo: 'Coloquei um som pra você dar o gás! [TOCAR_MUSICA: João Gomes]'. " +
     "A interface do chat vai capturar essa tag e tocar o som na hora com um reprodutor integrado."
   );
+
+  // Seção TrendRadar
+  try {
+    const radarTxt = await resumoDoRadar();
+    if (radarTxt) {
+      linhas.push("\n--- INTELIGÊNCIA DE MERCADO E OPORTUNIDADES (Módulo TrendRadar) ---");
+      linhas.push(radarTxt);
+    }
+  } catch {
+    // opcional
+  }
 
   return {
     refeicoes: ref,

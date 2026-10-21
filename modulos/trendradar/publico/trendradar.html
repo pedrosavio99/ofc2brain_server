@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="sistema">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <title>TrendRadar</title>
+    <link rel="icon" type="image/svg+xml" href="/cerebro-mini.svg" />
+    <link rel="stylesheet" href="/estilos.css" />
+    <link rel="stylesheet" href="/trendradar/trendradar.css" />
+    <script>
+      try {
+        document.documentElement.dataset.tema =
+          localStorage.getItem("2brain-tema") ||
+          localStorage.getItem("tema_preferido") ||
+          "sistema";
+      } catch (e) {}
+    </script>
+  </head>
+  <body data-modulo="trendradar">
+    <header class="barra" id="barra">
+      <div class="barra-int">
+        <div class="barra-marca-bloco">
+          <a class="barra-marca" href="/" title="Ir para início do Segundo cérebro">
+            <img src="/cerebro-mini.svg" alt="" width="22" height="22" draggable="false" />
+            <span class="barra-marca-nome">Segundo cérebro</span>
+          </a>
+          <span class="barra-separador-modulo" aria-hidden="true">/</span>
+          <span class="barra-modulo-atual" id="subtituloCabecalho">TrendRadar</span>
+        </div>
+        <div class="barra-acoes">
+          <button
+            class="icone-btn"
+            id="btnPesquisarTopo"
+            type="button"
+            data-acao="abrir-investigar"
+            aria-label="Pesquisar alvo no radar"
+            title="Pesquisar assunto, empresa ou dor"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+              <path d="M11 8v6M8 11h6" />
+            </svg>
+          </button>
+          <button
+            class="icone-btn"
+            id="btnAtualizar"
+            type="button"
+            data-acao="atualizar-radar"
+            aria-label="Atualizar radar"
+            title="Atualizar dados do radar"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 11a8 8 0 10-2.3 6" />
+              <path d="M20 5v6h-6" />
+            </svg>
+          </button>
+          <button
+            class="icone-btn"
+            id="btnOpcoes"
+            type="button"
+            data-acao="abrir-menu"
+            aria-label="Opções e ferramentas do TrendRadar"
+            title="Opções e ferramentas do TrendRadar"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+            </svg>
+          </button>
+          <button
+            class="icone-btn btn-menu-eco"
+            id="btnMenuEco"
+            type="button"
+            aria-label="Menu do ecossistema"
+            title="Menu do ecossistema"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="5" cy="12" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="19" cy="12" r="2" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="envolucro tr-envolucro" id="app">
+      <h1 class="titulao">TrendRadar</h1>
+      <p class="subtitulao" id="resumoTopo">Carregando panorama das 6 frentes de mercado…</p>
+
+      <!-- Banner discreto de alerta de cota (visivel apenas se houver alerta critico/esgotado) -->
+      <section id="bannerAlertaCota" class="tr-alerta-cota" hidden></section>
+
+      <!-- Barra de busca padronizada com /estilos.css -->
+      <div class="busca" id="caixaBusca">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-3.5-3.5" />
+        </svg>
+        <input
+          id="campoBusca"
+          type="search"
+          placeholder="Buscar oportunidade, empresa, dor, estado ou tecnologia..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button
+          class="limpar"
+          id="limparBusca"
+          type="button"
+          data-acao="limpar-busca"
+          aria-label="Limpar busca"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <circle cx="12" cy="12" r="10" fill="currentColor" opacity=".28" />
+            <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Seletor segmentado de agrupamento -->
+      <nav class="segmentado" id="abasGrupo" role="tablist" aria-label="Modo de organização">
+        <div class="indicador" id="indicadorGrupo"></div>
+        <button
+          type="button"
+          role="tab"
+          data-acao="mudar-aba"
+          data-grupo="frente"
+          class="ativo"
+        >
+          6 Frentes
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-acao="mudar-aba"
+          data-grupo="objetivo"
+        >
+          4 Objetivos
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-acao="mudar-aba"
+          data-grupo="curva"
+        >
+          Curva &amp; Hype
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-acao="mudar-aba"
+          data-grupo="validacao"
+        >
+          Validação
+        </button>
+      </nav>
+
+      <!-- Chips de filtro por frente e recortes ativos -->
+      <div id="filtros" role="toolbar" aria-label="Filtrar frentes do radar"></div>
+
+      <!-- Conteudo principal (secoes e cartoes de oportunidades) -->
+      <div id="conteudo" aria-live="polite"></div>
+    </main>
+
+    <!-- Barra flutuante de selecao para relatorio comparativo -->
+    <div class="tr-barra-plano" id="barraSelecao" hidden>
+      <div class="tr-barra-plano-info">
+        <span class="tr-barra-plano-contador" id="contadorSelecao">0</span>
+        <div>
+          <strong id="tituloSelecao">Oportunidades selecionadas</strong>
+          <small id="subtituloSelecao">Prontas para relatório comparativo</small>
+        </div>
+      </div>
+      <div class="tr-barra-plano-acoes">
+        <button
+          type="button"
+          class="btn btn-suave"
+          data-acao="limpar-selecao"
+        >
+          Limpar
+        </button>
+        <button
+          type="button"
+          class="btn"
+          data-acao="abrir-relatorio"
+        >
+          Relatório MD / PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- Cortina e Sheet (Opcoes, Dossie 6 Perguntas, Pesquisar Alvo, Importar CSV, Relatorio MD/PDF, Cotas) -->
+    <div class="cortina" id="cortina" data-acao="fechar-sheet"></div>
+    <div class="sheet tr-sheet" id="sheet" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="puxador"></div>
+      <div class="sheet-cab">
+        <h3 id="sheetTitulo">Opções</h3>
+        <button
+          class="icone-btn"
+          id="fecharSheet"
+          type="button"
+          data-acao="fechar-sheet"
+          aria-label="Fechar painel"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+      <div class="sheet-corpo" id="sheetCorpo"></div>
+    </div>
+
+    <!-- Toast de feedback -->
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="/pin.js"></script>
+    <script src="/navegacao.js"></script>
+    <script src="/trendradar/trendradar.js"></script>
+  </body>
+</html>

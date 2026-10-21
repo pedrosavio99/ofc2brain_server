@@ -16,6 +16,7 @@ O Segundo Cérebro é um ecossistema integrado composto por módulos especializa
 | **Refeições** | `/refeicao` | Diário alimentar, cálculo de macronutrientes e metas calóricas. |
 | **Trabalho** | `/trabalho` | Integração com ClickUp, planejamento diário (daily) e prazos. |
 | **Música** | `/musica` | Player Sua Música, streaming de áudio e rádio infinita. |
+| **TrendRadar** | `/trendradar` | Radar estratégico de tendências e oportunidades B2B nas 6 frentes de mercado. |
 
 ---
 

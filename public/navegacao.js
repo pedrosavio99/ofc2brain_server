@@ -71,6 +71,15 @@
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
     },
+    {
+      id: "trendradar",
+      nome: "TrendRadar",
+      rota: "/trendradar",
+      descricao: "Radar estratégico de tendências e oportunidades B2B",
+      icone:
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+        '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
+    },
   ];
 
   var TEMAS = {
@@ -185,15 +194,15 @@
       });
     });
 
-    cortina.classList.add("visivel");
-    sheet.classList.add("visivel");
+    cortina.classList.add("visivel", "aberta");
+    sheet.classList.add("visivel", "aberto");
   }
 
   function fecharMenuEcossistema() {
     var cortina = document.getElementById("ecoCortina");
     var sheet = document.getElementById("ecoSheet");
-    if (cortina) cortina.classList.remove("visivel");
-    if (sheet) sheet.classList.remove("visivel");
+    if (cortina) cortina.classList.remove("visivel", "aberta");
+    if (sheet) sheet.classList.remove("visivel", "aberto");
   }
 
   function padronizarNavbar() {
