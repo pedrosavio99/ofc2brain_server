@@ -31,8 +31,7 @@ export function modelosGemini() {
 export function chavesGroq() { return lista("GROQ_API_KEYS", "GROQ_API_KEY"); }
 export function modelosGroq() {
   const m = lista("GROQ_CHAT_MODEL", "GROQ_MODEL_RAPIDA");
-  // llama-3.1-8b-instant sempre no fim: rapido e raramente ocupado
-  return [...new Set([...m, "llama-3.3-70b-versatile", "llama-3.1-8b-instant"])];
+  return [...new Set([...m, "openai/gpt-oss-120b", "llama-3.3-70b-versatile"])];
 }
 
 function tiraJSON(texto) {

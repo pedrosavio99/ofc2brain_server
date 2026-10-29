@@ -257,7 +257,7 @@ export async function rotear(req, url) {
     /* Groq de proposito, e o menor deles. O ponto aqui e chegar rapido; o
        modelo forte esta rodando em paralelo pra mensagem que importa. */
     const r = await chatJSONDetalhado(SISTEMA_RAPIDA, prompt, {
-      modelo: process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || "llama-3.1-8b-instant",
+      modelo: process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
       temperatura: 0.85, mensagens: historicoRapida, tentativas: 1,
     });
     const mensagens = (Array.isArray(r.dados && r.dados.mensagens) ? r.dados.mensagens : [])

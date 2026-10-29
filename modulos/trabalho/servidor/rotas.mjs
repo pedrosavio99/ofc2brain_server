@@ -89,6 +89,16 @@ export function guardaDeEscrita(req) {
   if (req.headers["x-clickup-local"] !== "1") {
     throw new ErroHttp(403, "Escrita exige o cabecalho x-clickup-local: 1", "A propria tela ja manda esse cabecalho.");
   }
+  // Requisicao autenticada com PIN correto passa na guarda de escrita
+  const pinEnviado =
+    req?.headers?.["x-pin"] ||
+    req?.headers?.["x-acesso"] ||
+    (req?.headers?.authorization || "").replace(/^Bearer\s+/i, "").trim();
+  const pinCorreto = String(process.env.PIN_ACESSO || "").trim();
+  if (pinCorreto && pinEnviado === pinCorreto) {
+    return;
+  }
+
   const origem = req.headers.origin;
   if (!origem) return;
   let alvo;
@@ -98,7 +108,8 @@ export function guardaDeEscrita(req) {
     throw new ErroHttp(403, "Origem invalida: " + origem, "");
   }
   const local = /^(localhost|127\.0\.0\.1)$/.test(alvo.hostname);
-  const mesmaOrigem = req.headers.host && alvo.host === req.headers.host;
+  const hostFwd = String(req.headers["x-forwarded-host"] || "").split(":")[0];
+  const mesmaOrigem = (req.headers.host && alvo.host === req.headers.host) || (hostFwd && alvo.hostname === hostFwd);
   if (!local && !mesmaOrigem) throw new ErroHttp(403, "Origem nao permitida para escrita: " + origem, "");
 }
 

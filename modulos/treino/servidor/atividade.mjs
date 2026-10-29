@@ -138,7 +138,7 @@ export async function analisarAtividade(texto) {
 
   try {
     const r = await chatJSONDetalhado(SISTEMA, `A pessoa escreveu: "${limpo}"`, {
-      modelo: process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || "llama-3.1-8b-instant",
+      modelo: process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
       temperatura: 0.2,
       tentativas: 2,
     });

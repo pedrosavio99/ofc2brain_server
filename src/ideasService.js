@@ -685,7 +685,7 @@ ${linhas}`;
     // Modelo PEQUENO de proposito: isto e classificacao, nao raciocinio. Gastar
     // um modelo grande aqui atrasaria justamente a parte que precisa ser rapida.
     const dados = await chatJSON(instrucaoSugerirFormato(), prompt, {
-      modelo: process.env.GROQ_MODEL_FORMATO || "llama-3.1-8b-instant",
+      modelo: process.env.GROQ_MODEL_FORMATO || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
     });
     const sug = { ...normalizarSugestao(dados), fallback: false, notasConsideradas: notas.length };
     cacheFormato.set(chave, sug);
@@ -918,7 +918,7 @@ export async function reindexarTudo(onProgress) {
         const analise = await chatJSON(
           SYSTEM_PROMPT_RELACAO,
           montarPromptRelacao({ texto: ideia.texto_original, resumo: ideia.resumo, candidatas: candObjs }),
-          { modelo: process.env.GROQ_MODEL_RELINK || "llama-3.1-8b-instant" }
+          { modelo: process.env.GROQ_MODEL_RELINK || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b" }
         );
 
         const scorePorId = new Map(candObjs.map((c) => [c.id, c.score]));

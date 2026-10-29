@@ -126,6 +126,12 @@
   window.fetch = async function (entrada, init) {
     if (!daCasa(entrada)) return original(entrada, init);
 
+    // Se o modal de PIN ja esta aberto esperando digitacao, aguarda para nao
+    // disparar requisicoes sem credencial condenadas ao 401:
+    if (esperando) {
+      try { await esperando; } catch (e) {}
+    }
+
     var resposta = await original(entrada, comHeader(init));
     if (resposta.status !== 401) return resposta;
 

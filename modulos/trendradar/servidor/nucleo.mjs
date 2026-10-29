@@ -281,6 +281,8 @@ export function exigirToken(req) {
 
   if (cfg.tokenAcesso) {
     const headerToken =
+      req?.headers?.["x-pin"] ||
+      req?.headers?.["x-acesso"] ||
       req?.headers?.["x-api-token"] ||
       (req?.headers?.authorization || "").replace(/^Bearer\s+/i, "").trim();
 
@@ -307,6 +309,17 @@ export function guardaDeEscrita(req) {
     );
   }
 
+  // Requisicao autenticada com PIN correto passa direto na guarda de escrita
+  const pinEnviado =
+    req?.headers?.["x-pin"] ||
+    req?.headers?.["x-acesso"] ||
+    req?.headers?.["x-api-token"] ||
+    (req?.headers?.authorization || "").replace(/^Bearer\s+/i, "").trim();
+  const pinCorreto = String(process.env.PIN_ACESSO || process.env.TRENDRADAR_TOKEN || "").trim();
+  if (pinCorreto && pinEnviado === pinCorreto) {
+    return true;
+  }
+
   const origin = req?.headers?.origin;
   if (!origin) {
     return true;
@@ -320,7 +333,8 @@ export function guardaDeEscrita(req) {
     }
 
     const hostReq = String(req?.headers?.host || "").split(":")[0];
-    if (hostReq && hostOrigin === hostReq) {
+    const hostFwd = String(req?.headers?.["x-forwarded-host"] || "").split(":")[0];
+    if ((hostReq && hostOrigin === hostReq) || (hostFwd && hostOrigin === hostFwd)) {
       return true;
     }
   } catch (_err) {

@@ -120,7 +120,7 @@ export async function analisarEquipamento(nome, observacao = "") {
     const prompt = `Equipamento: "${limpo}"` +
       (observacao ? `\nObservacao de quem cadastrou: "${limpar(observacao, 200)}"` : "");
     const r = await chatJSONDetalhado(SISTEMA, prompt, {
-      modelo: process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || "llama-3.1-8b-instant",
+      modelo: process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
       temperatura: 0.3,
       tentativas: 2,
     });

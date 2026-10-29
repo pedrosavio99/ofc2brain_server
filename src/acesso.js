@@ -88,26 +88,38 @@ export async function exigirPin(req, res, next) {
   if (!pinAtivo()) return next();
   if (ehPublico(req.path)) return next();
 
-  const k = chaveDe(req);
-  const estado = falhas.get(k);
-  if (estado && estado.ate > Date.now()) {
-    const faltam = Math.ceil((estado.ate - Date.now()) / 1000);
-    return res.status(429).json({ erro: `Muitas tentativas. Tente de novo em ${faltam}s.`, pin: true });
-  }
-
   // Header, nao query string: query aparece em log de acesso e no historico.
-  const enviado = req.headers["x-pin"] || req.headers["x-acesso"];
+  const authBearer = req.headers.authorization?.startsWith("Bearer ")
+    ? req.headers.authorization.slice(7).trim()
+    : null;
+  const enviado = req.headers["x-pin"] || req.headers["x-acesso"] || authBearer;
+
   if (conferirPin(enviado)) {
     limparFalha(req);
     return next();
   }
 
-  const agora = registrarFalha(req);
-  // atraso cresce com o erro; a primeira tentativa ainda responde rapido
-  await espera(Math.min(agora.erros * 300, 3000));
+  // So penaliza e aplica atraso/bloqueio se um PIN FOI ENVIADO e estava INCORRETO.
+  // Uma requisicao inicial sem credencial nao e forca bruta: e so a tela carregando
+  // antes de abrir o modal de PIN.
+  if (enviado) {
+    const k = chaveDe(req);
+    const estado = falhas.get(k);
+    if (estado && estado.ate > Date.now()) {
+      const faltam = Math.ceil((estado.ate - Date.now()) / 1000);
+      return res.status(429).json({ erro: `Muitas tentativas. Tente de novo em ${faltam}s.`, pin: true });
+    }
+    const agora = registrarFalha(req);
+    await espera(Math.min(agora.erros * 300, 3000));
+    return res.status(401).json({
+      erro: "PIN incorreto.",
+      pin: true,
+    });
+  }
+
+  // Sem PIN ainda: devolve 401 instantaneo com pin:true pra tela abrir o modal sem atraso
   res.status(401).json({
-    erro: enviado ? "PIN incorreto." : "Este sistema pede um PIN.",
-    // a tela usa esta marca pra abrir o modal em vez de mostrar erro cru
+    erro: "Este sistema pede um PIN.",
     pin: true,
   });
 }
@@ -128,7 +140,10 @@ export function rotaDeAcesso(app) {
       return res.status(429).json({ ok: false, erro: `Muitas tentativas. Tente de novo em ${faltam}s.` });
     }
 
-    const enviado = (req.body && req.body.pin) || req.headers["x-pin"];
+    const authBearer = req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.slice(7).trim()
+      : null;
+    const enviado = (req.body && req.body.pin) || req.headers["x-pin"] || authBearer;
     if (conferirPin(enviado)) {
       limparFalha(req);
       return res.json({ ok: true, exigido: true });

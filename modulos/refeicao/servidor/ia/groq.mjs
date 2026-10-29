@@ -9,19 +9,28 @@ import { extrairJSON, postarJSON, valeRepetir, esperar, ErroConfig } from "./jso
 
 const URL_GROQ = "https://api.groq.com/openai/v1/chat/completions";
 
+function listaChaves() {
+  const bruto = process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "";
+  return bruto
+    .split(",")
+    .map((c) => c.trim())
+    .filter((c) => c && c !== "coloque_sua_chave_aqui");
+}
+
 export function groqConfigurado() {
-  return Boolean(process.env.GROQ_API_KEY);
+  return listaChaves().length > 0;
 }
 
 export async function chatJSON(sistema, usuario, opcoes = {}) {
-  const chave = process.env.GROQ_API_KEY;
-  if (!chave) throw new ErroConfig("GROQ_API_KEY nao esta no ambiente");
+  const chaves = listaChaves();
+  if (!chaves.length) throw new ErroConfig("GROQ_API_KEY nao esta no ambiente");
 
-  const modelo = opcoes.modelo || process.env.GROQ_MODEL_RAPIDA || "llama-3.1-8b-instant";
+  const modelo = opcoes.modelo || process.env.GROQ_CHAT_MODEL || process.env.GROQ_MODEL_RAPIDA || "openai/gpt-oss-120b";
   const tentativas = opcoes.tentativas || 2;
   let ultimo;
 
   for (let i = 1; i <= tentativas; i++) {
+    const chave = chaves[(i - 1) % chaves.length];
     const inicio = Date.now();
     try {
       const r = await postarJSON(URL_GROQ, {

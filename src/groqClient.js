@@ -219,8 +219,8 @@ export async function chatJSONDetalhado(systemPrompt, userPrompt, opcoes = {}) {
 export function estadoChavesGroq() {
   const chaves = listaChaves();
   const modelos = [
-    process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile",
-    process.env.GROQ_MODEL_RELINK || "llama-3.1-8b-instant",
+    process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
+    process.env.GROQ_MODEL_RELINK || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
   ];
   return chaves.map((c, i) => ({
     chave: i + 1,

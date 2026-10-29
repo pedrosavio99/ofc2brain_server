@@ -174,7 +174,7 @@ export async function escolherTom({ texto, notas = [], historico = [] }) {
        entao cada segundo aqui e segundo de espera dela. Se nao vier rapido,
        nao vem: a heuristica assume. */
     const r = await chatJSONDetalhado(SISTEMA_TOM, prompt, {
-      modelo: process.env.GROQ_MODEL_TOM || process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || "llama-3.1-8b-instant",
+      modelo: process.env.GROQ_MODEL_TOM || process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
       temperatura: 0.2,
       mensagens: historico.slice(-4),
       tentativas: 1,
