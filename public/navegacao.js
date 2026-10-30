@@ -180,11 +180,48 @@
       );
     }).join("");
 
+    // Bloco de Sessão / Logout
+    var logoutIcon =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>' +
+      '</svg>';
+
+    var sessaoHtml =
+      '<p class="grupo-titulo">Sessão</p>' +
+      '<div class="grupo">' +
+        '<button class="item destrutivo" id="ecoBtnSair">' +
+          logoutIcon +
+          '<div class="item-txt">' +
+            '<strong>Sair da conta</strong>' +
+            '<span>Apaga o PIN salvo e bloqueia este navegador</span>' +
+          '</div>' +
+        '</button>' +
+      '</div>';
+
     corpo.innerHTML =
       '<p class="grupo-titulo">Módulos do ecossistema</p>' +
       '<div class="grupo">' + modulosHtml + "</div>" +
       '<p class="grupo-titulo">Aparência</p>' +
-      '<div class="grupo">' + temasHtml + "</div>";
+      '<div class="grupo">' + temasHtml + "</div>" +
+      sessaoHtml;
+
+    // Event listener de Sair da conta
+    var btnSair = corpo.querySelector("#ecoBtnSair");
+    if (btnSair) {
+      btnSair.addEventListener("click", function () {
+        if (window.SegundoCerebroPin && window.SegundoCerebroPin.sair) {
+          window.SegundoCerebroPin.sair();
+        } else {
+          if (!window.confirm("Deseja sair da sua conta e apagar o PIN salvo neste dispositivo?")) return;
+          try {
+            localStorage.removeItem("2brain-pin");
+            localStorage.removeItem("2brain-conversa-id");
+          } catch (e) {}
+          window.location.href = "/";
+          setTimeout(function () { window.location.reload(); }, 60);
+        }
+      });
+    }
 
     // Event listeners dos temas
     corpo.querySelectorAll(".eco-tema-btn").forEach(function (btn) {

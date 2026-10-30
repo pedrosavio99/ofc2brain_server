@@ -1346,6 +1346,11 @@ function abrirMenu() {
       '<button class="item" id="mArmazenamento">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6" stroke-linecap="round"/></svg>' +
       '<div class="item-txt"><strong>Armazenamento</strong><span>Espaço e limpeza do arquivo</span></div></button>' +
+    "</div>" +
+    '<p class="grupo-titulo">Sessão</p><div class="grupo">' +
+      '<button class="item destrutivo" id="mSair">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
+      '<div class="item-txt"><strong>Sair da conta</strong><span>Apaga o PIN salvo e bloqueia este navegador</span></div></button>' +
     "</div>");
 
   $("#sheetCorpo").querySelectorAll("[data-tema]").forEach(function (b) {
@@ -1368,6 +1373,22 @@ function abrirMenu() {
   $("#mBaixar").addEventListener("click", baixarBackup);
   $("#mRestaurar").addEventListener("click", telaRestaurar);
   $("#mArmazenamento").addEventListener("click", telaArmazenamento);
+  var btnSair = $("#mSair");
+  if (btnSair) {
+    btnSair.addEventListener("click", function () {
+      if (window.SegundoCerebroPin && window.SegundoCerebroPin.sair) {
+        window.SegundoCerebroPin.sair();
+      } else {
+        if (!window.confirm("Deseja sair da sua conta e apagar o PIN salvo neste dispositivo?")) return;
+        try {
+          localStorage.removeItem("2brain-pin");
+          localStorage.removeItem("2brain-conversa-id");
+        } catch (e) {}
+        window.location.href = "/";
+        setTimeout(function () { window.location.reload(); }, 60);
+      }
+    });
+  }
 }
 $("#btnMenu").addEventListener("click", abrirMenu);
 

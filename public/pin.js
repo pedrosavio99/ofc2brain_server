@@ -148,6 +148,31 @@
     return original(entrada, comHeader(init));
   };
 
+  function sair(confirmar) {
+    if (confirmar !== false) {
+      if (!window.confirm("Deseja sair da sua conta e apagar o PIN salvo neste dispositivo?")) {
+        return false;
+      }
+    }
+    guardar("");
+    try { localStorage.removeItem("2brain-conversa-id"); } catch (e) {}
+    window.location.href = "/";
+    setTimeout(function () { window.location.reload(); }, 60);
+    return true;
+  }
+
+  // API publica para logoff / bloqueio da sessao
+  window.SegundoCerebroPin = {
+    CHAVE: CHAVE,
+    temPinSalvo: function () {
+      var salvo = "";
+      try { salvo = localStorage.getItem(CHAVE) || ""; } catch (e) {}
+      return Boolean(pin || salvo);
+    },
+    sair: sair,
+    pedirPin: pedirPin,
+  };
+
   /* Na abertura, pergunta se este deploy exige PIN. Sem isto a primeira
      chamada de dado e que descobriria, e a tela piscaria conteudo vazio antes
      do modal. /acesso passa sem PIN de proposito. */
