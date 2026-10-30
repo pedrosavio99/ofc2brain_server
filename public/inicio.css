@@ -13,6 +13,39 @@
  * que esta escolhido.
  */
 
+/* ------------------------------------------------------------ estabilidade e scroll */
+
+html {
+  scrollbar-gutter: stable;
+  overflow-x: hidden;
+}
+
+body.pg-inicio {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+body.pg-inicio .envolucro {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+body.pg-inicio #conteudo {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+/* Sentinela invisivel para o lazy loading local */
+.lazy-sentinela {
+  width: 100%;
+  height: 1px;
+  min-height: 1px;
+  pointer-events: none;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+
 /* ------------------------------------------------------------ topo */
 
 body.pg-inicio .envolucro .titulao {
@@ -203,27 +236,48 @@ body.pg-inicio .envolucro .memoria-area:active { transform: scale(.97); }
 body.pg-inicio .envolucro .memoria-area:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
 body.pg-inicio .envolucro .memoria-cab { margin-top: 4px; }
 
-/* Recordar: o card volta como lembranca, do desfocado pro nitido, crescendo
-   um pouco, um depois do outro. */
-@keyframes recordar {
-  0%   { opacity: 0; filter: blur(12px); transform: translateY(12px) scale(.95); }
-  55%  { opacity: 1; filter: blur(2px); }
-  100% { opacity: 1; filter: blur(0); transform: none; }
+/* ============================================================
+   Aparicao suave ao rolar e subir (Local Lazy Loading Reveal)
+   Os cards e blocos entram suavemente deslizando para cima
+   e clareando, com aceleracao por hardware e zero jitter.
+   ============================================================ */
+body.pg-inicio.com-lazy .envolucro .nota:not(.revelado),
+body.pg-inicio.com-lazy .envolucro .memoria-area:not(.revelado) {
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
 }
-body.pg-inicio .envolucro .lista.animar .nota,
-body.pg-inicio .envolucro .lista.animar .memoria-area,
+
+body.pg-inicio.com-lazy .envolucro .nota,
+body.pg-inicio.com-lazy .envolucro .memoria-area {
+  transition: opacity .38s cubic-bezier(.16, 1, .3, 1),
+              transform .38s cubic-bezier(.16, 1, .3, 1),
+              border-color .2s ease,
+              box-shadow .2s ease;
+  will-change: opacity, transform;
+}
+
+body.pg-inicio.com-lazy .envolucro .nota.revelado,
+body.pg-inicio.com-lazy .envolucro .memoria-area.revelado {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Neutraliza a animacao pesada anterior com blur(12px) que quebrava na entrada */
+body.pg-inicio.com-lazy .envolucro .lista.animar .nota,
+body.pg-inicio.com-lazy .envolucro .lista.animar .memoria-area {
+  animation: none !important;
+}
+
+/* A nota recem-guardada recorda com suavidade */
+@keyframes recordarSuave {
+  0%   { opacity: 0; transform: translateY(14px) scale(.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
 body.pg-inicio .envolucro .nota.recordando {
-  animation: recordar .62s cubic-bezier(.22,.8,.2,1) both;
+  animation: recordarSuave .45s cubic-bezier(.16, 1, .3, 1) both !important;
 }
-body.pg-inicio .envolucro .lista.animar > :nth-child(2) { animation-delay: .06s; }
-body.pg-inicio .envolucro .lista.animar > :nth-child(3) { animation-delay: .12s; }
-body.pg-inicio .envolucro .lista.animar > :nth-child(4) { animation-delay: .18s; }
-body.pg-inicio .envolucro .lista.animar > :nth-child(5) { animation-delay: .24s; }
-body.pg-inicio .envolucro .lista.animar > :nth-child(6) { animation-delay: .3s; }
-body.pg-inicio .envolucro .lista.animar > :nth-child(7) { animation-delay: .34s; }
-body.pg-inicio .envolucro .lista.animar > :nth-child(8) { animation-delay: .38s; }
-body.pg-inicio .envolucro .lista.animar > :nth-child(9) { animation-delay: .42s; }
-body.pg-inicio .envolucro .lista.animar > :nth-child(n+10) { animation-delay: .46s; }
 
 /* Esquecer: o caminho contrario. O atraso de cada card vem do JS, do ultimo
    pro primeiro. Sem clique durante a saida: o card ja esta indo embora. */
@@ -241,10 +295,15 @@ body.pg-inicio .envolucro .esquecendo > :not(.lista) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body.pg-inicio .envolucro .lista.animar .nota,
-  body.pg-inicio .envolucro .lista.animar .memoria-area,
+  body.pg-inicio.com-lazy .envolucro .nota,
+  body.pg-inicio.com-lazy .envolucro .memoria-area,
   body.pg-inicio .envolucro .nota.recordando,
-  body.pg-inicio .envolucro .nota.esquecer { animation: none; }
+  body.pg-inicio .envolucro .nota.esquecer {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 /* ---- memoria unificada ---- */

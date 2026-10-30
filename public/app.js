@@ -42,6 +42,7 @@ function aplicarTema(t) {
   }
 }
 try { aplicarTema(localStorage.getItem("2brain-tema") || "sistema"); } catch (e) { aplicarTema("sistema"); }
+if (document.body && !document.body.classList.contains("com-lazy")) document.body.classList.add("com-lazy");
 
 /* ============================================================
    Feedback
@@ -349,13 +350,186 @@ function movimentoReduzido() {
   return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
 }
 
+/* ============================================================
+   Lazy Loading Local e Scroll Reveal
+   Elimina sobrecarga no DOM, estabiliza a barra de rolagem e
+   faz os cards entrarem suavemente ao rolar e subir.
+   ============================================================ */
+var _lazyPendente = null;
+
+var LazyLoader = (function () {
+  var sentinelaObserver = null;
+  var revealObserver = null;
+  var itensRestantes = [];
+  var renderItemFn = null;
+  var containerAlvo = null;
+  var tamanhoLote = 12;
+  var carregandoLote = false;
+
+  function initRevealObserver() {
+    if (revealObserver) return;
+    if (typeof IntersectionObserver === "undefined") return;
+
+    revealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("revelado");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: "60px 0px 60px 0px",
+      threshold: 0.02
+    });
+  }
+
+  function animarLoteInicial(parent) {
+    initRevealObserver();
+    var root = parent || document;
+    var els = root.querySelectorAll(".nota:not(.revelado), .memoria-area:not(.revelado)");
+    if (!els.length) return;
+
+    if (movimentoReduzido() || typeof IntersectionObserver === "undefined") {
+      els.forEach(function (el) { el.classList.add("revelado"); });
+      return;
+    }
+
+    var i = 0;
+    var vh = window.innerHeight || 800;
+    els.forEach(function (el) {
+      var rect = el.getBoundingClientRect();
+      if (rect.top < vh + 100) {
+        var delay = Math.min(i * 36, 260);
+        el.style.transitionDelay = delay + "ms";
+        setTimeout(function () {
+          el.classList.add("revelado");
+          setTimeout(function () {
+            el.style.transitionDelay = "";
+          }, delay + 400);
+        }, 16);
+        i++;
+      } else {
+        if (revealObserver) {
+          revealObserver.observe(el);
+        } else {
+          el.classList.add("revelado");
+        }
+      }
+    });
+  }
+
+  function carregarProximoLote() {
+    if (carregandoLote || !itensRestantes.length || !containerAlvo) return;
+    carregandoLote = true;
+
+    var lote = itensRestantes.splice(0, tamanhoLote);
+    var htmlLote = lote.map(renderItemFn).join("");
+
+    var temp = document.createElement("div");
+    temp.innerHTML = htmlLote;
+    var novos = Array.prototype.slice.call(temp.children);
+
+    novos.forEach(function (el) {
+      containerAlvo.appendChild(el);
+      if (el.classList.contains("nota") || el.classList.contains("memoria-area")) {
+        if (revealObserver) revealObserver.observe(el);
+        else el.classList.add("revelado");
+      }
+      var subs = el.querySelectorAll ? el.querySelectorAll(".nota, .memoria-area") : [];
+      subs.forEach(function (sub) {
+        if (revealObserver) revealObserver.observe(sub);
+        else sub.classList.add("revelado");
+      });
+    });
+
+    if (!itensRestantes.length) {
+      if (sentinelaObserver) {
+        sentinelaObserver.disconnect();
+        sentinelaObserver = null;
+      }
+      var s = document.getElementById("lazySentinela");
+      if (s && s.parentNode) s.parentNode.removeChild(s);
+    }
+
+    setTimeout(function () {
+      carregandoLote = false;
+      var s = document.getElementById("lazySentinela");
+      if (s && itensRestantes.length) {
+        var r = s.getBoundingClientRect();
+        if (r.top <= (window.innerHeight || 800) + 300) {
+          carregarProximoLote();
+        }
+      }
+    }, 40);
+  }
+
+  function registrar(config) {
+    limpar();
+    if (!config || !config.itens || !config.container) return;
+
+    itensRestantes = config.itens.slice();
+    renderItemFn = config.renderItem;
+    containerAlvo = config.container;
+    tamanhoLote = config.batchSize || 12;
+
+    if (!itensRestantes.length) return;
+
+    initRevealObserver();
+
+    var sentinela = document.createElement("div");
+    sentinela.id = "lazySentinela";
+    sentinela.className = "lazy-sentinela";
+    if (containerAlvo.nextSibling) {
+      containerAlvo.parentNode.insertBefore(sentinela, containerAlvo.nextSibling);
+    } else {
+      containerAlvo.parentNode.appendChild(sentinela);
+    }
+
+    if (typeof IntersectionObserver !== "undefined") {
+      sentinelaObserver = new IntersectionObserver(function (entries) {
+        if (entries[0] && entries[0].isIntersecting) {
+          carregarProximoLote();
+        }
+      }, {
+        root: null,
+        rootMargin: "300px 0px 300px 0px",
+        threshold: 0
+      });
+      sentinelaObserver.observe(sentinela);
+    } else {
+      while (itensRestantes.length) carregarProximoLote();
+    }
+  }
+
+  function limpar() {
+    if (sentinelaObserver) {
+      sentinelaObserver.disconnect();
+      sentinelaObserver = null;
+    }
+    var s = document.getElementById("lazySentinela");
+    if (s && s.parentNode) s.parentNode.removeChild(s);
+    itensRestantes = [];
+    renderItemFn = null;
+    containerAlvo = null;
+    carregandoLote = false;
+  }
+
+  return {
+    registrar: registrar,
+    limpar: limpar,
+    animarLoteInicial: animarLoteInicial,
+    carregarProximoLote: carregarProximoLote
+  };
+})();
+
 function render() {
   atualizarResumoTopo();
   renderFiltros();
   var alvo = $("#conteudo");
   var html;
   if (S.busca) html = telaBusca();
-  else if (S.carregando) { alvo.innerHTML = esqueletos(); return; }
+  else if (S.carregando) { _lazyPendente = null; alvo.innerHTML = esqueletos(); return; }
   else if (S.aba === "foco") html = S.areaAberta ? telaAreaAberta() : telaFoco();
   else if (S.aba === "areas") html = S.areaAberta ? telaAreaAberta() : telaAreas();
   else if (S.aba === "tempo") html = telaTempo();
@@ -391,15 +565,28 @@ function render() {
 }
 
 function aplicarTela(alvo, html, vista) {
+  LazyLoader.limpar();
   alvo.classList.remove("esquecendo");
   alvo.innerHTML = html;
+
+  if (_lazyPendente) {
+    var c = alvo.querySelector(_lazyPendente.seletor);
+    if (c) {
+      LazyLoader.registrar({
+        itens: _lazyPendente.itens,
+        renderItem: _lazyPendente.renderItem,
+        container: c,
+        batchSize: _lazyPendente.batchSize
+      });
+    }
+    _lazyPendente = null;
+  }
+
+  LazyLoader.animarLoteInicial(alvo);
 
   if (vista !== vistaAnterior) {
     vistaAnterior = vista;
     alvo.querySelectorAll(".lista").forEach(function (l) { l.classList.add("animar"); });
-    /* tira a classe depois da animacao: assim um re-render seguinte nao
-       repete. 1100 e nao 400: os cards entram um depois do outro, e tirar
-       antes cortaria os ultimos no meio. */
     setTimeout(function () {
       alvo.querySelectorAll(".lista.animar").forEach(function (l) { l.classList.remove("animar"); });
     }, 1100);
@@ -408,7 +595,10 @@ function aplicarTela(alvo, html, vista) {
   // a nota recem-guardada recorda sozinha, mesmo sem a vista mudar
   if (S.animarId) {
     var nova = alvo.querySelector('.nota[data-id="' + String(S.animarId).replace(/"/g, "") + '"]');
-    if (nova) nova.classList.add("recordando");
+    if (nova) {
+      nova.classList.add("recordando");
+      nova.classList.add("revelado");
+    }
     S.animarId = null;
   }
 }
@@ -660,6 +850,32 @@ function telaFocoEmRepouso() {
     return S.notas.filter(function (n) { return n.id === id; })[0];
   }).filter(Boolean);
 
+  var cardArea = function (a) {
+    var q = contagem[a];
+    // cada ligacao aparece nas duas notas; metade e o numero real
+    var l = Math.round((ligacoes[a] || 0) / 2);
+    return '<button class="memoria-area" data-area-abrir="' + esc(a) + '"' +
+      ' style="--cor-area:' + corDaArea(a === "Sem área" ? null : a) + '">' +
+      '<i class="ponto"></i>' +
+      '<span class="nome">' + esc(a) + "</span>" +
+      '<span class="qtd">' + q + " " + (q === 1 ? "nota" : "notas") + "</span>" +
+      // sempre uma linha pra ligacoes, pra todos os blocos terem a mesma altura
+      '<span class="lig">' + (l ? l + " " + (l === 1 ? "ligação" : "ligações") : "sem ligações") + "</span>" +
+    "</button>";
+  };
+
+  var inicialAreas = areas.slice(0, 14);
+  if (areas.length > 14) {
+    _lazyPendente = {
+      itens: areas.slice(14),
+      renderItem: cardArea,
+      seletor: "#listaMemoriaAreas",
+      batchSize: 10
+    };
+  } else {
+    _lazyPendente = null;
+  }
+
   return (recentes.length
       ? '<div class="cab-secao"><div><h2>Acabou de guardar</h2><p>' + recentes.length + " " +
           (recentes.length === 1 ? "nota" : "notas") + " nesta sessão</p></div></div>" +
@@ -669,19 +885,7 @@ function telaFocoEmRepouso() {
       : "") +
     '<div class="cab-secao memoria-cab"><div><h2>Sua memória</h2>' +
       "<p>Toque numa área pra recordar o que tem nela</p></div></div>" +
-    '<div class="lista memoria-areas">' + areas.map(function (a) {
-      var q = contagem[a];
-      // cada ligacao aparece nas duas notas; metade e o numero real
-      var l = Math.round(ligacoes[a] / 2);
-      return '<button class="memoria-area" data-area-abrir="' + esc(a) + '"' +
-        ' style="--cor-area:' + corDaArea(a === "Sem área" ? null : a) + '">' +
-        '<i class="ponto"></i>' +
-        '<span class="nome">' + esc(a) + "</span>" +
-        '<span class="qtd">' + q + " " + (q === 1 ? "nota" : "notas") + "</span>" +
-        // sempre uma linha pra ligacoes, pra todos os blocos terem a mesma altura
-        '<span class="lig">' + (l ? l + " " + (l === 1 ? "ligação" : "ligações") : "sem ligações") + "</span>" +
-      "</button>";
-    }).join("") + "</div>" +
+    '<div class="lista memoria-areas" id="listaMemoriaAreas">' + inicialAreas.map(cardArea).join("") + "</div>" +
     '<button class="convite" id="abrirSugestoes">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" width="18" height="18">' +
       '<path d="M9.5 17.5h5M10 21h4"/><path d="M12 3a6 6 0 00-3.5 10.9V17.5h7V13.9A6 6 0 0012 3z"/></svg>' +
@@ -769,6 +973,17 @@ function telaAreaAberta() {
   var alvo = S.areaAberta;
   var daArea = S.notas.filter(function (n) { return (n.area || "Sem área") === alvo; });
   var notas = daArea.filter(function (n) { return !S.filtroTipo || n.tipo === S.filtroTipo; }).sort(porLigacoes);
+  var inicial = notas.slice(0, 16);
+  if (notas.length > 16) {
+    _lazyPendente = {
+      itens: notas.slice(16),
+      renderItem: function (n) { return cardNota(n); },
+      seletor: "#listaAreaAberta",
+      batchSize: 12
+    };
+  } else {
+    _lazyPendente = null;
+  }
   return '<button class="voltar" id="voltarAreas">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Memória</button>' +
     '<div class="cab-secao area-cab" style="--cor-area:' + corDaArea(alvo === "Sem área" ? null : alvo) + '">' +
@@ -777,7 +992,7 @@ function telaAreaAberta() {
       ", das mais conectadas pras menos</p></div></div>" +
     chipsDeTipo() +
     (notas.length
-      ? '<div class="lista duas">' + notas.map(function (n) { return cardNota(n); }).join("") + "</div>"
+      ? '<div class="lista duas" id="listaAreaAberta">' + inicial.map(function (n) { return cardNota(n); }).join("") + "</div>"
       : '<div class="vazio"><p>Nada desse tipo nesta área.</p></div>');
 }
 
@@ -827,15 +1042,12 @@ function telaTempo() {
 
   var notas = notasDoPeriodo();
   if (notas.length === 0) {
+    _lazyPendente = null;
     return seletor + '<div class="vazio"><span class="emoji">🗓️</span><h3>Nada neste período</h3>' +
       "<p>Escolha um intervalo maior ou guarde uma nota nova.</p></div>";
   }
 
-  // Renderiza no maximo N cards por vez. Sem isso, um periodo grande jogava
-  // centenas de cards no DOM de uma vez e o scroll/toque ficavam pesados.
   var totalPeriodo = notas.length;
-  var cortou = totalPeriodo > S.limiteTempo;
-  if (cortou) notas = notas.slice(0, S.limiteTempo);
 
   // agrupa por dia
   var grupos = [], atual = null;
@@ -845,10 +1057,22 @@ function telaTempo() {
     atual.itens.push(n);
   });
 
-  var corpo = grupos.map(function (g) {
-    return '<p class="dia-rot">' + esc(rotuloDoDia(g.iso)) + "</p>" +
-      '<div class="lista duas">' + g.itens.map(function (n) { return cardNota(n); }).join("") + "</div>";
-  }).join("");
+  var renderGrupo = function (g) {
+    return '<div class="dia-bloco"><p class="dia-rot">' + esc(rotuloDoDia(g.iso)) + "</p>" +
+      '<div class="lista duas">' + g.itens.map(function (n) { return cardNota(n); }).join("") + "</div></div>";
+  };
+
+  var inicialGrupos = grupos.slice(0, 4);
+  if (grupos.length > 4) {
+    _lazyPendente = {
+      itens: grupos.slice(4),
+      renderItem: renderGrupo,
+      seletor: "#corpoTempo",
+      batchSize: 3
+    };
+  } else {
+    _lazyPendente = null;
+  }
 
   // faixa do insight do periodo (some quando o escopo atual e outro)
   var doPeriodo = S.insightEscopo && S.insightEscopo.tipo === "periodo";
@@ -858,9 +1082,8 @@ function telaTempo() {
     '<div class="cab-secao"><div><h2>' + totalPeriodo + " " + (totalPeriodo === 1 ? "nota" : "notas") +
       "</h2><p>" + esc(descricaoPeriodo()) + "</p></div>" +
       (faixa ? "" : '<button class="btn btn-suave" id="insightPeriodo">Insight do período</button>') + "</div>" +
-    faixa + corpo +
-    (cortou ? '<button class="btn btn-suave btn-largo" id="maisTempo" style="margin-top:14px">Mostrar mais ' +
-      Math.min(40, totalPeriodo - notas.length) + " de " + (totalPeriodo - notas.length) + " restantes</button>" : "");
+    faixa +
+    '<div id="corpoTempo">' + inicialGrupos.map(renderGrupo).join("") + "</div>";
 }
 
 function rotuloDoDia(iso) {
@@ -889,27 +1112,51 @@ function descricaoPeriodo() {
 /* --- Eventos --- */
 function telaEventos() {
   if (S.eventos.length === 0) {
+    _lazyPendente = null;
     return '<div class="vazio"><span class="emoji">📅</span><h3>Sem eventos próximos</h3>' +
       "<p>Escreva algo com data, tipo “reunião dia 12”, que vira lembrete.</p></div>";
   }
+  var inicial = S.eventos.slice(0, 12);
+  if (S.eventos.length > 12) {
+    _lazyPendente = {
+      itens: S.eventos.slice(12),
+      renderItem: function (n) { return cardNota(n); },
+      seletor: "#listaEventos",
+      batchSize: 10
+    };
+  } else {
+    _lazyPendente = null;
+  }
   return '<div class="cab-secao"><div><h2>Próximos 45 dias</h2><p>' + S.eventos.length + " " +
     (S.eventos.length === 1 ? "lembrete" : "lembretes") + "</p></div></div>" +
-    '<div class="lista">' + S.eventos.map(function (n) { return cardNota(n); }).join("") + "</div>";
+    '<div class="lista" id="listaEventos">' + inicial.map(function (n) { return cardNota(n); }).join("") + "</div>";
 }
 
 /* --- Busca --- */
 function telaBusca() {
-  if (S.resultadosBusca === "carregando") return esqueletos(2);
+  if (S.resultadosBusca === "carregando") { _lazyPendente = null; return esqueletos(2); }
   var r = S.resultadosBusca || [];
   if (r.length === 0) {
+    _lazyPendente = null;
     return '<div class="vazio"><span class="emoji">🔍</span><h3>Nada encontrado</h3>' +
       "<p>Tente outras palavras. A busca entende sentido, não só o texto exato.</p></div>";
   }
   var cabInsight = acoesDaBusca();
+  var inicial = r.slice(0, 12);
+  if (r.length > 12) {
+    _lazyPendente = {
+      itens: r.slice(12),
+      renderItem: function (n) { return cardNota(n, { score: n.score }); },
+      seletor: "#listaBusca",
+      batchSize: 10
+    };
+  } else {
+    _lazyPendente = null;
+  }
   return cabInsight +
     '<div class="cab-secao"><div><h2>Resultados</h2><p>' + r.length + " " +
     (r.length === 1 ? "nota" : "notas") + " por semelhança</p></div></div>" +
-    '<div class="lista duas">' + r.map(function (n) { return cardNota(n, { score: n.score }); }).join("") + "</div>";
+    '<div class="lista duas" id="listaBusca">' + inicial.map(function (n) { return cardNota(n, { score: n.score }); }).join("") + "</div>";
 }
 
 /* Bloco do insight: botao quando ainda nao pediu, estado de espera
