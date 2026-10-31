@@ -1,0 +1,85 @@
+/* Modulo TREINO - mapa do corpo (componente do vault) e foto de exemplo do exercicio.
+ * Vem depois do treino.css e so acrescenta ou sobrescreve o que o mapa e a foto pedem.
+ * Usa os tokens do estilos.css (--superficie, --texto, --acento, ...). Nenhuma cor propria. */
+
+/* ------------------------------------------------------------ mapa do corpo */
+
+/* Cartao do gasto: o mapa novo no lugar dos dois bonecos. O botao em volta continua o alvo do toque. */
+.tr-mapa mapa-corpo { --mapa-altura: 108px; display: block; width: 112px; }
+
+/* Modal dos 14 dias: o mapa em tamanho de leitura. */
+.tr-mapa-grande { display: block; margin: 4px 0 18px; }
+.tr-mapa-grande mapa-corpo { --mapa-altura: 232px; width: 100%; }
+
+/* A legenda e as barras seguem os mesmos 4 tons do mapa (acento sobre o cinza do corpo). */
+.tr-mapa-escala, .tr-musc-lista {
+  --tr-base: color-mix(in srgb, var(--texto-3) 40%, var(--superficie));
+  --tr-t1: color-mix(in srgb, var(--acento) 30%, var(--tr-base));
+  --tr-t2: color-mix(in srgb, var(--acento) 50%, var(--tr-base));
+  --tr-t3: color-mix(in srgb, var(--acento) 75%, var(--tr-base));
+  --tr-t4: var(--acento);
+}
+.tr-mapa-escala .n1, .tr-musc-lista .n1 { background: var(--tr-t1); }
+.tr-mapa-escala .n2, .tr-musc-lista .n2 { background: var(--tr-t2); }
+.tr-mapa-escala .n3, .tr-musc-lista .n3 { background: var(--tr-t3); }
+.tr-mapa-escala .n4, .tr-musc-lista .n4 { background: var(--tr-t4); }
+
+/* -------------------------------------------------------- foto do exercicio */
+
+/* A linha ganha uma coluna para a miniatura, entre a bolinha e o nome. */
+.tr-ex.com-foto { grid-template-columns: 26px 46px 1fr auto; }
+.tr-ex-foto {
+  width: 46px; height: 46px; padding: 0; margin: 0;
+  border: 1px solid var(--separador); border-radius: 10px; overflow: hidden;
+  background: var(--superficie-2);
+  cursor: zoom-in; -webkit-tap-highlight-color: transparent;
+}
+.tr-ex-foto img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tr-ex-foto:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.tr-ex-foto:active { transform: scale(.96); }
+.tr-ex.feito .tr-ex-foto { opacity: .55; }
+
+/* O modal pequeno. Centralizado, com o fundo escurecido; tocar fora ou Esc fecha. */
+.tr-foto-veu {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center; padding: 16px;
+  background: rgba(0,0,0,.5);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  opacity: 0; transition: opacity .2s ease;
+}
+.tr-foto-veu[hidden] { display: none; }
+.tr-foto-veu.aberto { opacity: 1; }
+.tr-foto-caixa {
+  width: min(100%, 420px); max-height: 100%; overflow-y: auto;
+  background: var(--superficie); color: var(--texto);
+  border-radius: var(--r-grande, 20px); padding: 14px 16px 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  transform: translateY(12px) scale(.98);
+  transition: transform .22s cubic-bezier(.32,.72,0,1);
+}
+.tr-foto-veu.aberto .tr-foto-caixa { transform: none; }
+.tr-foto-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tr-foto-titulo { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; line-height: 1.25; }
+.tr-foto-fechar { flex: none; margin-right: -8px; }
+.tr-foto-par { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.tr-foto-fig { margin: 0; min-width: 0; }
+.tr-foto-fig img {
+  display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover;
+  border-radius: 12px; background: var(--superficie-2);
+}
+.tr-foto-fig.sem img { visibility: hidden; }
+.tr-foto-fig figcaption { text-align: center; font-size: 12px; color: var(--texto-3); margin-top: 4px; }
+.tr-foto-nota { font-size: 13.5px; color: var(--texto-2); line-height: 1.4; margin: 12px 0 0; }
+.tr-foto-nota b { color: var(--texto); }
+.tr-foto-musculos { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+.tr-foto-mapa { --mapa-altura: 92px; display: block; width: 100px; flex: none; }
+.tr-foto-legenda { display: grid; gap: 4px; font-size: 13px; color: var(--texto-2); line-height: 1.3; }
+.tr-foto-credito { font-size: 11.5px; color: var(--texto-3); margin: 12px 0 0; }
+html.tr-foto-aberto, html.tr-foto-aberto body { overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-foto-veu, .tr-foto-caixa, .tr-ex-foto { transition: none; }
+}
+
+/* Linha de dica embaixo do mapa grande (aparece o que o toque num musculo diz). */
+.tr-mapa-dica { text-align: center; min-height: 20px; margin: -6px 0 14px; }
