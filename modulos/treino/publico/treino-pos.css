@@ -1,0 +1,69 @@
+/* Modulo TREINO - depois do treino, so na tela de PC.
+ * A ficha do dia fechada deixava a coluna da esquerda vazia. Ela ganha dois cartoes:
+ * o atalho "Quer treinar mais hoje?" e o grafico de evolucao dos ciclos.
+ * Vem depois do treino.css e do treino-visual.css. Usa so os tokens do estilos.css. */
+
+/* No celular o bloco nem aparece. Nada muda la. */
+.tr-pos { display: none; }
+
+@media (min-width: 960px) {
+  /* Mesmo lugar da ficha: coluna principal, esquerda. Um bloco so, pra os dois cartoes
+     nao brigarem pela mesma celula do grid. */
+  .tr-corpo #tela > .tr-pos {
+    display: grid;
+    grid-column: 1;
+    grid-row: 1 / span 5;
+    gap: 20px;
+    align-content: start;
+    min-width: 0;
+  }
+  .tr-pos > .tr-cartao { margin-bottom: 0; min-width: 0; }
+
+  /* ------------------------------------------------ Quer treinar mais hoje? */
+
+  .tr-mais-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .tr-mais-chips button {
+    height: 36px; padding: 0 14px; border-radius: var(--r-pill);
+    border: 1px solid var(--separador); background: transparent; color: var(--texto-2);
+    font-size: 14px; font-family: var(--fonte); cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .tr-mais-chips button:hover { background: var(--acento-eco); color: var(--acento); border-color: var(--acento); }
+  .tr-mais-chips button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+  /* ------------------------------------------------------ Sua evolucao */
+
+  .tr-evo-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 2px; }
+  .tr-evo-topo h2 { margin: 0; }
+
+  .tr-evo-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }
+  .tr-evo-chips button {
+    height: 34px; padding: 0 14px; border-radius: var(--r-pill);
+    border: 1.5px solid var(--separador); background: var(--superficie); color: var(--texto-2);
+    font-size: 14px; font-family: var(--fonte); cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .tr-evo-chips button[aria-pressed="true"] {
+    border-color: var(--acento); background: var(--acento-eco); color: var(--acento); font-weight: 600;
+  }
+  .tr-evo-chips button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+  /* O grafico do vault e um SVG de proporcao fixa (320x160): sem teto ele cresceria
+     com a coluna e o texto ficaria gigante. */
+  .tr-evo-corpo { display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: center; }
+  .tr-evo-corpo grafico-linha { flex: 1 1 300px; max-width: 440px; min-width: 0; }
+  .tr-evo-nums { flex: 1 1 190px; min-width: 0; display: grid; }
+  .tr-evo-n { padding: 10px 0; border-top: 1px solid var(--separador); }
+  .tr-evo-n:first-child { border-top: 0; padding-top: 0; }
+  .tr-evo-n:last-child { padding-bottom: 0; }
+  .tr-evo-n b {
+    display: block; font-size: 20px; font-weight: 700; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums; color: var(--texto);
+  }
+  .tr-evo-n b small { font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--texto-2); margin-left: 4px; }
+  .tr-evo-n span { display: block; font-size: 12.5px; color: var(--texto-2); margin-top: 2px; line-height: 1.3; }
+
+  .tr-evo-nota { font-size: 12.5px; color: var(--texto-3); margin: 16px 0 0; line-height: 1.4; }
+  .tr-evo-msg { margin: 0; }
+  .tr-evo-msg + .tr-mini { margin-top: 12px; }
+}

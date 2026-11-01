@@ -427,7 +427,7 @@
     });
   }
 
-  function modalExtra() {
+  function modalExtra(pedidoInicial) {
     var d = S.dia || {};
     if (d.pode_extra === false) {
       abrir("Treinar mais", seletorModo("mais") +
@@ -449,6 +449,7 @@
     ligarModo();
 
     var campo = document.getElementById("xPedido");
+    if (typeof pedidoInicial === "string" && pedidoInicial) campo.value = pedidoInicial;
     folhaCorpo.querySelectorAll("[data-sugestao]").forEach(function (b) {
       b.addEventListener("click", function () { campo.value = b.dataset.sugestao; campo.focus(); });
     });
@@ -1139,9 +1140,10 @@
     var s = d.sessao;
 
     if (s && s.concluida) {
-      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + cartaoExtra(d);
+      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + (cartaoExtra(d) || posTreino(d));
       ligarSessoes();
       ligarManual();
+      ligarPosTreino();
       return;
     }
 
@@ -1175,6 +1177,211 @@
     ligarSessoes();
     ligarManual();
   }
+
+  /* ------------------------------------------- depois do treino (so no PC) */
+
+  /* Ficha do dia fechada, tela de PC: a coluna da esquerda ficava vazia. Ela ganha o
+     atalho "Quer treinar mais hoje?" e o grafico de evolucao dos ciclos.
+     No celular o bloco existe no html mas o css esconde, e nada e buscado no servidor.
+     Quando existe ficha extra aberta, ela ocupa o lugar e este bloco nao aparece. */
+  var TELA_GRANDE = window.matchMedia ? window.matchMedia("(min-width: 960px)") : { matches: false };
+
+  /* Grupos que o atalho pode sugerir (fora cardio, corpo inteiro e lombar). */
+  var GRUPOS_ATALHO = ["peito", "costas", "perna", "ombro", "gluteo", "biceps", "triceps", "abdomen", "panturrilha"];
+
+  var EVO_METRICAS = [
+    { id: "calorias", rotulo: "Calorias", campo: "calorias", un: "kcal", casas: 0 },
+    { id: "treinos", rotulo: "Treinos", campo: "treinos", un: "treinos", casas: 0 },
+    { id: "minutos", rotulo: "Minutos", campo: "minutos", un: "min", casas: 0 },
+    { id: "esforco", rotulo: "Esforço", campo: "esforco_medio", un: "de 3", casas: 1 },
+    { id: "peso", rotulo: "Peso", campo: "peso_kg", un: "kg", casas: 1 },
+  ];
+  /* Estado da evolucao. Mora fora da tela porque a tela inteira e repintada a cada
+     mudanca, e a metrica escolhida e os dados nao podem se perder nisso. */
+  var EVO = { pronto: false, buscando: false, ciclos: null, pesagens: null, metrica: "calorias" };
+
+  function grupoMenosTreinado(m) {
+    var algum = false, melhor = null, menor = Infinity;
+    GRUPOS_ATALHO.forEach(function (g) {
+      var v = Number(m && m[g]) || 0;
+      if (v > 0) algum = true;
+      if (v < menor) { menor = v; melhor = g; }
+    });
+    return algum ? melhor : null;
+  }
+
+  function cartaoMais(d) {
+    if (d.pode_extra === false) return "";
+    var t = d.hoje_total || {};
+    var feito = t.itens && t.itens.length
+      ? "Hoje você já fez " + kcal(t.calorias) + " kcal em " + (t.minutos || 0) + " min. "
+      : "A ficha de hoje está fechada. ";
+    var ideias = [];
+    var g = grupoMenosTreinado(d.musculos);
+    if (g) {
+      ideias.push({
+        rotulo: "Focar em " + rotuloGrupo(g) + " (o menos treinado)",
+        pedido: "Quero treinar " + rotuloGrupo(g) + ", o grupo menos treinado nos últimos dias, uns 25 minutos",
+      });
+    }
+    SUGESTOES_EXTRA.forEach(function (t2) { ideias.push({ rotulo: t2, pedido: t2 }); });
+    return '<section class="tr-cartao tr-mais">' +
+      "<h2>Quer treinar mais hoje?</h2>" +
+      '<p class="tr-sub">' + esc(feito) + "Escolha uma ideia ou escreva a sua. A IA monta uma ficha extra que complementa o treino, e você confirma o local antes de gerar.</p>" +
+      '<div class="tr-mais-chips">' + ideias.map(function (i) {
+        return '<button type="button" data-pos-pedido="' + esc(i.pedido) + '">' + esc(i.rotulo) + "</button>";
+      }).join("") + "</div>" +
+      '<button type="button" class="btn btn-suave" data-pos-livre>Escrever meu pedido</button>' +
+      "</section>";
+  }
+
+  /* ---- evolucao: dados */
+
+  function diaLocal(iso) {
+    var t = new Date(iso);
+    if (isNaN(t.getTime())) return "";
+    return t.getFullYear() + "-" + ("0" + (t.getMonth() + 1)).slice(-2) + "-" + ("0" + t.getDate()).slice(-2);
+  }
+  function ddmm(dia) { return dia.slice(8, 10) + "/" + dia.slice(5, 7); }
+  function nfmt(v, casas) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: casas }); }
+  function deltaTxt(v, casas) {
+    var f = Math.pow(10, casas);
+    var r = Math.round(v * f) / f;
+    if (!r) return "0";
+    return (r > 0 ? "+" : "-") + nfmt(Math.abs(r), casas);
+  }
+  function metricaEvo() {
+    for (var i = 0; i < EVO_METRICAS.length; i++) if (EVO_METRICAS[i].id === EVO.metrica) return EVO_METRICAS[i];
+    return EVO_METRICAS[0];
+  }
+
+  /* Pontos [{data, valor}] do mais antigo ao mais novo. Ciclo: um ponto por ciclo FECHADO,
+     no dia em que ele fechou. O ciclo em andamento fica de fora de proposito: esta incompleto
+     e puxaria a linha pra baixo sem ser queda. Peso: uma pesagem por dia (vale a ultima). */
+  function serieEvo(m) {
+    var porDia = {};
+    if (m.id === "peso") {
+      (EVO.pesagens || []).forEach(function (p) {
+        var v = Number(p.peso_kg), dia = diaLocal(p.criado_em);
+        if (v > 0 && dia) porDia[dia] = v;
+      });
+    } else {
+      (EVO.ciclos || []).forEach(function (c) {
+        var dia = String(c.fim || "").slice(0, 10), bruto = c[m.campo];
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || bruto == null) return;
+        var v = Number(bruto);
+        if (!isFinite(v) || (m.id === "esforco" && !(v > 0))) return;
+        porDia[dia] = v;
+      });
+    }
+    return Object.keys(porDia).sort().map(function (dia) { return { data: dia, valor: porDia[dia] }; });
+  }
+
+  async function carregarEvo() {
+    if (EVO.buscando) return;
+    EVO.buscando = true;
+    if (!EVO.pronto) pintarEvo();
+    var falhou = function () { return null; };
+    var r = await Promise.all([
+      pedir("/ciclos?n=26").catch(falhou),
+      pedir("/pesagens?n=30").catch(falhou),
+    ]);
+    EVO.ciclos = r[0] ? (r[0].ciclos || []) : null;
+    EVO.pesagens = r[1] ? (r[1].pesagens || []) : null;
+    EVO.pronto = true;
+    EVO.buscando = false;
+    pintarEvo();
+  }
+
+  /* ---- evolucao: tela */
+
+  function numerosEvo(m, serie) {
+    var ult = serie[serie.length - 1], pen = serie[serie.length - 2], pri = serie[0];
+    var un = "<small>" + esc(m.un) + "</small>";
+    var bloco = function (valor, legenda) { return "<div class=\"tr-evo-n\"><b>" + valor + "</b><span>" + esc(legenda) + "</span></div>"; };
+    if (m.id === "peso") {
+      return bloco(nfmt(ult.valor, 1) + un, "última pesagem, " + ddmm(ult.data)) +
+        bloco(deltaTxt(ult.valor - pri.valor, 1) + un, "desde a primeira, " + ddmm(pri.data)) +
+        bloco(String(serie.length), "dias com pesagem");
+    }
+    var soma = 0;
+    serie.forEach(function (p) { soma += p.valor; });
+    var ca = S.dia && S.dia.ciclo_atual;
+    var vAtual = ca && ca[m.campo] != null && (m.id !== "esforco" || Number(ca[m.campo]) > 0) ? Number(ca[m.campo]) : null;
+    return bloco(nfmt(ult.valor, m.casas) + un, "último ciclo fechado, em " + ddmm(ult.data)) +
+      bloco(deltaTxt(ult.valor - pen.valor, m.casas) + un, "contra o ciclo anterior") +
+      bloco(nfmt(soma / serie.length, m.casas) + un, "média dos " + serie.length + " ciclos fechados") +
+      bloco(vAtual === null ? "-" : nfmt(vAtual, m.casas) + un,
+        ca ? "ciclo atual até agora (dia " + ca.dia_atual + " de " + ca.dias_totais + ")" : "ciclo atual");
+  }
+
+  function vazioEvo(m, serie) {
+    var ca = S.dia && S.dia.ciclo_atual;
+    var falta = ca && ca.dias_restantes != null ? " Faltam " + ca.dias_restantes + (ca.dias_restantes === 1 ? " dia" : " dias") + " para o ciclo atual fechar." : "";
+    if (m.id === "peso") {
+      return serie.length
+        ? "Só uma pesagem até agora (" + nfmt(serie[0].valor, 1) + " kg, em " + ddmm(serie[0].data) + "). A linha aparece com a segunda."
+        : "Nenhuma pesagem registrada ainda. A linha aparece a partir da segunda.";
+    }
+    return serie.length
+      ? "Só um ciclo fechado até agora. A linha aparece quando o segundo fechar." + falta
+      : "Ainda não há ciclo fechado. O gráfico começa quando o primeiro fechar." + falta;
+  }
+
+  function evoHtml() {
+    var m = metricaEvo();
+    var topo = '<div class="tr-evo-topo"><h2>Sua evolução</h2>' +
+      '<button type="button" class="tr-mini" data-evo-ciclos>ver resumos</button></div>' +
+      '<p class="tr-sub">Cada ponto é um ciclo de 14 dias fechado. O app só guarda o resumo de cada ciclo, então a carga usada em cada exercício não aparece aqui.</p>' +
+      '<div class="tr-evo-chips" role="group" aria-label="O que mostrar no gráfico">' + EVO_METRICAS.map(function (x) {
+        return '<button type="button" data-evo="' + x.id + '" aria-pressed="' + (x.id === m.id) + '">' + x.rotulo + "</button>";
+      }).join("") + "</div>";
+
+    if (!EVO.pronto) return topo + '<p class="tr-sub tr-evo-msg">Carregando sua evolução…</p>';
+    var dados = m.id === "peso" ? EVO.pesagens : EVO.ciclos;
+    if (dados === null) {
+      return topo + '<p class="tr-sub tr-evo-msg">Não consegui buscar esses dados agora.</p>' +
+        '<button type="button" class="tr-mini" data-evo-tentar>tentar de novo</button>';
+    }
+    var serie = serieEvo(m);
+    if (serie.length < 2) return topo + '<p class="tr-sub tr-evo-msg">' + esc(vazioEvo(m, serie)) + "</p>";
+    return topo + '<div class="tr-evo-corpo">' +
+      '<grafico-linha pontos="' + esc(JSON.stringify(serie)) + '" unidade="' + esc(m.un) + '"></grafico-linha>' +
+      '<div class="tr-evo-nums">' + numerosEvo(m, serie) + "</div></div>" +
+      (m.id === "peso" ? "" : '<p class="tr-evo-nota">O ciclo em andamento fica fora da linha porque ainda está incompleto.</p>');
+  }
+
+  function pintarEvo() {
+    var el = document.getElementById("trEvo");
+    if (el) el.innerHTML = evoHtml();
+  }
+
+  function posTreino(d) {
+    return '<div class="tr-pos" id="trPos">' + cartaoMais(d) +
+      '<section class="tr-cartao tr-evo" id="trEvo">' + evoHtml() + "</section></div>";
+  }
+
+  function ligarPosTreino() {
+    var raiz = document.getElementById("trPos");
+    if (!raiz) return;
+    raiz.addEventListener("click", function (e) {
+      var b = e.target && e.target.closest ? e.target.closest("button") : null;
+      if (!b) return;
+      if (b.hasAttribute("data-pos-pedido")) modalExtra(b.getAttribute("data-pos-pedido"));
+      else if (b.hasAttribute("data-pos-livre")) modalExtra();
+      else if (b.hasAttribute("data-evo")) { EVO.metrica = b.getAttribute("data-evo"); pintarEvo(); }
+      else if (b.hasAttribute("data-evo-tentar")) carregarEvo();
+      else if (b.hasAttribute("data-evo-ciclos")) modalCiclos();
+    });
+    if (TELA_GRANDE.matches) carregarEvo();
+  }
+  /* Janela redimensionada de celular pra PC com o bloco ja na tela: so entao busca,
+     e so se ainda nao buscou (se ja buscou, o cartao ja esta pintado). */
+  function aoMudarTela() {
+    if (TELA_GRANDE.matches && !EVO.pronto && document.getElementById("trPos")) carregarEvo();
+  }
+  if (TELA_GRANDE.addEventListener) TELA_GRANDE.addEventListener("change", aoMudarTela);
+  else if (TELA_GRANDE.addListener) TELA_GRANDE.addListener(aoMudarTela);
 
   function cartaoExtra(d) { return d && d.extra ? cartaoSessao(d.extra, true) : ""; }
 
