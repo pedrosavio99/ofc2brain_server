@@ -290,6 +290,75 @@
 .tr-linha { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; color: var(--texto); }
 .tr-linha span:last-child { color: var(--texto-2); flex: none; font-variant-numeric: tabular-nums; }
 
+/* ---- chaminha e motivacao ---- */
+.tr-chama-mini {
+  display: inline-block;
+  font-size: 16px;
+  line-height: 1;
+  vertical-align: -1px;
+  margin-right: 3px;
+  transition: transform .2s ease, filter .2s ease;
+}
+.tr-chama-mini.acesa {
+  filter: drop-shadow(0 0 6px rgba(255, 138, 0, 0.5));
+  animation: trChamaFofa 2.4s ease-in-out infinite;
+}
+.tr-chama-mini.apagada {
+  opacity: .35;
+  filter: grayscale(1);
+}
+@keyframes trChamaFofa {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.14); }
+}
+
+.tr-motivacional {
+  background: var(--superficie-2);
+  border: 1px solid var(--separador);
+  border-radius: 14px;
+  padding: 13px 15px;
+  margin: 10px 0 16px;
+  text-align: left;
+}
+.tr-moti-cab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: var(--texto);
+  margin-bottom: 6px;
+}
+.tr-moti-cab strong {
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.tr-moti-texto {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--texto-2);
+  margin: 0;
+}
+.tr-moti-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--superficie);
+  border: 1px solid var(--separador);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texto);
+}
+.tr-linha-ofensiva {
+  font-weight: 600;
+}
+.tr-linha-ofensiva span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* ------------------------------------------------------------ escolha */
 
 .tr-escolha { display: flex; gap: 8px; }

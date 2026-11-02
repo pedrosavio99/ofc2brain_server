@@ -16,7 +16,7 @@ import { listarSessoes, buscarSessao, sessaoDeHoje, sessoesDeHoje, criarSessao, 
 import { gerarFicha, localValido, LOCAIS, seriesPorGrupo } from "./ficha.mjs";
 import { atualizarSessao } from "./banco.mjs";
 import { caloriasDaSessao, basalDiario, idadeDe, percentualDoDia,
-  comparativoDoCiclo, sequenciaDeDias, duracaoEstimada } from "./calorias.mjs";
+  comparativoDoCiclo, sequenciaDeDias, analisarOfensiva, comporFraseMotivacional, duracaoEstimada } from "./calorias.mjs";
 import { analisarAtividade } from "./atividade.mjs";
 import { listarCiclos, fecharCiclosVencidos, obterCicloAtual, forcarFecharCicloAtual } from "./banco.mjs";
 import { agruparEmCiclos, resumoDoCiclo } from "./calorias.mjs";
@@ -161,7 +161,7 @@ export async function rotear(req, res, rota, url) {
     });
 
     const [perfil, equipamentos, doDia, sessoes, cicloAtual] = await Promise.all([
-      lerPerfil(), listarEquipamentos(), sessoesDeHoje(), listarSessoes(), obterCicloAtual(),
+      lerPerfil(), listarEquipamentos(), sessoesDeHoje(), listarSessoes(60), obterCicloAtual(),
     ]);
     // a ficha governa a tela de treino; as avulsas entram no total do dia
     const sessao = doDia.find((x) => x.origem === "ficha") || null;
@@ -412,8 +412,26 @@ export async function rotear(req, res, rota, url) {
     });
 
     /* O comparativo olha o ciclo SEM a de hoje, pra media nao se comparar
-       consigo mesma. */
-    const doCiclo = (await listarSessoes()).filter((s) => s.id !== sessao.id);
+       consigo mesma. Busca janela maior pra nao quebrar sequencia de dias. */
+    const doCiclo = (await listarSessoes(60)).filter((s) => s.id !== sessao.id);
+    const todasComEsta = [...doCiclo, salva];
+    const ofensiva = analisarOfensiva(todasComEsta, salva.data);
+
+    // Musculos trabalhados nos itens concluidos desta sessao
+    const itensFeitos = (sessao.ficha || []).filter((i) => feitos.includes(String(i.id)));
+    const musculos = [...new Set(itensFeitos.flatMap((i) => Array.isArray(i.grupos) ? i.grupos : []))];
+
+    const comparativo = comparativoDoCiclo(doCiclo, calc.total);
+    const motivacao = comporFraseMotivacional({
+      musculos,
+      sequencia: ofensiva.sequencia,
+      diasSemTreinar: ofensiva.dias_sem_treinar,
+      estavaParado: ofensiva.estava_parado,
+      recorde: comparativo.recorde,
+      primeira: comparativo.primeira,
+      esforco: c.esforco,
+    });
+
     const idade = idadeDe(perfil.nascimento);
     const basal = basalDiario({
       sexo: perfil.sexo, pesoKg: perfil.peso_kg, alturaCm: perfil.altura_cm, idade,
@@ -432,9 +450,14 @@ export async function rotear(req, res, rota, url) {
         percentual_do_dia: percentualDoDia(calc.total, basal),
         basal,
       },
+      musculos,
+      motivacao,
       progresso: {
-        ...comparativoDoCiclo(doCiclo, calc.total),
-        sequencia: sequenciaDeDias([...doCiclo, salva], salva.data),
+        ...comparativo,
+        sequencia: ofensiva.sequencia,
+        treinou_hoje: true,
+        dias_sem_treinar: ofensiva.dias_sem_treinar,
+        estava_parado: ofensiva.estava_parado,
         // itens da ficha que voce nao marcou: informacao, nao falha
         pulados: (sessao.ficha || []).length - feitos.length,
       },
@@ -490,7 +513,19 @@ export async function rotear(req, res, rota, url) {
       concluida: 1,
     });
 
-    const doCiclo = (await listarSessoes()).filter((s) => s.id !== sessao.id);
+    const doCiclo = (await listarSessoes(60)).filter((s) => s.id !== sessao.id);
+    const todasComEsta = [...doCiclo, salva];
+    const ofensiva = analisarOfensiva(todasComEsta, salva.data);
+    const comparativo = comparativoDoCiclo(doCiclo, calorias);
+    const motivacao = comporFraseMotivacional({
+      musculos: ["cardio"],
+      sequencia: ofensiva.sequencia,
+      diasSemTreinar: ofensiva.dias_sem_treinar,
+      estavaParado: ofensiva.estava_parado,
+      recorde: comparativo.recorde,
+      primeira: comparativo.primeira,
+      esforco: c.esforco,
+    });
     const idade = idadeDe(perfil.nascimento);
     const basal = basalDiario({
       sexo: perfil.sexo, pesoKg: perfil.peso_kg, alturaCm: perfil.altura_cm, idade,
@@ -500,9 +535,14 @@ export async function rotear(req, res, rota, url) {
       ok: true,
       sessao: salva,
       calorias: { total: calorias, percentual_do_dia: percentualDoDia(calorias, basal), basal },
+      musculos: ["cardio"],
+      motivacao,
       progresso: {
-        ...comparativoDoCiclo(doCiclo, calorias),
-        sequencia: sequenciaDeDias([...doCiclo, salva], salva.data),
+        ...comparativo,
+        sequencia: ofensiva.sequencia,
+        treinou_hoje: true,
+        dias_sem_treinar: ofensiva.dias_sem_treinar,
+        estava_parado: ofensiva.estava_parado,
         pulados: 0,
       },
     };

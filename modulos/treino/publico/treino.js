@@ -640,28 +640,160 @@
     });
   }
 
-  /* O parabens. Tudo aqui sai de numero calculado, nada de frase de modelo. */
+  /* Monta frases motivacionais contextualizadas no front com os musculos, ofensiva e retorno. */
+  function comporMotivacaoFront(d) {
+    var musculos = d.musculos || [];
+    var seq = Math.max(1, Number(d.sequencia) || 1);
+    var diasParado = Number(d.diasSemTreinar) || 0;
+    var estavaParado = !!d.estavaParado || diasParado >= 2;
+    var recorde = !!d.recorde;
+
+    var m = musculos.map(function (x) { return String(x || "").toLowerCase(); });
+    var temPerna = m.indexOf("perna") !== -1 || m.indexOf("quadriceps") !== -1 || m.indexOf("panturrilha") !== -1;
+    var temGluteo = m.indexOf("gluteo") !== -1;
+    var temPeito = m.indexOf("peito") !== -1;
+    var temTriceps = m.indexOf("triceps") !== -1;
+    var temCostas = m.indexOf("costas") !== -1 || m.indexOf("dorsal") !== -1;
+    var temBiceps = m.indexOf("biceps") !== -1;
+    var temOmbro = m.indexOf("ombro") !== -1;
+    var temAbs = m.indexOf("abdomen") !== -1 || m.indexOf("core") !== -1 || m.indexOf("lombar") !== -1;
+    var temCardio = m.indexOf("cardio") !== -1;
+
+    var fraseMusculo = "";
+    var tag = "";
+
+    if (temPerna && temGluteo) {
+      fraseMusculo = "Pernas e glúteos pagos com louvor — amanhã a escada vai ser um desafio, mas a sensação de dever cumprido não tem preço! 🦵";
+      tag = "Pernas e glúteos em chamas";
+    } else if (temPerna) {
+      fraseMusculo = "Dia de perna entregue com maestria! É a base forte que sustenta todo o resto! 🦵";
+      tag = "Pernas trabalhadas";
+    } else if (temGluteo) {
+      fraseMusculo = "Glúteos ativados com foco total! Cada série construindo força e firmeza! ✨";
+      tag = "Glúteos fortalecidos";
+    } else if (temPeito && temTriceps) {
+      fraseMusculo = "Superiores esmagados! Peito e tríceps trabalharam forte hoje, treino padrão ouro! 💪";
+      tag = "Peito e tríceps pagos";
+    } else if (temPeito) {
+      fraseMusculo = "Peitoral devidamente trabalhado com garra e disciplina! Mandou bem demais! 💪";
+      tag = "Peitoral fortalecido";
+    } else if (temCostas && temBiceps) {
+      fraseMusculo = "Dorsais e bíceps no capricho! Treino de puxada impecável e postura alinhada! 🦍";
+      tag = "Costas e bíceps pagos";
+    } else if (temCostas) {
+      fraseMusculo = "Costas fortes e postura em dia! O esforço de hoje é o resultado visível de amanhã! 🦍";
+      tag = "Costas trabalhadas";
+    } else if (temOmbro) {
+      fraseMusculo = "Ombros esculpidos com dedicação! Cada repetição elevando o seu nível! 🎯";
+      tag = "Ombros em foco";
+    } else if (temAbs) {
+      fraseMusculo = "Core fortalecido e abdômen no comando! Estabilidade que protege e sustenta o corpo! ⚡";
+      tag = "Abdômen fortalecido";
+    } else if (temCardio) {
+      fraseMusculo = "Fôlego renovado, coração sorrindo e o corpo transbordando endorfina boa! 🫀⚡";
+      tag = "Cardio entregue";
+    } else if (m.length > 2) {
+      fraseMusculo = "Treino completo de corpo inteiro executado com sucesso! Cada músculo ativado pro seu melhor! ✨";
+      tag = "Corpo inteiro ativado";
+    }
+
+    var titulo = "";
+    var texto = "";
+
+    if (estavaParado) {
+      titulo = "Que alegria ter você de volta! 💛";
+      texto = diasParado >= 5
+        ? "O retorno é a vitória mais importante de todas. Você quebrou a inércia e colocou o corpo em movimento de novo — que orgulho dessa volta! A chama tá viva!"
+        : "Depois de uma pausa, você voltou firme e fez acontecer! O primeiro dia do retorno tá na conta e a chama reacendeu com tudo!";
+      if (fraseMusculo) texto += " " + fraseMusculo;
+    } else if (recorde) {
+      titulo = "Novo recorde do ciclo! 🚀";
+      texto = "Você simplesmente se superou hoje! Maior gasto e intensidade do ciclo atual com muita garra e foco.";
+      if (fraseMusculo) texto += " " + fraseMusculo;
+    } else if (seq >= 7) {
+      titulo = "Em chamas: " + seq + " dias seguidos! 🏆🔥";
+      texto = "Uma semana inteira de constância inabalável! Quando a disciplina vira rotina, ninguém te segura.";
+      if (fraseMusculo) texto += " " + fraseMusculo;
+    } else if (seq >= 4) {
+      titulo = "Ofensiva de " + seq + " dias! 🔥";
+      texto = seq + " dias consecutivos sem errar! Seu ritmo tá excelente e a chama só cresce.";
+      if (fraseMusculo) texto += " " + fraseMusculo;
+    } else if (seq >= 2) {
+      titulo = "Ofensiva de " + seq + " dias seguidos! 🔥";
+      texto = "Mais um dia consecutivo pra conta! A constância é o maior segredo e você tá provando isso na prática.";
+      if (fraseMusculo) texto += " " + fraseMusculo;
+    } else {
+      titulo = "Ofensiva iniciada com sucesso! 🔥";
+      texto = "Chama acesa hoje! Toda grande sequência começa no primeiro dia — e o seu tá mais que garantido.";
+      if (fraseMusculo) texto += " " + fraseMusculo;
+    }
+
+    return { titulo: titulo, texto: texto, tag: tag };
+  }
+
+  function obterMotivacao(res) {
+    if (res && res.motivacao && res.motivacao.texto) return res.motivacao;
+    var c = res.calorias || {}, p = res.progresso || {};
+    var musculos = res.musculos || [];
+    if (!musculos.length && res.sessao && Array.isArray(res.sessao.ficha)) {
+      var feitos = new Set((res.sessao.feitos || []).map(String));
+      res.sessao.ficha.forEach(function (i) {
+        if (feitos.has(String(i.id)) && Array.isArray(i.grupos)) {
+          i.grupos.forEach(function (g) { if (musculos.indexOf(g) === -1) musculos.push(g); });
+        }
+      });
+    }
+    return comporMotivacaoFront({
+      musculos: musculos,
+      sequencia: p.sequencia || 1,
+      diasSemTreinar: p.dias_sem_treinar || 0,
+      estavaParado: !!p.estava_parado,
+      recorde: !!p.recorde,
+      primeira: !!p.primeira,
+    });
+  }
+
+  /* O parabens com mensagem motivacional personalizada, ofensiva e chaminha. */
   function mostrarResultado(res) {
     var c = res.calorias || {}, p = res.progresso || {};
+    var moti = obterMotivacao(res);
     var comp = p.primeira ? "Primeiro treino do ciclo."
       : p.recorde ? "Recorde do ciclo."
       : p.diferenca_pct > 0 ? p.diferenca_pct + "% acima da sua média"
       : p.diferenca_pct < 0 ? Math.abs(p.diferenca_pct) + "% abaixo da sua média"
       : "Na média do ciclo.";
 
+    var seqNum = Math.max(1, Number(p.sequencia) || 1);
+    var txtSeq = seqNum === 1 ? "1 dia seguido" : seqNum + " dias seguidos";
+    var statusSeq = p.estava_parado
+      ? " · Bem-vindo(a) de volta!"
+      : (seqNum === 1 ? " · Chama acesa!" : " · Em chamas!");
+
+    var htmlMoti = '<div class="tr-motivacional">' +
+      '<div class="tr-moti-cab">' +
+        '<span class="tr-chama-mini acesa">🔥</span>' +
+        '<strong>' + esc(moti.titulo) + '</strong>' +
+      '</div>' +
+      '<p class="tr-moti-texto">' + esc(moti.texto) + '</p>' +
+      (moti.tag ? '<div class="tr-moti-tag"><span>💪 ' + esc(moti.tag) + '</span></div>' : '') +
+    '</div>';
+
     abrir("Treino registrado", '' +
-      '<div style="text-align:center;padding:10px 0 18px">' +
+      '<div style="text-align:center;padding:10px 0 14px">' +
         '<div class="tr-numero">' + (c.total || 0) + ' <span>kcal</span></div>' +
-        '<p class="tr-sub" style="margin:10px 0 0">' + esc(comp) + "</p>" +
+        '<p class="tr-sub" style="margin:8px 0 0">' + esc(comp) + "</p>" +
       "</div>" +
+      htmlMoti +
       '<div class="tr-linhas">' +
+        '<div class="tr-linha tr-linha-ofensiva"><span><span class="tr-chama-mini acesa">🔥</span> Ofensiva no ciclo</span><span>' +
+          txtSeq + statusSeq +
+        "</span></div>" +
         (c.percentual_do_dia != null
           ? '<div class="tr-linha"><span>Do seu gasto num dia parado</span><span>' + c.percentual_do_dia + "%</span></div>" : "") +
         (res.duracao
           ? '<div class="tr-linha"><span>Tempo' + (res.duracao.fonte === "estimada" ? " (estimado)" : "") +
             '</span><span>' + res.duracao.minutos + " min</span></div>" : "") +
         '<div class="tr-linha"><span>Treinos neste ciclo</span><span>' + (p.treinos_no_ciclo || 1) + "</span></div>" +
-        (p.sequencia > 1 ? '<div class="tr-linha"><span>Dias seguidos</span><span>' + p.sequencia + "</span></div>" : "") +
         (p.pulados > 0 ? '<div class="tr-linha"><span>Exercícios pulados</span><span>' + p.pulados + "</span></div>" : "") +
       "</div>" +
       ((c.por_item || []).length
@@ -696,10 +828,18 @@
     if (cAtual) {
       subtitulo += " · Dia " + cAtual.dia_atual + " de " + cAtual.dias_totais + " (" + cAtual.dias_restantes + (cAtual.dias_restantes === 1 ? " dia restante)" : " dias restantes)");
     }
+    var seq = Number(r.sequencia) || 0;
+    var chamaHtml = '<span class="tr-chama-mini ' + (seq > 0 ? "acesa" : "apagada") + '" title="' +
+      (seq > 0 ? (seq === 1 ? "1 dia seguido em chamas!" : seq + " dias seguidos em chamas!") : "Chama apagada. Treine hoje para acender!") +
+      '">🔥</span>';
+    var legendaSeq = seq === 1 ? "dia seguido" : "dias seguidos";
+    if (r.treinou_hoje === false && seq > 0) {
+      legendaSeq += " · manter hoje";
+    }
     var numeros = [
       [kcal(r.calorias), "kcal no ciclo"],
       [r.treinos ? kcal(r.media_calorias) : "0", "kcal por treino"],
-      [String(r.sequencia || 0), r.sequencia === 1 ? "dia seguido" : "dias seguidos"],
+      [chamaHtml + String(seq), legendaSeq],
     ];
     return '<section class="tr-cartao tr-painel">' +
       '<div class="tr-painel-topo"><h2>Últimos ' + r.dias + ' dias</h2>' +
