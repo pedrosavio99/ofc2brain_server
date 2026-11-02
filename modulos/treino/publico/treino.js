@@ -663,37 +663,37 @@
     var tag = "";
 
     if (temPerna && temGluteo) {
-      fraseMusculo = "Pernas e glúteos pagos com louvor — amanhã a escada vai ser um desafio, mas a sensação de dever cumprido não tem preço! 🦵";
+      fraseMusculo = "Pernas e glúteos pagos com louvor — amanhã a escada vai ser um desafio, mas a sensação de dever cumprido não tem preço!";
       tag = "Pernas e glúteos em chamas";
     } else if (temPerna) {
-      fraseMusculo = "Dia de perna entregue com maestria! É a base forte que sustenta todo o resto! 🦵";
+      fraseMusculo = "Dia de perna entregue com maestria! É a base forte que sustenta todo o resto!";
       tag = "Pernas trabalhadas";
     } else if (temGluteo) {
-      fraseMusculo = "Glúteos ativados com foco total! Cada série construindo força e firmeza! ✨";
+      fraseMusculo = "Glúteos ativados com foco total! Cada série construindo força e firmeza!";
       tag = "Glúteos fortalecidos";
     } else if (temPeito && temTriceps) {
-      fraseMusculo = "Superiores esmagados! Peito e tríceps trabalharam forte hoje, treino padrão ouro! 💪";
+      fraseMusculo = "Superiores esmagados! Peito e tríceps trabalharam forte hoje, treino padrão ouro!";
       tag = "Peito e tríceps pagos";
     } else if (temPeito) {
-      fraseMusculo = "Peitoral devidamente trabalhado com garra e disciplina! Mandou bem demais! 💪";
+      fraseMusculo = "Peitoral devidamente trabalhado com garra e disciplina! Mandou bem demais!";
       tag = "Peitoral fortalecido";
     } else if (temCostas && temBiceps) {
-      fraseMusculo = "Dorsais e bíceps no capricho! Treino de puxada impecável e postura alinhada! 🦍";
+      fraseMusculo = "Dorsais e bíceps no capricho! Treino de puxada impecável e postura alinhada!";
       tag = "Costas e bíceps pagos";
     } else if (temCostas) {
-      fraseMusculo = "Costas fortes e postura em dia! O esforço de hoje é o resultado visível de amanhã! 🦍";
+      fraseMusculo = "Costas fortes e postura em dia! O esforço de hoje é o resultado visível de amanhã!";
       tag = "Costas trabalhadas";
     } else if (temOmbro) {
-      fraseMusculo = "Ombros esculpidos com dedicação! Cada repetição elevando o seu nível! 🎯";
+      fraseMusculo = "Ombros esculpidos com dedicação! Cada repetição elevando o seu nível!";
       tag = "Ombros em foco";
     } else if (temAbs) {
-      fraseMusculo = "Core fortalecido e abdômen no comando! Estabilidade que protege e sustenta o corpo! ⚡";
+      fraseMusculo = "Core fortalecido e abdômen no comando! Estabilidade que protege e sustenta o corpo!";
       tag = "Abdômen fortalecido";
     } else if (temCardio) {
-      fraseMusculo = "Fôlego renovado, coração sorrindo e o corpo transbordando endorfina boa! 🫀⚡";
+      fraseMusculo = "Fôlego renovado, coração sorrindo e o corpo transbordando endorfina boa!";
       tag = "Cardio entregue";
     } else if (m.length > 2) {
-      fraseMusculo = "Treino completo de corpo inteiro executado com sucesso! Cada músculo ativado pro seu melhor! ✨";
+      fraseMusculo = "Treino completo de corpo inteiro executado com sucesso! Cada músculo ativado pro seu melhor!";
       tag = "Corpo inteiro ativado";
     }
 
@@ -701,29 +701,29 @@
     var texto = "";
 
     if (estavaParado) {
-      titulo = "Que alegria ter você de volta! 💛";
+      titulo = "Que alegria ter você de volta!";
       texto = diasParado >= 5
         ? "O retorno é a vitória mais importante de todas. Você quebrou a inércia e colocou o corpo em movimento de novo — que orgulho dessa volta! A chama tá viva!"
         : "Depois de uma pausa, você voltou firme e fez acontecer! O primeiro dia do retorno tá na conta e a chama reacendeu com tudo!";
       if (fraseMusculo) texto += " " + fraseMusculo;
     } else if (recorde) {
-      titulo = "Novo recorde do ciclo! 🚀";
+      titulo = "Novo recorde do ciclo!";
       texto = "Você simplesmente se superou hoje! Maior gasto e intensidade do ciclo atual com muita garra e foco.";
       if (fraseMusculo) texto += " " + fraseMusculo;
     } else if (seq >= 7) {
-      titulo = "Em chamas: " + seq + " dias seguidos! 🏆🔥";
+      titulo = "Em chamas: " + seq + " dias seguidos!";
       texto = "Uma semana inteira de constância inabalável! Quando a disciplina vira rotina, ninguém te segura.";
       if (fraseMusculo) texto += " " + fraseMusculo;
     } else if (seq >= 4) {
-      titulo = "Ofensiva de " + seq + " dias! 🔥";
+      titulo = "Ofensiva de " + seq + " dias!";
       texto = seq + " dias consecutivos sem errar! Seu ritmo tá excelente e a chama só cresce.";
       if (fraseMusculo) texto += " " + fraseMusculo;
     } else if (seq >= 2) {
-      titulo = "Ofensiva de " + seq + " dias seguidos! 🔥";
+      titulo = "Ofensiva de " + seq + " dias seguidos!";
       texto = "Mais um dia consecutivo pra conta! A constância é o maior segredo e você tá provando isso na prática.";
       if (fraseMusculo) texto += " " + fraseMusculo;
     } else {
-      titulo = "Ofensiva iniciada com sucesso! 🔥";
+      titulo = "Ofensiva iniciada com sucesso!";
       texto = "Chama acesa hoje! Toda grande sequência começa no primeiro dia — e o seu tá mais que garantido.";
       if (fraseMusculo) texto += " " + fraseMusculo;
     }
@@ -765,17 +765,13 @@
 
     var seqNum = Math.max(1, Number(p.sequencia) || 1);
     var txtSeq = seqNum === 1 ? "1 dia seguido" : seqNum + " dias seguidos";
-    var statusSeq = p.estava_parado
-      ? " · Bem-vindo(a) de volta!"
-      : (seqNum === 1 ? " · Chama acesa!" : " · Em chamas!");
 
     var htmlMoti = '<div class="tr-motivacional">' +
       '<div class="tr-moti-cab">' +
-        '<span class="tr-chama-mini acesa">🔥</span>' +
         '<strong>' + esc(moti.titulo) + '</strong>' +
       '</div>' +
       '<p class="tr-moti-texto">' + esc(moti.texto) + '</p>' +
-      (moti.tag ? '<div class="tr-moti-tag"><span>💪 ' + esc(moti.tag) + '</span></div>' : '') +
+      (moti.tag ? '<div class="tr-moti-tag"><span>' + esc(moti.tag) + '</span></div>' : '') +
     '</div>';
 
     abrir("Treino registrado", '' +
@@ -785,8 +781,9 @@
       "</div>" +
       htmlMoti +
       '<div class="tr-linhas">' +
-        '<div class="tr-linha tr-linha-ofensiva"><span><span class="tr-chama-mini acesa">🔥</span> Ofensiva no ciclo</span><span>' +
-          txtSeq + statusSeq +
+        '<div class="tr-linha tr-linha-ofensiva"><span>Ofensiva no ciclo</span><span' +
+          (seqNum > 0 ? ' class="tr-num-fogo"' : '') + '>' +
+          esc(txtSeq) +
         "</span></div>" +
         (c.percentual_do_dia != null
           ? '<div class="tr-linha"><span>Do seu gasto num dia parado</span><span>' + c.percentual_do_dia + "%</span></div>" : "") +
@@ -829,17 +826,14 @@
       subtitulo += " · Dia " + cAtual.dia_atual + " de " + cAtual.dias_totais + " (" + cAtual.dias_restantes + (cAtual.dias_restantes === 1 ? " dia restante)" : " dias restantes)");
     }
     var seq = Number(r.sequencia) || 0;
-    var chamaHtml = '<span class="tr-chama-mini ' + (seq > 0 ? "acesa" : "apagada") + '" title="' +
-      (seq > 0 ? (seq === 1 ? "1 dia seguido em chamas!" : seq + " dias seguidos em chamas!") : "Chama apagada. Treine hoje para acender!") +
-      '">🔥</span>';
+    var numSeqHtml = seq > 0
+      ? '<span class="tr-num-fogo">' + seq + '</span>'
+      : String(seq);
     var legendaSeq = seq === 1 ? "dia seguido" : "dias seguidos";
-    if (r.treinou_hoje === false && seq > 0) {
-      legendaSeq += " · manter hoje";
-    }
     var numeros = [
       [kcal(r.calorias), "kcal no ciclo"],
       [r.treinos ? kcal(r.media_calorias) : "0", "kcal por treino"],
-      [chamaHtml + String(seq), legendaSeq],
+      [numSeqHtml, legendaSeq],
     ];
     return '<section class="tr-cartao tr-painel">' +
       '<div class="tr-painel-topo"><h2>Últimos ' + r.dias + ' dias</h2>' +

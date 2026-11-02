@@ -345,47 +345,47 @@ export function comporFraseMotivacional({
   let musculosTexto = "";
 
   if (temPerna && temGluteo) {
-    fraseMusculo = "Pernas e glúteos pagos com louvor — amanhã a escada vai ser um desafio, mas a sensação de dever cumprido não tem preço! 🦵";
+    fraseMusculo = "Pernas e glúteos pagos com louvor — amanhã a escada vai ser um desafio, mas a sensação de dever cumprido não tem preço!";
     tag = "Pernas e glúteos em chamas";
     musculosTexto = "Pernas e Glúteos";
   } else if (temPerna) {
-    fraseMusculo = "Dia de perna entregue com maestria! É a base forte que sustenta todo o resto! 🦵";
+    fraseMusculo = "Dia de perna entregue com maestria! É a base forte que sustenta todo o resto!";
     tag = "Pernas trabalhadas";
     musculosTexto = "Pernas";
   } else if (temGluteo) {
-    fraseMusculo = "Glúteos ativados com foco total! Cada série construindo força e firmeza! ✨";
+    fraseMusculo = "Glúteos ativados com foco total! Cada série construindo força e firmeza!";
     tag = "Glúteos fortalecidos";
     musculosTexto = "Glúteos";
   } else if (temPeito && temTriceps) {
-    fraseMusculo = "Superiores esmagados! Peito e tríceps trabalharam forte hoje, treino padrão ouro! 💪";
+    fraseMusculo = "Superiores esmagados! Peito e tríceps trabalharam forte hoje, treino padrão ouro!";
     tag = "Peito e tríceps pagos";
     musculosTexto = "Peito e Tríceps";
   } else if (temPeito) {
-    fraseMusculo = "Peitoral devidamente trabalhado com garra e disciplina! Mandou bem demais! 💪";
+    fraseMusculo = "Peitoral devidamente trabalhado com garra e disciplina! Mandou bem demais!";
     tag = "Peitoral fortalecido";
     musculosTexto = "Peitoral";
   } else if (temCostas && temBiceps) {
-    fraseMusculo = "Dorsais e bíceps no capricho! Treino de puxada impecável e postura alinhada! 🦍";
+    fraseMusculo = "Dorsais e bíceps no capricho! Treino de puxada impecável e postura alinhada!";
     tag = "Costas e bíceps pagos";
     musculosTexto = "Costas e Bíceps";
   } else if (temCostas) {
-    fraseMusculo = "Costas fortes e postura em dia! O esforço de hoje é o resultado visível de amanhã! 🦍";
+    fraseMusculo = "Costas fortes e postura em dia! O esforço de hoje é o resultado visível de amanhã!";
     tag = "Costas trabalhadas";
     musculosTexto = "Costas";
   } else if (temOmbro) {
-    fraseMusculo = "Ombros esculpidos com dedicação! Cada repetição elevando o seu nível! 🎯";
+    fraseMusculo = "Ombros esculpidos com dedicação! Cada repetição elevando o seu nível!";
     tag = "Ombros em foco";
     musculosTexto = "Ombros";
   } else if (temAbs) {
-    fraseMusculo = "Core fortalecido e abdômen no comando! Estabilidade que protege e sustenta o corpo! ⚡";
+    fraseMusculo = "Core fortalecido e abdômen no comando! Estabilidade que protege e sustenta o corpo!";
     tag = "Abdômen fortalecido";
     musculosTexto = "Abdômen e Core";
   } else if (temCardio) {
-    fraseMusculo = "Fôlego renovado, coração sorrindo e o corpo transbordando endorfina boa! 🫀⚡";
+    fraseMusculo = "Fôlego renovado, coração sorrindo e o corpo transbordando endorfina boa!";
     tag = "Cardio entregue";
     musculosTexto = "Cardio";
   } else if (m.length > 2) {
-    fraseMusculo = "Treino completo de corpo inteiro executado com sucesso! Cada músculo ativado pro seu melhor! ✨";
+    fraseMusculo = "Treino completo de corpo inteiro executado com sucesso! Cada músculo ativado pro seu melhor!";
     tag = "Corpo inteiro ativado";
     musculosTexto = "Corpo Inteiro";
   } else if (m.length > 0) {
@@ -397,29 +397,29 @@ export function comporFraseMotivacional({
   let texto = "";
 
   if (estavaParado) {
-    titulo = "Que alegria ter você de volta! 💛";
+    titulo = "Que alegria ter você de volta!";
     texto = diasSemTreinar >= 5
       ? "O retorno é a vitória mais importante de todas. Você quebrou a inércia e colocou o corpo em movimento de novo — que orgulho dessa volta! A chama tá viva!"
       : "Depois de uma pausa, você voltou firme e fez acontecer! O primeiro dia do retorno tá na conta e a chama reacendeu com tudo!";
     if (fraseMusculo) texto += " " + fraseMusculo;
   } else if (recorde) {
-    titulo = "Novo recorde do ciclo! 🚀";
+    titulo = "Novo recorde do ciclo!";
     texto = "Você simplesmente se superou hoje! Maior gasto e intensidade do ciclo atual com muita garra e foco.";
     if (fraseMusculo) texto += " " + fraseMusculo;
   } else if (sequencia >= 7) {
-    titulo = `Em chamas: ${sequencia} dias seguidos! 🏆🔥`;
+    titulo = `Em chamas: ${sequencia} dias seguidos!`;
     texto = `Uma semana inteira de constância inabalável! Quando a disciplina vira rotina, ninguém te segura.`;
     if (fraseMusculo) texto += " " + fraseMusculo;
   } else if (sequencia >= 4) {
-    titulo = `Ofensiva de ${sequencia} dias! 🔥`;
+    titulo = `Ofensiva de ${sequencia} dias!`;
     texto = `${sequencia} dias consecutivos sem errar! Seu ritmo tá excelente e a chama só cresce.`;
     if (fraseMusculo) texto += " " + fraseMusculo;
   } else if (sequencia >= 2) {
-    titulo = `Ofensiva de ${sequencia} dias seguidos! 🔥`;
+    titulo = `Ofensiva de ${sequencia} dias seguidos!`;
     texto = `Mais um dia consecutivo pra conta! A constância é o maior segredo e você tá provando isso na prática.`;
     if (fraseMusculo) texto += " " + fraseMusculo;
   } else {
-    titulo = "Ofensiva iniciada com sucesso! 🔥";
+    titulo = "Ofensiva iniciada com sucesso!";
     texto = "Chama acesa hoje! Toda grande sequência começa no primeiro dia — e o seu tá mais que garantido.";
     if (fraseMusculo) texto += " " + fraseMusculo;
   }
