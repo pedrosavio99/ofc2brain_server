@@ -826,14 +826,11 @@
       subtitulo += " · Dia " + cAtual.dia_atual + " de " + cAtual.dias_totais + " (" + cAtual.dias_restantes + (cAtual.dias_restantes === 1 ? " dia restante)" : " dias restantes)");
     }
     var seq = Number(r.sequencia) || 0;
-    var numSeqHtml = seq > 0
-      ? '<span class="tr-num-fogo">' + seq + '</span>'
-      : String(seq);
     var legendaSeq = seq === 1 ? "dia seguido" : "dias seguidos";
     var numeros = [
-      [kcal(r.calorias), "kcal no ciclo"],
-      [r.treinos ? kcal(r.media_calorias) : "0", "kcal por treino"],
-      [numSeqHtml, legendaSeq],
+      [kcal(r.calorias), "kcal no ciclo", ""],
+      [r.treinos ? kcal(r.media_calorias) : "0", "kcal por treino", ""],
+      [String(seq), legendaSeq, seq > 0 ? "tr-num-fogo" : ""],
     ];
     return '<section class="tr-cartao tr-painel">' +
       '<div class="tr-painel-topo"><h2>Últimos ' + r.dias + ' dias</h2>' +
@@ -851,7 +848,7 @@
         }).join("") +
       "</div>" +
       '<div class="tr-numeros">' + numeros.map(function (n) {
-        return "<div><b>" + n[0] + "</b><span>" + n[1] + "</span></div>";
+        return "<div><b" + (n[2] ? ' class="' + n[2] + '"' : "") + ">" + n[0] + "</b><span>" + n[1] + "</span></div>";
       }).join("") + "</div></section>";
   }
 
