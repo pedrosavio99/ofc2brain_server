@@ -325,6 +325,16 @@
       navDesktop.setAttribute("aria-label", "Módulos do ecossistema");
       navDesktop.innerHTML = MODULOS.map(function (m) {
         var ativo = m.id === moduloAtualId;
+        if (m.id === "musica") {
+          return (
+            '<div class="barra-desktop-musica-slot" id="navMusicaSlot">' +
+              '<a href="' + m.rota + '" class="barra-desktop-item ' + (ativo ? "ativo" : "") + '" title="' + m.descricao + '">' +
+                '<span class="barra-desktop-ico">' + m.icone + '</span>' +
+                '<span class="barra-desktop-nome">' + m.nome + '</span>' +
+              '</a>' +
+            '</div>'
+          );
+        }
         return (
           '<a href="' + m.rota + '" class="barra-desktop-item ' + (ativo ? "ativo" : "") + '" title="' + m.descricao + '">' +
             '<span class="barra-desktop-ico">' + m.icone + '</span>' +
@@ -333,6 +343,9 @@
         );
       }).join("");
       barraInt.insertBefore(navDesktop, acoes);
+      iniciarMiniplayerUniversal();
+    } else {
+      iniciarMiniplayerUniversal();
     }
 
     // Garante que o botão de Menu do Ecossistema exista
@@ -372,6 +385,350 @@
     }
     window.addEventListener("scroll", aoRolar, { passive: true });
     aoRolar();
+  }
+
+  /* ============================================================
+     Miniplayer Universal de Música na Navbar
+     Sincroniza áudio, fila e controles entre abas e telas.
+     ============================================================ */
+
+  var canalMusica = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("2brain-musica") : null;
+  var audioGlobal = null;
+  var ultimoEstadoMusica = null;
+  var ultimoTempoGravado = 0;
+
+  var ICONE_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  var ICONE_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+
+  function escHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function lerEstadoMusicaStorage() {
+    try {
+      var est = JSON.parse(localStorage.getItem("mus:estado"));
+      if (est && est.faixa) return est;
+    } catch (e) {}
+    try {
+      var fila = JSON.parse(localStorage.getItem("mus:fila")) || [];
+      var idx = JSON.parse(localStorage.getItem("mus:indice"));
+      if (idx == null) idx = -1;
+      var f = fila[idx];
+      if (f) {
+        return {
+          tocando: false,
+          indice: idx,
+          faixa: {
+            id: f.id,
+            titulo: f.titulo,
+            artista: f.artista,
+            cd: f.cd,
+            capa: f.capa,
+            audio: f.audio,
+            link: f.link,
+          },
+          radio: JSON.parse(localStorage.getItem("mus:radio")) || "nao",
+          totalFila: fila.length,
+        };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function renderizarMiniplayerNavbar(estado) {
+    var slot = document.getElementById("navMusicaSlot");
+    if (!slot) return;
+    ultimoEstadoMusica = estado;
+
+    var moduloAtual = detectarModuloAtual();
+    var isMusica = moduloAtual === "musica";
+
+    var infoMusica = MODULOS.filter(function (m) { return m.id === "musica"; })[0];
+    var iconePadrao = infoMusica ? infoMusica.icone : "";
+
+    // Se não há música ativa ou fila vazia, mostra botão tradicional
+    if (!estado || !estado.faixa) {
+      slot.innerHTML =
+        '<a href="/musica" class="barra-desktop-item ' + (isMusica ? "ativo" : "") + '" title="Player Sua Música e rádio">' +
+          '<span class="barra-desktop-ico">' + iconePadrao + '</span>' +
+          '<span class="barra-desktop-nome">Música</span>' +
+        '</a>';
+      atualizarBotaoMobile(null);
+      return;
+    }
+
+    var f = estado.faixa;
+    var tocando = !!estado.tocando;
+
+    slot.innerHTML =
+      '<div class="nav-miniplayer ' + (tocando ? "tocando " : "") + (isMusica ? "ativo" : "") + '" id="navMiniplayer">' +
+        '<button type="button" class="nav-mp-pill" id="navMpToggle" title="' + (tocando ? "Pausar" : "Tocar") + ': ' + escHtml(f.titulo) + '">' +
+          '<div class="nav-mp-capa-wrap">' +
+            (f.capa
+              ? '<img src="' + escHtml(f.capa) + '" class="nav-mp-capa" alt="" referrerpolicy="no-referrer" />'
+              : '<span class="nav-mp-capa-padrao">' + iconePadrao + '</span>') +
+            '<div class="nav-mp-ondas" aria-hidden="true"><span></span><span></span><span></span></div>' +
+          '</div>' +
+          '<span class="nav-mp-tit">' + escHtml(f.titulo) + '</span>' +
+          '<span class="nav-mp-ico-acao">' + (tocando ? ICONE_PAUSE : ICONE_PLAY) + '</span>' +
+        '</button>' +
+        '<a href="/musica" class="nav-mp-expandir" title="Abrir player completo de Música">' +
+          '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>' +
+        '</a>' +
+      '</div>';
+
+    var btnToggle = slot.querySelector("#navMpToggle");
+    if (btnToggle) {
+      btnToggle.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        alternarPlayUniversal();
+      });
+    }
+
+    atualizarBotaoMobile(estado);
+  }
+
+  function atualizarBotaoMobile(estado) {
+    var acoes = document.getElementById("barraAcoes");
+    if (!acoes) return;
+
+    var btnMobile = acoes.querySelector("#navMobileMusicaBtn");
+    if (!estado || !estado.faixa || !estado.tocando) {
+      if (btnMobile) btnMobile.remove();
+      return;
+    }
+
+    if (!btnMobile) {
+      btnMobile = document.createElement("a");
+      btnMobile.href = "/musica";
+      btnMobile.className = "nav-mobile-musica-btn";
+      btnMobile.id = "navMobileMusicaBtn";
+      btnMobile.title = "Música tocando: " + estado.faixa.titulo;
+      acoes.insertBefore(btnMobile, acoes.firstChild);
+    }
+
+    btnMobile.innerHTML =
+      '<div class="nav-mp-capa-wrap" style="width:24px;height:24px;border-radius:50%">' +
+        (estado.faixa.capa
+          ? '<img src="' + escHtml(estado.faixa.capa) + '" class="nav-mp-capa" alt="" referrerpolicy="no-referrer" />'
+          : '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-1 14.5v-9l6 4.5z"/></svg>') +
+        '<div class="nav-mp-ondas" style="opacity:1;border-radius:50%"><span></span><span></span><span></span></div>' +
+      '</div>';
+  }
+
+  function alternarPlayUniversal() {
+    var estado = ultimoEstadoMusica || lerEstadoMusicaStorage();
+    if (!estado || !estado.faixa) return;
+
+    var modulo = detectarModuloAtual();
+    if (modulo === "musica") {
+      var bTocar = document.getElementById("bTocar");
+      if (bTocar) bTocar.click();
+      return;
+    }
+
+    tocarOuPausarLocal(estado);
+  }
+
+  function obterAudioGlobal() {
+    if (!audioGlobal) {
+      audioGlobal = new Audio();
+      audioGlobal.preload = "auto";
+      audioGlobal.addEventListener("timeupdate", function () {
+        if (Date.now() - ultimoTempoGravado > 1500) {
+          ultimoTempoGravado = Date.now();
+          var est = lerEstadoMusicaStorage() || {};
+          est.tempo = audioGlobal.currentTime;
+          est.tocando = !audioGlobal.paused;
+          try { localStorage.setItem("mus:estado", JSON.stringify(est)); } catch (e) {}
+        }
+      });
+      audioGlobal.addEventListener("play", function () {
+        var est = lerEstadoMusicaStorage() || {};
+        est.tocando = true;
+        est.timestamp = Date.now();
+        est.origem = "nav";
+        try { localStorage.setItem("mus:estado", JSON.stringify(est)); } catch (e) {}
+        renderizarMiniplayerNavbar(est);
+        if (canalMusica) canalMusica.postMessage({ tipo: "estado", estado: est });
+      });
+      audioGlobal.addEventListener("pause", function () {
+        var est = lerEstadoMusicaStorage() || {};
+        est.tocando = false;
+        est.timestamp = Date.now();
+        est.origem = "nav";
+        try { localStorage.setItem("mus:estado", JSON.stringify(est)); } catch (e) {}
+        renderizarMiniplayerNavbar(est);
+        if (canalMusica) canalMusica.postMessage({ tipo: "estado", estado: est });
+      });
+      audioGlobal.addEventListener("ended", function () {
+        avancarLocal();
+      });
+      window.addEventListener("beforeunload", function () {
+        if (audioGlobal && !audioGlobal.paused) {
+          var est = lerEstadoMusicaStorage() || {};
+          est.tocando = true;
+          est.tempo = audioGlobal.currentTime;
+          est.timestamp = Date.now();
+          try { localStorage.setItem("mus:estado", JSON.stringify(est)); } catch (e) {}
+        }
+      });
+    }
+    return audioGlobal;
+  }
+
+  function tocarOuPausarLocal(estado, forcarPlay) {
+    var a = obterAudioGlobal();
+    if (!estado || !estado.faixa) return;
+
+    if (a.paused || forcarPlay) {
+      if (estado.faixa.audio) {
+        var precisaTrocarSrc = (a.src !== estado.faixa.audio && a.src.indexOf(encodeURI(estado.faixa.audio)) === -1);
+        var targetTime = (typeof estado.tempo === "number" && estado.tempo > 0.5) ? estado.tempo : 0;
+
+        if (precisaTrocarSrc) {
+          var url = estado.faixa.audio;
+          // Fragmento nativo de mídia (#t=XX.X): inicia stream direto na posição
+          if (targetTime > 0 && url.indexOf("#") === -1) {
+            url += "#t=" + (Math.round(targetTime * 10) / 10);
+          }
+          a.src = url;
+
+          if (targetTime > 0) {
+            // Silencia no primeiro milissegundo de buffer para evitar tocar o começo da música
+            a.muted = true;
+            var aplicarTempo = function () {
+              try {
+                if (Math.abs(a.currentTime - targetTime) > 1.2) {
+                  a.currentTime = targetTime;
+                }
+              } catch (e) {}
+              a.muted = false;
+            };
+            a.addEventListener("loadedmetadata", aplicarTempo, { once: true });
+            a.addEventListener("canplay", function () { a.muted = false; }, { once: true });
+            setTimeout(function () { a.muted = false; }, 350);
+          }
+        } else if (targetTime > 0 && Math.abs(a.currentTime - targetTime) > 2) {
+          try { a.currentTime = targetTime; } catch (e) {}
+        }
+
+        var p = a.play();
+        if (p !== undefined) {
+          p.then(function () {
+            estado.tocando = true;
+            renderizarMiniplayerNavbar(estado);
+          }).catch(function (err) {
+            console.log("[nav-miniplayer] aguardando interação:", err.message);
+            function aoInteragir() {
+              a.play().then(function () {
+                estado.tocando = true;
+                renderizarMiniplayerNavbar(estado);
+              }).catch(function () {});
+              window.removeEventListener("pointerdown", aoInteragir, true);
+              window.removeEventListener("keydown", aoInteragir, true);
+            }
+            window.addEventListener("pointerdown", aoInteragir, true);
+            window.addEventListener("keydown", aoInteragir, true);
+          });
+        }
+      }
+    } else {
+      a.pause();
+      estado.tocando = false;
+      renderizarMiniplayerNavbar(estado);
+    }
+  }
+
+  function avancarLocal() {
+    try {
+      var fila = JSON.parse(localStorage.getItem("mus:fila")) || [];
+      var idx = JSON.parse(localStorage.getItem("mus:indice")) || 0;
+      if (idx < fila.length - 1) {
+        idx++;
+        localStorage.setItem("mus:indice", JSON.stringify(idx));
+        var f = fila[idx];
+        if (f) {
+          var novoEstado = {
+            tocando: true,
+            indice: idx,
+            faixa: f,
+            totalFila: fila.length,
+            origem: "nav",
+            timestamp: Date.now(),
+          };
+          localStorage.setItem("mus:estado", JSON.stringify(novoEstado));
+          renderizarMiniplayerNavbar(novoEstado);
+          var a = obterAudioGlobal();
+          a.src = f.audio;
+          a.play().catch(function () {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  function iniciarMiniplayerUniversal() {
+    var estado = lerEstadoMusicaStorage();
+    var moduloAtual = detectarModuloAtual();
+
+    renderizarMiniplayerNavbar(estado);
+
+    // Se o usuário estava com a música tocando e mudou de tela (ex: /treino, /refeicao)
+    if (moduloAtual !== "musica" && estado && estado.tocando && estado.faixa && estado.faixa.audio) {
+      tocarOuPausarLocal(estado, true);
+    }
+
+    if (canalMusica) {
+      canalMusica.addEventListener("message", function (e) {
+        var d = e.data;
+        if (!d) return;
+        if (d.tipo === "estado" && d.estado) {
+          if (d.estado.origem === "master" && d.estado.tocando && audioGlobal && !audioGlobal.paused) {
+            audioGlobal.pause();
+          }
+          renderizarMiniplayerNavbar(d.estado);
+        }
+      });
+    }
+
+    window.addEventListener("storage", function (e) {
+      if (e.key === "mus:estado" || e.key === "mus:fila" || e.key === "mus:indice") {
+        renderizarMiniplayerNavbar(lerEstadoMusicaStorage());
+      }
+    });
+
+    // Salva o timestamp exato do áudio no momento do clique no link,
+    // antes do navegador iniciar o descarregamento da página
+    document.addEventListener("click", function (e) {
+      var link = e.target && e.target.closest ? e.target.closest("a") : null;
+      if (!link || !link.href) return;
+      if (audioGlobal && !audioGlobal.paused) {
+        var est = lerEstadoMusicaStorage() || {};
+        est.tocando = true;
+        est.tempo = audioGlobal.currentTime;
+        est.timestamp = Date.now();
+        try { localStorage.setItem("mus:estado", JSON.stringify(est)); } catch (err) {}
+      }
+    }, true);
+
+    // Pré-carrega páginas internas no hover para transição instantânea sem pausa
+    document.addEventListener("pointerenter", function (e) {
+      var link = e.target && e.target.closest ? e.target.closest("a") : null;
+      if (!link || !link.href) return;
+      var href = link.getAttribute("href");
+      if (href && href.startsWith("/") && !href.startsWith("//") && !href.includes("#") && href.length > 1) {
+        if (!link.dataset.prefetched) {
+          link.dataset.prefetched = "1";
+          var prefetch = document.createElement("link");
+          prefetch.rel = "prefetch";
+          prefetch.href = href;
+          document.head.appendChild(prefetch);
+        }
+      }
+    }, true);
   }
 
   // Inicialização automática quando o DOM estiver pronto

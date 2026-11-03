@@ -39,11 +39,67 @@ const S = {
 const salvarFila = () => {
   guardar('mus:fila', S.fila); guardar('mus:indice', S.i);
   guardar('mus:original', S.original);
+  emitirEstado();
 };
 const salvarRadio = () => {
   guardar('mus:radio', S.radio); guardar('mus:semente', S.semente);
   guardar('mus:cdsTocados', S.cdsTocados.slice(-60)); guardar('mus:perfil', S.perfil);
+  emitirEstado();
 };
+
+/* Canal de comunicação em tempo real com a navbar e outras abas */
+const canalMusica = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('2brain-musica') : null;
+
+function emitirEstado(extra) {
+  const f = S.fila[S.i];
+  const estado = Object.assign({
+    tocando: !audio.paused && !!audio.getAttribute('src'),
+    indice: S.i,
+    radio: S.radio,
+    tempo: audio.currentTime || 0,
+    duracao: audio.duration || 0,
+    faixa: f ? {
+      id: f.id,
+      titulo: f.titulo,
+      artista: f.artista,
+      cd: f.cd,
+      capa: f.capa,
+      audio: f.audio,
+      link: f.link,
+    } : null,
+    totalFila: S.fila.length,
+    origem: 'master',
+    timestamp: Date.now(),
+  }, extra || {});
+  guardar('mus:estado', estado);
+  if (canalMusica) {
+    try { canalMusica.postMessage({ tipo: 'estado', estado: estado }); } catch (e) {}
+  }
+}
+
+if (canalMusica) {
+  canalMusica.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d) return;
+    if (d.tipo === 'comando') {
+      if (d.acao === 'play') {
+        if (!audio.getAttribute('src') && S.fila[S.i]) tocar(S.i);
+        else audio.play().catch(() => {});
+      } else if (d.acao === 'pause') {
+        audio.pause();
+      } else if (d.acao === 'alternar') {
+        if (!audio.getAttribute('src') && S.fila[S.i]) tocar(S.i);
+        else audio.paused ? audio.play().catch(() => {}) : audio.pause();
+      } else if (d.acao === 'proxima') {
+        proxima(false);
+      } else if (d.acao === 'anterior') {
+        audio.currentTime > 3 ? (audio.currentTime = 0) : tocar(S.i - 1);
+      }
+    } else if (d.tipo === 'pedir_estado') {
+      emitirEstado();
+    }
+  });
+}
 
 async function api(caminho) {
   const r = await fetch(API + caminho);
@@ -431,7 +487,7 @@ async function manterTelaAcesa(ligar) {
 let tentouProxy = false;
 let tentouRenovar = false;
 
-function tocar(indice) {
+function tocar(indice, tempoInicial) {
   if (indice < 0 || indice >= S.fila.length) return;
   // a faixa que estava tocando vira sinal de gosto (pulou cedo x ouviu tudo)
   const antes = S.fila[S.i];
@@ -446,7 +502,28 @@ function tocar(indice) {
   /* NADA de rede antes do play. No Android a permissao de tocar anda junto
      com o gesto: um await aqui quebra a corrente e o Chrome recusa em
      silencio. Link vencido vira tratamento de ERRO, logo abaixo. */
-  audio.src = f.audio;
+  let url = f.audio;
+  const targetTime = (typeof tempoInicial === 'number' && tempoInicial > 0.5) ? tempoInicial : 0;
+  if (targetTime > 0 && url.indexOf('#') === -1) {
+    url += '#t=' + (Math.round(targetTime * 10) / 10);
+  }
+  audio.src = url;
+
+  if (targetTime > 0) {
+    audio.muted = true;
+    const aplicarTempo = () => {
+      try {
+        if (Math.abs(audio.currentTime - targetTime) > 1.2) {
+          audio.currentTime = targetTime;
+        }
+      } catch (e) {}
+      audio.muted = false;
+    };
+    audio.addEventListener('loadedmetadata', aplicarTempo, { once: true });
+    audio.addEventListener('canplay', () => { audio.muted = false; }, { once: true });
+    setTimeout(() => { audio.muted = false; }, 350);
+  }
+
   audio.play().catch((e) => { $('#pSub').textContent = 'Não tocou: ' + e.message; });
   mostrarPlayer();
   // com a radio ligada, completa antes de acabar: nada de silencio entre lotes
@@ -502,17 +579,49 @@ audio.addEventListener('error', () => {
   $('#pSub').textContent = 'Não tocou essa faixa. Toque em próxima pra seguir.';
 });
 audio.addEventListener('ended', () => proxima(true));
-audio.addEventListener('play', () => { icone(); atualizarMediaSession(); manterTelaAcesa(true); });
-audio.addEventListener('pause', () => { icone(); atualizarMediaSession(); manterTelaAcesa(false); });
+audio.addEventListener('play', () => { icone(); atualizarMediaSession(); manterTelaAcesa(true); emitirEstado({ tocando: true }); });
+audio.addEventListener('pause', () => { icone(); atualizarMediaSession(); manterTelaAcesa(false); emitirEstado({ tocando: false }); });
 audio.addEventListener('loadedmetadata', atualizarMediaSession);
 let ultimaPos = 0;
+let ultimaGravacaoTempo = 0;
 audio.addEventListener('timeupdate', () => {
   // a barra do sistema so precisa de 1 aviso por segundo; mais que isso pesa
   if (Math.abs(audio.currentTime - ultimaPos) > 1) { ultimaPos = audio.currentTime; atualizarMediaSession(); }
   const d = audio.duration || 0;
   $('#progressoCheio').style.width = d ? `${(audio.currentTime / d) * 100}%` : '0';
   $('#pTempo').textContent = minutos(audio.currentTime) + (d ? ' / ' + minutos(d) : '');
+  if (Date.now() - ultimaGravacaoTempo > 1500) {
+    ultimaGravacaoTempo = Date.now();
+    const est = ler('mus:estado', null);
+    if (est) {
+      est.tempo = audio.currentTime;
+      est.tocando = !audio.paused;
+      guardar('mus:estado', est);
+    }
+  }
 });
+
+window.addEventListener('beforeunload', () => {
+  if (audio && !audio.paused && audio.src) {
+    const est = ler('mus:estado', {}) || {};
+    est.tocando = true;
+    est.tempo = audio.currentTime;
+    est.timestamp = Date.now();
+    guardar('mus:estado', est);
+  }
+});
+
+document.addEventListener('click', (e) => {
+  const link = e.target && e.target.closest ? e.target.closest('a') : null;
+  if (!link || !link.href) return;
+  if (audio && !audio.paused && audio.src) {
+    const est = ler('mus:estado', {}) || {};
+    est.tocando = true;
+    est.tempo = audio.currentTime;
+    est.timestamp = Date.now();
+    guardar('mus:estado', est);
+  }
+}, true);
 
 function minutos(s) {
   s = Math.floor(s || 0);
@@ -548,6 +657,7 @@ function mostrarPlayer() {
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({ title: f.titulo, artist: f.artista, album: f.cd, artwork: [{ src: f.capa, sizes: '500x500' }] });
   }
+  emitirEstado();
 }
 
 function marcarAtual() {
@@ -703,6 +813,12 @@ $('#formBusca').addEventListener('submit', (e) => {
 window.addEventListener('hashchange', rotear);
 rotear();
 modos();
-// volta com a fila de antes, parada (o navegador so toca depois de um toque)
-if (S.fila[S.i]) mostrarPlayer();
+const estSalvo = ler('mus:estado', null);
+if (S.fila[S.i]) {
+  mostrarPlayer();
+  if (estSalvo && estSalvo.tocando && estSalvo.faixa) {
+    tocar(S.i, estSalvo.tempo || 0);
+  }
+}
 atualizarBotoesRadio();
+emitirEstado();
