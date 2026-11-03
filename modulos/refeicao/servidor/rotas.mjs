@@ -24,6 +24,9 @@ import { geminiConfigurado } from "./ia/gemini.mjs";
 import { explicarFalha } from "./ia/json.mjs";
 import { OBJETIVOS, calcularMeta, basalDiario, idadeDe, lerObjetivo, salvarObjetivo,
   perfilDoTreino, treinoPorDia } from "./metas.mjs";
+import {
+  gemini, groq, chavesGemini, modelosGemini, chavesGroq, modelosGroq,
+} from "../../../src/ia-rapida.js";
 
 const MAX_REFEICOES = 8;
 
@@ -81,6 +84,75 @@ function diaMenos(data, n) {
 
 function totaisDoDia(lista) {
   return somar(lista.map((r) => r.totais || {}));
+}
+
+function templateFeedback(totais) {
+  const p = Number(totais.proteina) || 0;
+  const c = Number(totais.carbo) || 0;
+  const k = Math.round(Number(totais.kcal) || 0);
+
+  if (p >= 25) {
+    return `Ótimo aporte de proteína (${Math.round(p)}g)! Essa refeição vai ser excelente para a recuperação muscular e regeneração pós-treino. 💪`;
+  }
+  if (c >= 45 && p >= 15) {
+    return `Refeição equilibrada com ${Math.round(c)}g de carbo e ${Math.round(p)}g de proteína (${k} kcal). Combustível ideal para manter o ritmo e a recuperação! ⚡`;
+  }
+  if (c >= 45) {
+    return `Excelente fonte de energia (${Math.round(c)}g de carboidratos). Seus estoques de glicogênio agradecem o combustível para o dia e treinos. 🔋`;
+  }
+  if (k > 0) {
+    return `Refeição registrada com sucesso (${k} kcal)! A constância alimentar é o segredo para bater suas metas. 🎯`;
+  }
+  return "Refeição registrada com sucesso! Seu diário nutricional está atualizado. 👍";
+}
+
+async function gerarFeedbackRapido(refeicoes, totais, texto) {
+  const gChaves = chavesGroq();
+  const gModelos = modelosGroq();
+  const nomesAlimentos = refeicoes.flatMap((r) => r.itens || []).map((i) => i.nome).slice(0, 5).join(", ");
+  const prompt = [
+    `O usuário registrou esta refeição no app 2brain: "${texto}".`,
+    `Alimentos identificados: ${nomesAlimentos}.`,
+    `Macronutrientes calculados: ${Math.round(totais.kcal)} kcal, ${Math.round(totais.proteina)}g de proteína, ${Math.round(totais.carbo)}g de carboidratos, ${Math.round(totais.gordura)}g de gordura.`,
+    `Escreva UMA mensagem curta (1 ou 2 frases amigáveis e diretas, em tom de treinador/nutricionista parceiro), agradecendo o registro e dando um feedback motivador sobre essa refeição para os treinos e recuperação dele.`,
+    `Retorne apenas JSON no formato: {"mensagem": "sua mensagem aqui"}`,
+  ].join("\n");
+
+  const sistema = "Você é um nutricionista e treinador esportivo amigável do app Segundo Cérebro. Responda apenas JSON.";
+
+  if (gChaves.length && gModelos.length) {
+    try {
+      const res = await groq(sistema, prompt, {
+        chave: gChaves[0],
+        modelo: gModelos[0],
+        prazoMs: 3500,
+        temperatura: 0.7,
+        maxTokens: 200,
+      });
+      if (res && res.mensagem) return String(res.mensagem).trim();
+    } catch {
+      // continua para o fallback
+    }
+  }
+
+  const gmChaves = chavesGemini();
+  const gmModelos = modelosGemini();
+  if (gmChaves.length && gmModelos.length) {
+    try {
+      const res = await gemini(sistema, prompt, {
+        chave: gmChaves[0],
+        modelo: gmModelos[0],
+        prazoMs: 4000,
+        temperatura: 0.7,
+        maxTokens: 200,
+      });
+      if (res && res.mensagem) return String(res.mensagem).trim();
+    } catch {
+      // continua para o fallback
+    }
+  }
+
+  return templateFeedback(totais);
 }
 
 export async function rotear(req, res, rota, url) {
@@ -189,6 +261,47 @@ export async function rotear(req, res, rota, url) {
     const sep = await separarRefeicoes(texto, hora);
     return {
       refeicoes: await medirTodas(sep.refeicoes, hora),
+      separacao: { fonte: sep.fonte, erro: sep.erro },
+    };
+  }
+
+  /* POST /rapido { texto, data? } -> registra em 1 passo vindo do modal de treino ou atalho rapido.
+     Separa e mede com IA, grava direto no banco e retorna feedback amigavel gerado por IA/template. */
+  if (metodo === "POST" && rota === "/rapido") {
+    exigir(geminiConfigurado(), 503, "A IA de medicao nao esta configurada.",
+      "Coloque GEMINI_API_KEY no .env e reinicie o servidor.");
+    const texto = String(corpo(req).texto || "").trim();
+    exigir(texto, 400, "Escreva o que voce comeu.");
+    exigir(texto.length <= MAX_TEXTO, 400, `Texto longo demais (maximo ${MAX_TEXTO} caracteres).`,
+      "Separe em mais de um envio.");
+
+    const hora = horaLocal();
+    const data = dataDoPedido(corpo(req).data);
+    const sep = await separarRefeicoes(texto, hora);
+    const medidas = await medirTodas(sep.refeicoes, hora);
+    const validas = medidas.filter((r) => !r.erro && r.itens && r.itens.length);
+    exigir(validas.length, 400, "Nenhum alimento foi reconhecido no texto.",
+      "Tente descrever com mais detalhes o que voce comeu.");
+
+    const prontas = validas.map((r) => montarRefeicao(r, hora));
+    const salvas = await salvarRefeicoes(data, prontas);
+    const totais = somar(prontas.map((r) => r.totais || {}));
+
+    let feedback = "";
+    try {
+      feedback = await gerarFeedbackRapido(prontas, totais, texto);
+    } catch (e) {
+      console.warn("[refeicao] feedback rapido falhou:", e.message);
+      feedback = templateFeedback(totais);
+    }
+
+    return {
+      ok: true,
+      data,
+      salvas,
+      refeicoes: prontas,
+      totais,
+      feedback,
       separacao: { fonte: sep.fonte, erro: sep.erro },
     };
   }

@@ -19,7 +19,7 @@
   var veu = document.getElementById("veu");
   var elAviso = document.getElementById("aviso");
 
-  var S = { dia: null, equipamentos: [], carregando: true, primeira: true };
+  var S = { dia: null, equipamentos: [], carregando: true, primeira: true, nutricao: null };
 
   /* Modal automatico e coisa de PRIMEIRA carga, nao de toda recarga.
      Todo salvar chama carregar(), e o carregar() decidia abrir perfil ou
@@ -46,6 +46,19 @@
 
   async function pedir(caminho, opcoes) {
     var r = await fetch(API + caminho, Object.assign({}, opcoes || {}));
+    var d = null;
+    try { d = await r.json(); } catch (e) {}
+    if (!r.ok) {
+      var err = new Error((d && d.erro) || "Falhou (" + r.status + ")");
+      err.status = r.status;
+      err.dica = (d && d.dica) || "";
+      throw err;
+    }
+    return d;
+  }
+
+  async function pedirRefeicao(caminho, opcoes) {
+    var r = await fetch("/refeicao/api" + caminho, Object.assign({}, opcoes || {}));
     var d = null;
     try { d = await r.json(); } catch (e) {}
     if (!r.ok) {
@@ -884,6 +897,239 @@
       "</section>";
   }
 
+  /* ------------------------------------------- lembrete sutil de alimentação */
+
+  async function carregarNutricao() {
+    try {
+      var data = (S.dia && S.dia.hoje) || new Date().toISOString().slice(0, 10);
+      var r = await pedirRefeicao("/dia?data=" + data);
+      S.nutricao = {
+        pronto: true,
+        refeicoes: r.refeicoes || [],
+        totais: r.totais || { kcal: 0, proteina: 0, carbo: 0, gordura: 0 },
+      };
+      atualizarCardNutricao();
+    } catch (e) {
+      if (!S.nutricao) {
+        S.nutricao = {
+          pronto: true,
+          refeicoes: [],
+          totais: { kcal: 0, proteina: 0, carbo: 0, gordura: 0 },
+        };
+      }
+      atualizarCardNutricao();
+    }
+  }
+
+  function atualizarCardNutricao() {
+    var c = document.getElementById("cardNutricao");
+    if (!c) return;
+    var temp = document.createElement("div");
+    temp.innerHTML = cartaoNutricao(S.dia);
+    var novo = temp.firstElementChild;
+    if (novo) {
+      c.replaceWith(novo);
+      ligarNutricao();
+    }
+  }
+
+  function cartaoNutricao(d) {
+    var n = S.nutricao;
+    if (!n || !n.pronto) {
+      if (!n) carregarNutricao();
+      return '<section class="tr-cartao tr-lembrete-nutricao" id="cardNutricao">' +
+        '<div class="tr-nutri-topo">' +
+          '<div class="tr-nutri-ident">' +
+            '<span class="tr-nutri-ico">' + ICONE.refeicao + "</span>" +
+            '<div><h2>Alimentação do dia</h2><span class="tr-nutri-rotulo-aviso">Verificando refeições…</span></div>' +
+          "</div>" +
+        "</div>" +
+      "</section>";
+    }
+
+    var refs = n.refeicoes || [];
+    var t = n.totais || { kcal: 0, proteina: 0, carbo: 0, gordura: 0 };
+    var temRegistros = refs.length > 0 && (t.kcal > 0 || t.proteina > 0);
+
+    if (!temRegistros) {
+      return '<section class="tr-cartao tr-lembrete-nutricao" id="cardNutricao">' +
+        '<div class="tr-nutri-topo">' +
+          '<div class="tr-nutri-ident">' +
+            '<span class="tr-nutri-ico">' + ICONE.refeicao + "</span>" +
+            '<div><h2>Alimentação do dia</h2><span class="tr-nutri-rotulo-aviso">Nenhuma refeição registrada hoje</span></div>' +
+          "</div>" +
+        "</div>" +
+        '<p class="tr-nutri-chamada">Lembrete sutil: registrar o que você comeu ajuda a equilibrar as calorias e acelerar a recuperação muscular do seu treino.</p>' +
+        '<button type="button" class="btn btn-suave btn-largo" id="btnAbrirNutricao">' +
+          ICONE.mais + "Registrar o que comi" +
+        "</button>" +
+      "</section>";
+    }
+
+    return '<section class="tr-cartao tr-lembrete-nutricao" id="cardNutricao">' +
+      '<div class="tr-nutri-topo">' +
+        '<div class="tr-nutri-ident">' +
+          '<span class="tr-nutri-ico registrado">' + ICONE.check + "</span>" +
+          '<div><h2>Alimentação do dia</h2><span class="tr-nutri-rotulo-ok">' + refs.length + ' refeição(ões) hoje</span></div>' +
+        "</div>" +
+        '<span class="tr-nutri-kcal-total"><b class="tr-num">' + kcal(t.kcal) + "</b> <small>kcal</small></span>" +
+      "</div>" +
+      '<div class="tr-nutri-macros-bar">' +
+        '<div class="tr-m-item"><span class="tr-m-cor p"></span> P <b>' + Math.round(t.proteina || 0) + "g</b></div>" +
+        '<div class="tr-m-item"><span class="tr-m-cor c"></span> C <b>' + Math.round(t.carbo || 0) + "g</b></div>" +
+        '<div class="tr-m-item"><span class="tr-m-cor g"></span> G <b>' + Math.round(t.gordura || 0) + "g</b></div>" +
+      "</div>" +
+      '<button type="button" class="btn btn-suave btn-largo" id="btnAbrirNutricao" style="margin-top:12px">' +
+        ICONE.mais + "Registrar mais uma refeição" +
+      "</button>" +
+    "</section>";
+  }
+
+  function ligarNutricao() {
+    var btn = document.getElementById("btnAbrirNutricao");
+    if (btn) btn.addEventListener("click", modalNutricaoRapida);
+  }
+
+  function modalNutricaoRapida() {
+    abrir("Registrar alimentação",
+      '<div id="mNutriContainer">' +
+        '<p class="tr-sub" style="margin-top:0">' +
+          "Escreva o que você comeu ou bebeu. A IA identifica os alimentos, calcula os gramas, calorias e macros automaticamente, sem você precisar sair da aba de treino." +
+        "</p>" +
+        '<div class="tr-nutri-chips-ex">' +
+          '<span style="font-size:12px;color:var(--texto-2);align-self:center;margin-right:2px">Exemplos:</span>' +
+          '<button type="button" class="tr-nutri-chip" data-exemplo="Café da manhã: 2 ovos mexidos, 1 fatia de pão e café com leite">Café</button>' +
+          '<button type="button" class="tr-nutri-chip" data-exemplo="Almoço: 150g de peito de frango, 4 colheres de arroz, feijão e salada">Almoço</button>' +
+          '<button type="button" class="tr-nutri-chip" data-exemplo="Pós-treino: 1 banana, 30g de aveia e 1 scoop de whey">Pós-treino</button>' +
+          '<button type="button" class="tr-nutri-chip" data-exemplo="Jantar: omelete de 3 ovos com queijo e salada">Jantar</button>' +
+        "</div>" +
+        '<div class="tr-campo">' +
+          '<textarea class="campo" id="fNutriTexto" rows="4" maxlength="2000" ' +
+            'placeholder="Ex.: almocei 1 filé de frango, 4 colheres de arroz, concha de feijão e salada de tomate. Ou o lanche: 1 maçã e 2 castanhas..."></textarea>' +
+        "</div>" +
+        '<div class="tr-contador-char"><span id="fNutriContador">0/2000</span></div>' +
+        '<div id="fNutriMsg"></div>' +
+        '<div class="tr-acoes" style="margin-top:14px">' +
+          '<button type="button" class="btn btn-largo" id="fNutriSalvar">Calcular e registrar com IA</button>' +
+        "</div>" +
+      "</div>"
+    );
+
+    var txt = document.getElementById("fNutriTexto");
+    var contador = document.getElementById("fNutriContador");
+    var btnSalvar = document.getElementById("fNutriSalvar");
+    var msgDiv = document.getElementById("fNutriMsg");
+
+    folhaCorpo.querySelectorAll(".tr-nutri-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        var ex = chip.dataset.exemplo;
+        if (!txt.value.trim()) {
+          txt.value = ex;
+        } else {
+          txt.value += "\n" + ex;
+        }
+        txt.focus();
+        if (contador) contador.textContent = txt.value.length + "/2000";
+      });
+    });
+
+    if (txt && contador) {
+      txt.addEventListener("input", function () {
+        contador.textContent = txt.value.length + "/2000";
+      });
+      txt.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          btnSalvar.click();
+        }
+      });
+      setTimeout(function () { txt.focus(); }, 150);
+    }
+
+    if (btnSalvar) {
+      btnSalvar.addEventListener("click", async function () {
+        var texto = txt.value.trim();
+        if (!texto) {
+          txt.focus();
+          return;
+        }
+
+        btnSalvar.disabled = true;
+        btnSalvar.innerHTML = '<span class="girando"></span> Analisando com IA…';
+        msgDiv.innerHTML = '<div class="tr-nutri-loading"><span class="girando"></span> A IA está separando e medindo os alimentos…</div>';
+
+        try {
+          var res = await pedirRefeicao("/rapido", json("POST", {
+            texto: texto,
+            data: (S.dia && S.dia.hoje) || new Date().toISOString().slice(0, 10),
+          }));
+
+          if (!S.nutricao) S.nutricao = { pronto: true, refeicoes: [], totais: { kcal: 0, proteina: 0, carbo: 0, gordura: 0 } };
+          var novasRefs = res.refeicoes || [];
+          S.nutricao.refeicoes = S.nutricao.refeicoes.concat(novasRefs);
+          var tot = S.nutricao.totais;
+          novasRefs.forEach(function (r) {
+            var rt = r.totais || {};
+            tot.kcal = (tot.kcal || 0) + (rt.kcal || 0);
+            tot.proteina = (tot.proteina || 0) + (rt.proteina || 0);
+            tot.carbo = (tot.carbo || 0) + (rt.carbo || 0);
+            tot.gordura = (tot.gordura || 0) + (rt.gordura || 0);
+          });
+          atualizarCardNutricao();
+
+          var totaisRes = res.totais || {};
+          var itens = (res.refeicoes || []).flatMap(function (r) { return r.itens || []; });
+          var itensHtml = itens.map(function (it) {
+            return "<li>" +
+              '<span class="nome">' + esc(it.nome) + " (" + (it.gramas || 0) + "g)</span>" +
+              '<span class="kcal">' + Math.round(it.kcal || 0) + " kcal</span>" +
+            "</li>";
+          }).join("");
+
+          folhaTitulo.textContent = "Alimentação registrada";
+          folhaCorpo.innerHTML =
+            '<div class="tr-nutri-sucesso">' +
+              '<div class="tr-nutri-sucesso-ico">' + ICONE.check + "</div>" +
+              "<h3>Refeição registrada!</h3>" +
+              '<p class="tr-nutri-sucesso-sub">Salvo no seu diário com sucesso. A conta já foi somada ao seu dia.</p>' +
+              '<div class="tr-nutri-destaque-kcal">' +
+                '<b class="tr-num">' + kcal(totaisRes.kcal) + "</b> <span>kcal</span>" +
+              "</div>" +
+              '<div class="tr-nutri-macros-bar" style="margin: 0 auto 14px; max-width: 320px;">' +
+                '<div class="tr-m-item"><span class="tr-m-cor p"></span> P <b>' + Math.round(totaisRes.proteina || 0) + "g</b></div>" +
+                '<div class="tr-m-item"><span class="tr-m-cor c"></span> C <b>' + Math.round(totaisRes.carbo || 0) + "g</b></div>" +
+                '<div class="tr-m-item"><span class="tr-m-cor g"></span> G <b>' + Math.round(totaisRes.gordura || 0) + "g</b></div>" +
+              "</div>" +
+              (res.feedback ?
+                ('<div class="tr-nutri-ia-box">' +
+                  '<div class="tr-nutri-ia-cab">' + ICONE.sparkles + "<span>Feedback da IA</span></div>" +
+                  '<p class="tr-nutri-ia-txt">“' + esc(res.feedback) + "”</p>" +
+                "</div>") : "") +
+              (itensHtml ?
+                ('<div class="tr-nutri-itens-resumo">' +
+                  "<h4>Alimentos medidos</h4>" +
+                  "<ul>" + itensHtml + "</ul>" +
+                "</div>") : "") +
+              '<div class="tr-acoes" style="margin-top:20px; display:flex; flex-direction:column; gap:8px;">' +
+                '<button type="button" class="btn btn-largo" id="fBtnFecharNutri">Concluir</button>' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">' +
+                  '<button type="button" class="tr-link" id="fBtnOutraNutri">+ Registrar outra</button>' +
+                  '<a href="/refeicao" class="tr-link" style="text-decoration:none;">Abrir Refeições &rarr;</a>' +
+                "</div>" +
+              "</div>" +
+            "</div>";
+
+          document.getElementById("fBtnFecharNutri").addEventListener("click", fechar);
+          document.getElementById("fBtnOutraNutri").addEventListener("click", modalNutricaoRapida);
+        } catch (err) {
+          msgDiv.innerHTML = '<div class="tr-nutri-erro">' + esc(err.message) + (err.dica ? " " + esc(err.dica) : "") + "</div>";
+          btnSalvar.disabled = false;
+          btnSalvar.textContent = "Tentar novamente";
+        }
+      });
+    }
+  }
+
   /* Icones de traco, no mesmo desenho dos da barra. */
   /* O banco guarda sem acento; a tela mostra como se escreve. */
   var ROTULO_GRUPO = {
@@ -900,7 +1146,9 @@
     ar_livre: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
     relogio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
-    mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    mais: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    refeicao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>',
+    sparkles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a5 5 0 0 0-5 5v1a5 5 0 0 0-3 4.5A4.5 4.5 0 0 0 8.5 17H9v3a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-3h.5a4.5 4.5 0 0 0 4.5-4.5A5 5 0 0 0 17 8V7a5 5 0 0 0-5-5z"/></svg>',
   };
 
   /* ---------------------------------------------------- esqueleto e basal */
@@ -1271,10 +1519,11 @@
     var s = d.sessao;
 
     if (s && s.concluida) {
-      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + (cartaoExtra(d) || posTreino(d));
+      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + cartaoNutricao(d) + (cartaoExtra(d) || posTreino(d));
       ligarSessoes();
       ligarManual();
       ligarPosTreino();
+      ligarNutricao();
       return;
     }
 
@@ -1282,9 +1531,10 @@
       var jaFez = d.hoje_total && d.hoje_total.itens && d.hoje_total.itens.length;
       var contexto = cartaoBasal(d) + painelResumo(d.resumo);
       if (d.extra) {
-        tela.innerHTML = contexto + cartaoDoDia(d.hoje_total) + cartaoExtra(d);
+        tela.innerHTML = contexto + cartaoDoDia(d.hoje_total) + cartaoNutricao(d) + cartaoExtra(d);
         ligarSessoes();
         ligarManual();
+        ligarNutricao();
         return;
       }
       tela.innerHTML = contexto + cartaoDoDia(d.hoje_total) + '<section class="tr-cartao">' +
@@ -1294,19 +1544,21 @@
         (d.pode_gerar ? "" : '<p class="tr-sub">Sem equipamento de casa cadastrado. <button class="tr-mini" id="tEquip">cadastrar</button></p>') +
         '<div class="tr-acoes"><button class="btn btn-largo" id="tGerar">Gerar treino de hoje</button>' +
         (jaFez ? "" : '<button class="tr-link" data-manual>Lançar atividade que já fiz</button>') + "</div>" +
-        "</section>";
+        "</section>" + cartaoNutricao(d);
       var lerGeracao = ligarGeracao(tela, "t");
       document.getElementById("tGerar").addEventListener("click", function () { gerarFicha(lerGeracao()); });
       var tEquip = document.getElementById("tEquip");
       if (tEquip) tEquip.addEventListener("click", modalEquipamento);
       ligarManual();
+      ligarNutricao();
       return;
     }
 
     // ficha do dia aberta (e a extra, se por acaso tambem houver)
-    tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoSessao(s, false) + cartaoExtra(d);
+    tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoSessao(s, false) + cartaoExtra(d) + cartaoNutricao(d);
     ligarSessoes();
     ligarManual();
+    ligarNutricao();
   }
 
   /* ------------------------------------------- depois do treino (so no PC) */
@@ -1706,6 +1958,7 @@
       S.dia = await pedir("/hoje");
       S.carregando = false;
       pintar();
+      carregarNutricao();
       if (S.dia.ciclo_fechado) {
         avisar("Ciclo fechado: " + S.dia.ciclo_fechado.sessoes + " treinos viraram resumo.");
       }

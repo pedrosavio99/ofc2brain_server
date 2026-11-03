@@ -95,6 +95,7 @@ app.get("/api", (_req, res) => {
       "GET    /refeicao                       (tela do modulo)",
       "GET    /refeicao/api/health",
       "POST   /refeicao/api/analisar          { texto } (separa e mede)",
+      "POST   /refeicao/api/rapido            { texto, data? } (analisa, salva e devolve feedback IA)",
       "POST   /refeicao/api/refeicoes         { data?, refeicoes } (grava, recalcula tudo)",
       "GET    /refeicao/api/dia               ?data=",
       "GET    /refeicao/api/dias              ?ate=&quantos=14",

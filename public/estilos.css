@@ -135,6 +135,7 @@ html[data-tema="escuro"] .busca input { border-color: transparent; }
 .btn { height: 36px; padding: 0 16px; border-radius: var(--r-pill); font-size: 15px; font-weight: 600;
   background: var(--acento); color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   transition: opacity .15s ease, transform .06s ease; }
+.btn svg { width: 18px; height: 18px; flex: none; }
 .btn:disabled { opacity: .4; }
 .btn:not(:disabled):active { transform: scale(.97); }
 .btn-suave { background: var(--acento-eco); color: var(--acento); }

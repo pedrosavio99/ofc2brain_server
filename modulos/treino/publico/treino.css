@@ -753,6 +753,291 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
   color: var(--texto-2);
 }
 
+/* -------------------------------------- lembrete sutil de nutricao */
+
+.tr-lembrete-nutricao {
+  box-shadow: none;
+  border: 1px solid var(--separador);
+  background: transparent;
+  transition: border-color .15s ease;
+}
+
+.tr-nutri-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.tr-nutri-ident {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tr-nutri-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--acento-eco);
+  color: var(--acento);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.tr-nutri-ico svg {
+  width: 20px;
+  height: 20px;
+}
+
+.tr-nutri-ico.registrado {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--sucesso, #34C759);
+}
+
+.tr-lembrete-nutricao h2 {
+  font-size: 16px;
+  color: var(--texto);
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.tr-nutri-rotulo-aviso {
+  display: block;
+  font-size: 13px;
+  color: var(--texto-2);
+  margin-top: 1px;
+}
+
+.tr-nutri-rotulo-ok {
+  display: block;
+  font-size: 13px;
+  color: var(--sucesso, #34C759);
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.tr-nutri-chamada {
+  margin: 10px 0 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--texto-2);
+}
+
+.tr-nutri-kcal-total {
+  font-size: 18px;
+  color: var(--texto);
+  white-space: nowrap;
+}
+.tr-nutri-kcal-total b { font-weight: 700; }
+.tr-nutri-kcal-total small { font-size: 12px; color: var(--texto-2); font-weight: normal; }
+
+.tr-nutri-macros-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0 2px;
+  padding: 8px 12px;
+  background: var(--superficie-2);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--texto-2);
+}
+
+.tr-m-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tr-m-cor {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.tr-m-cor.p { background: #5856D6; }
+.tr-m-cor.c { background: #FF9500; }
+.tr-m-cor.g { background: #FF2D55; }
+
+.tr-lembrete-nutricao .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tr-lembrete-nutricao .btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/* Modal de registro rapido */
+.tr-nutri-chips-ex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 14px;
+}
+
+.tr-nutri-chip {
+  background: var(--superficie-2);
+  border: 1px solid var(--separador);
+  color: var(--texto-2);
+  font-size: 12.5px;
+  font-family: inherit;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.tr-nutri-chip:hover {
+  background: var(--acento-eco);
+  color: var(--acento);
+  border-color: var(--acento);
+}
+
+.tr-contador-char {
+  text-align: right;
+  font-size: 12px;
+  color: var(--texto-3, #8e8e93);
+  margin-top: 4px;
+}
+
+/* Sucesso do registro rapido */
+.tr-nutri-sucesso {
+  text-align: center;
+  padding: 4px 0 8px;
+}
+
+.tr-nutri-sucesso-ico {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--sucesso, #34C759);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+}
+.tr-nutri-sucesso-ico svg { width: 28px; height: 28px; }
+
+.tr-nutri-sucesso h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.tr-nutri-sucesso-sub {
+  font-size: 14px;
+  color: var(--texto-2);
+  margin: 0 0 14px;
+}
+
+.tr-nutri-destaque-kcal {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--superficie-2);
+  padding: 8px 20px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.tr-nutri-destaque-kcal b { font-size: 24px; font-weight: 800; color: var(--texto); }
+.tr-nutri-destaque-kcal span { font-size: 13.5px; color: var(--texto-2); }
+
+.tr-nutri-ia-box {
+  background: var(--acento-eco);
+  border: 1px solid rgba(88,86,214,.2);
+  border-radius: 14px;
+  padding: 13px 15px;
+  text-align: left;
+  margin: 12px 0 16px;
+}
+
+.tr-nutri-ia-cab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--acento);
+  margin-bottom: 5px;
+}
+.tr-nutri-ia-cab svg { width: 14px; height: 14px; }
+
+.tr-nutri-ia-txt {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--texto);
+  margin: 0;
+}
+
+.tr-nutri-itens-resumo {
+  text-align: left;
+  background: var(--superficie);
+  border: 1px solid var(--separador);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.tr-nutri-itens-resumo h4 {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--texto-2);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.tr-nutri-itens-resumo ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tr-nutri-itens-resumo li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--separador);
+}
+.tr-nutri-itens-resumo li:last-child {
+  border-bottom: none;
+}
+.tr-nutri-itens-resumo li .nome { color: var(--texto); }
+.tr-nutri-itens-resumo li .kcal { color: var(--texto-2); font-weight: 600; font-size: 12.5px; }
+
+.tr-nutri-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+  font-size: 14px;
+  color: var(--texto-2);
+}
+
+.tr-nutri-erro {
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.25);
+  color: #ff3b30;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin: 10px 0;
+  text-align: left;
+}
+
 /* ============================================================
    Grid Inteligente e UX/UI para Tela Web / Desktop (Treino)
    GARANTIA: Em telas mobile (< 960px), nada é alterado.
@@ -778,7 +1063,7 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
 
   /* Ficha ativa ou gerador de treino ocupam a coluna principal (esquerda) */
   .tr-corpo #tela > .tr-sessao,
-  .tr-corpo #tela > .tr-cartao:not(.tr-energia):not(.tr-painel):not(.tr-feito-hoje) {
+  .tr-corpo #tela > .tr-cartao:not(.tr-energia):not(.tr-painel):not(.tr-feito-hoje):not(.tr-lembrete-nutricao) {
     grid-column: 1;
     grid-row: 1 / span 5;
   }
@@ -797,6 +1082,10 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
   .tr-corpo #tela > .tr-feito-hoje {
     grid-column: 2;
     grid-row: 3;
+  }
+
+  .tr-corpo #tela > .tr-lembrete-nutricao {
+    grid-column: 2;
   }
 
   /* Cartões com acabamento desktop elegante */
