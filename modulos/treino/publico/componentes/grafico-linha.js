@@ -67,13 +67,17 @@ export function desenharGrafico(pontos, { meta, unidade = "", largura = 320, alt
   const sufixo = unidade ? ` ${esc(curto(unidade, 9))}` : "";
   const ultimo = g.ultimo;
   const perto = ultimo.x > x1 - 30; // não deixa o valor sair pela direita
-  const partes = [cab, `<line class="base" x1="${x0}" x2="${x1}" y1="${y1}" y2="${y1}"/>`];
-  if (g.area) partes.push(`<path class="area" d="${g.area}"/>`);
+  const partes = [
+    cab,
+    `<defs><clipPath id="clipLinha"><rect id="clipRect" x="0" y="0" width="${largura}" height="${altura}"/></clipPath></defs>`,
+    `<line class="base" x1="${x0}" x2="${x1}" y1="${y1}" y2="${y1}"/>`
+  ];
+  if (g.area) partes.push(`<path class="area" d="${g.area}" clip-path="url(#clipLinha)"/>`);
   if (g.metaY !== null) {
     partes.push(`<line class="meta" x1="${x0}" x2="${x1}" y1="${g.metaY}" y2="${g.metaY}"/>`
       + `<text class="rotulo" x="${x0}" y="${coord(g.metaY - 4)}" text-anchor="start">meta ${esc(numero(meta))}${sufixo}</text>`);
   }
-  if (g.linha) partes.push(`<path class="linha" d="${g.linha}"/>`);
+  if (g.linha) partes.push(`<path class="linha" d="${g.linha}" clip-path="url(#clipLinha)"/>`);
   partes.push(
     `<circle class="final" cx="${ultimo.x}" cy="${ultimo.y}" r="5"/>`,
     `<text class="valor" x="${ultimo.x}" y="${coord(ultimo.y - 10)}" text-anchor="${perto ? "end" : "middle"}">${esc(numero(ultimo.valor))}${sufixo}</text>`);
@@ -87,12 +91,33 @@ const ESTILO = `
 svg { display: block; width: 100%; height: auto; font-family: var(--fonte, system-ui); overflow: visible; }
 .base { stroke: var(--separador); stroke-width: 1; }
 .area { fill: color-mix(in srgb, var(--acento) 16%, transparent); stroke: none; }
-.linha { fill: none; stroke: var(--acento); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.meta { stroke: var(--texto-3); stroke-width: 1.25; stroke-dasharray: 4 4; }
-.final { fill: var(--acento); stroke: var(--superficie); stroke-width: 2.5; }
+.linha { fill: none; stroke: var(--acento); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--acento) 25%, transparent)); }
+.meta { stroke: var(--texto-3); stroke-width: 1.25; stroke-dasharray: 4 4; opacity: 0; animation: surgeMeta .5s ease .2s forwards; }
+.final {
+  fill: var(--acento);
+  stroke: var(--superficie);
+  stroke-width: 2.5;
+  transition: r .2s ease, filter .2s ease;
+  filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--acento) 60%, transparent));
+}
+.final.viajando {
+  r: 6;
+  filter: drop-shadow(0 0 10px var(--acento)) drop-shadow(0 0 4px var(--acento));
+}
+.final.pousou {
+  animation: pousoBolinha .5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
 text { font-size: 10px; fill: var(--texto-2); }
+.rotulo { opacity: 0; animation: surgeMeta .5s ease .2s forwards; }
+.eixo { opacity: 0; animation: surgeMeta .4s ease .1s forwards; }
 .valor { font-size: 12px; font-weight: 700; fill: var(--texto); }
 .vazio { font-size: 12px; fill: var(--texto-3); }
+@keyframes surgeMeta { to { opacity: 1; } }
+@keyframes pousoBolinha {
+  0% { r: 6; }
+  50% { r: 7.5; }
+  100% { r: 5; }
+}
 `;
 
 const Base = typeof HTMLElement === "undefined" ? class {} : HTMLElement;
@@ -100,6 +125,8 @@ const Base = typeof HTMLElement === "undefined" ? class {} : HTMLElement;
 export class GraficoLinha extends Base {
   static observedAttributes = ["pontos", "meta", "unidade"];
   #pontos = null;
+  #animId = null;
+  #ultimoJson = null;
 
   get pontos() { return this.#pontos ?? this.#json(); }
   set pontos(valor) { this.#pontos = valor; this.#pintar(); }
@@ -109,9 +136,16 @@ export class GraficoLinha extends Base {
     this.#pintar();
   }
 
+  disconnectedCallback() {
+    if (this.#animId) {
+      cancelAnimationFrame(this.#animId);
+      this.#animId = null;
+    }
+  }
+
   attributeChangedCallback(nome) {
     if (nome === "pontos") this.#pontos = null;
-    this.#pintar();
+    if (this.shadowRoot) this.#pintar();
   }
 
   #json() {
@@ -120,10 +154,121 @@ export class GraficoLinha extends Base {
 
   #pintar() {
     if (!this.shadowRoot) return;
+
     const bruto = this.getAttribute("meta");
     const meta = bruto === null || bruto === "" ? undefined : Number(bruto);
+    const unidade = this.getAttribute("unidade") ?? "";
+    const pontos = this.pontos;
+    const jsonAtual = JSON.stringify(pontos) + "|" + meta + "|" + unidade;
+
+    if (this.#ultimoJson === jsonAtual && this.#animId) return;
+    this.#ultimoJson = jsonAtual;
+
+    if (this.#animId) {
+      cancelAnimationFrame(this.#animId);
+      this.#animId = null;
+    }
+
+    const g = calcularGrafico(pontos, { largura: 320, altura: 160, meta });
+
     this.shadowRoot.innerHTML = `<style>${ESTILO}</style>`
-      + desenharGrafico(this.pontos, { meta, unidade: this.getAttribute("unidade") ?? "" });
+      + desenharGrafico(pontos, { meta, unidade });
+
+    if (g.vazio || !g.pontos || g.pontos.length < 2) return;
+
+    const calmo = typeof window !== "undefined" && window.matchMedia
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (calmo) return;
+
+    this.#animarSubida(g, unidade);
+  }
+
+  #animarSubida(g, unidade) {
+    const shadow = this.shadowRoot;
+    if (!shadow) return;
+
+    const pathLinha = shadow.querySelector(".linha");
+    const clipRect = shadow.querySelector("#clipRect");
+    const pontoFinal = shadow.querySelector(".final");
+    const textoValor = shadow.querySelector(".valor");
+    if (!pathLinha || !pontoFinal) return;
+
+    const len = pathLinha.getTotalLength ? pathLinha.getTotalLength() : 0;
+    if (!len) return;
+
+    const { x1, largura = 320 } = g.limites;
+    const primeiro = g.pontos[0];
+    const ultimo = g.ultimo;
+    const sufixo = unidade ? ` ${esc(curto(unidade, 9))}` : "";
+    const duracao = 850; // ms de movimento suave e preciso
+
+    // Inicia a bolinha no ponto inicial
+    const pt0 = pathLinha.getPointAtLength(0);
+    pontoFinal.setAttribute("cx", coord(pt0.x));
+    pontoFinal.setAttribute("cy", coord(pt0.y));
+    pontoFinal.classList.add("viajando");
+
+    if (clipRect) clipRect.setAttribute("width", coord(pt0.x + 2));
+
+    if (textoValor) {
+      textoValor.setAttribute("x", coord(pt0.x));
+      textoValor.setAttribute("y", coord(pt0.y - 10));
+      textoValor.textContent = esc(numero(primeiro.valor)) + sufixo;
+      textoValor.style.opacity = "0.7";
+    }
+
+    let t0 = null;
+
+    const animar = (tempo) => {
+      if (t0 === null) t0 = tempo;
+      const progresso = Math.min((tempo - t0) / duracao, 1);
+      const ease = 1 - Math.pow(1 - progresso, 3);
+      const dist = len * ease;
+
+      const pt = pathLinha.getPointAtLength(dist);
+      const curX = coord(pt.x);
+      const curY = coord(pt.y);
+
+      // A bolinha viaja com precisão ao longo de toda a curva até o destino
+      pontoFinal.setAttribute("cx", curX);
+      pontoFinal.setAttribute("cy", curY);
+
+      // A linha e a área sombreada se revelam exatamente até onde a bolinha chegou
+      if (clipRect) clipRect.setAttribute("width", coord(curX + 2));
+
+      // O valor sobre a bolinha acompanha a trajetória com contagem viva
+      if (textoValor) {
+        const valAtual = primeiro.valor + (ultimo.valor - primeiro.valor) * ease;
+        textoValor.setAttribute("x", curX);
+        textoValor.setAttribute("y", coord(curY - 10));
+        textoValor.textContent = esc(numero(progresso === 1 ? ultimo.valor : valAtual)) + sufixo;
+        textoValor.style.opacity = String(Math.min(1, 0.4 + progresso * 0.6));
+      }
+
+      if (progresso < 1) {
+        this.#animId = requestAnimationFrame(animar);
+      } else {
+        this.#animId = null;
+        // Pouso no ponto correto
+        pontoFinal.classList.remove("viajando");
+        pontoFinal.classList.add("pousou");
+        pontoFinal.setAttribute("cx", ultimo.x);
+        pontoFinal.setAttribute("cy", ultimo.y);
+
+        if (clipRect) clipRect.setAttribute("width", String(largura || 320));
+
+        if (textoValor) {
+          const perto = ultimo.x > x1 - 30;
+          textoValor.setAttribute("x", ultimo.x);
+          textoValor.setAttribute("y", coord(ultimo.y - 10));
+          textoValor.setAttribute("text-anchor", perto ? "end" : "middle");
+          textoValor.textContent = esc(numero(ultimo.valor)) + sufixo;
+          textoValor.style.opacity = "1";
+        }
+      }
+    };
+
+    this.#animId = requestAnimationFrame(animar);
   }
 }
 

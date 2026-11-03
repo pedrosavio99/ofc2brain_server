@@ -937,13 +937,10 @@
     var n = S.nutricao;
     if (!n || !n.pronto) {
       if (!n) carregarNutricao();
-      return '<section class="tr-cartao tr-lembrete-nutricao" id="cardNutricao">' +
-        '<div class="tr-nutri-topo">' +
-          '<div class="tr-nutri-ident">' +
-            '<span class="tr-nutri-ico">' + ICONE.refeicao + "</span>" +
-            '<div><h2>Alimentação do dia</h2><span class="tr-nutri-rotulo-aviso">Verificando refeições…</span></div>' +
-          "</div>" +
-        "</div>" +
+      return '<section class="tr-cartao tr-nutricao" id="cardNutricao">' +
+        '<div class="tr-treino-cab"><div class="linha curta" style="width:40%;height:18px;border-radius:6px;background:var(--separador);animation:pulsar 1.4s ease-in-out infinite"></div>' +
+          '<span class="tr-conta"><span class="girando"></span></span></div>' +
+        '<div class="linha" style="width:65%;margin-top:10px;height:12px;border-radius:6px;background:var(--separador);animation:pulsar 1.4s ease-in-out infinite"></div>' +
       "</section>";
     }
 
@@ -952,36 +949,38 @@
     var temRegistros = refs.length > 0 && (t.kcal > 0 || t.proteina > 0);
 
     if (!temRegistros) {
-      return '<section class="tr-cartao tr-lembrete-nutricao" id="cardNutricao">' +
-        '<div class="tr-nutri-topo">' +
-          '<div class="tr-nutri-ident">' +
-            '<span class="tr-nutri-ico">' + ICONE.refeicao + "</span>" +
-            '<div><h2>Alimentação do dia</h2><span class="tr-nutri-rotulo-aviso">Nenhuma refeição registrada hoje</span></div>' +
-          "</div>" +
-        "</div>" +
-        '<p class="tr-nutri-chamada">Lembrete sutil: registrar o que você comeu ajuda a equilibrar as calorias e acelerar a recuperação muscular do seu treino.</p>' +
-        '<button type="button" class="btn btn-suave btn-largo" id="btnAbrirNutricao">' +
+      return '<section class="tr-cartao tr-nutricao" id="cardNutricao">' +
+        '<div class="tr-treino-cab"><h2>Alimentação de hoje</h2></div>' +
+        '<p class="tr-sub" style="margin:0 0 10px">Nenhuma refeição registrada hoje.</p>' +
+        '<p class="tr-nutri-dica" style="margin:0 0 12px; font-size:13.5px; color:var(--texto-2); line-height:1.4;">Registre o que comeu para equilibrar calorias e acelerar a recuperação muscular.</p>' +
+        '<div class="tr-acoes" style="margin-top:auto"><button type="button" class="btn btn-suave btn-largo" id="btnAbrirNutricao">' +
           ICONE.mais + "Registrar o que comi" +
-        "</button>" +
+        "</button></div>" +
       "</section>";
     }
 
-    return '<section class="tr-cartao tr-lembrete-nutricao" id="cardNutricao">' +
-      '<div class="tr-nutri-topo">' +
-        '<div class="tr-nutri-ident">' +
-          '<span class="tr-nutri-ico registrado">' + ICONE.check + "</span>" +
-          '<div><h2>Alimentação do dia</h2><span class="tr-nutri-rotulo-ok">' + refs.length + ' refeição(ões) hoje</span></div>' +
-        "</div>" +
-        '<span class="tr-nutri-kcal-total"><b class="tr-num">' + kcal(t.kcal) + "</b> <small>kcal</small></span>" +
-      "</div>" +
-      '<div class="tr-nutri-macros-bar">' +
+    var itensRefs = refs.slice(-2).map(function (r) {
+      var k = r.totais && r.totais.kcal ? r.totais.kcal : r.kcal;
+      return "<li>" +
+        '<span class="ic">' + ICONE.refeicao + "</span>" +
+        '<span class="nome">' + esc(r.rotulo || r.tipo || "Refeição") + "</span>" +
+        (k ? '<span class="kcal">' + Math.round(k) + " kcal</span>" : "") +
+        "</li>";
+    }).join("");
+
+    return '<section class="tr-cartao tr-nutricao" id="cardNutricao">' +
+      '<div class="tr-treino-cab"><h2>Alimentação de hoje</h2>' +
+        '<span class="tr-conta"><b class="tr-num">' + kcal(t.kcal) + "</b> kcal</span></div>" +
+      '<p class="tr-sub" style="margin:0 0 10px">' + refs.length + (refs.length === 1 ? " refeição registrada" : " refeições registradas") + "</p>" +
+      '<div class="tr-nutri-macros-bar" style="margin:0 0 10px">' +
         '<div class="tr-m-item"><span class="tr-m-cor p"></span> P <b>' + Math.round(t.proteina || 0) + "g</b></div>" +
         '<div class="tr-m-item"><span class="tr-m-cor c"></span> C <b>' + Math.round(t.carbo || 0) + "g</b></div>" +
         '<div class="tr-m-item"><span class="tr-m-cor g"></span> G <b>' + Math.round(t.gordura || 0) + "g</b></div>" +
       "</div>" +
-      '<button type="button" class="btn btn-suave btn-largo" id="btnAbrirNutricao" style="margin-top:12px">' +
-        ICONE.mais + "Registrar mais uma refeição" +
-      "</button>" +
+      (itensRefs ? '<ul class="tr-registros tr-nutri-registros" style="margin:0 0 10px">' + itensRefs + "</ul>" : "") +
+      '<div class="tr-acoes" style="margin-top:auto"><button type="button" class="btn btn-suave btn-largo" id="btnAbrirNutricao">' +
+        ICONE.mais + "Registrar mais uma" +
+      "</button></div>" +
     "</section>";
   }
 
@@ -1076,8 +1075,8 @@
             tot.gordura = (tot.gordura || 0) + (rt.gordura || 0);
           });
           atualizarCardNutricao();
-
           var totaisRes = res.totais || {};
+          avisar("Refeição de " + Math.round(totaisRes.kcal || 0) + " kcal registrada!");
           var itens = (res.refeicoes || []).flatMap(function (r) { return r.itens || []; });
           var itensHtml = itens.map(function (it) {
             return "<li>" +
@@ -1119,7 +1118,10 @@
               "</div>" +
             "</div>";
 
-          document.getElementById("fBtnFecharNutri").addEventListener("click", fechar);
+          document.getElementById("fBtnFecharNutri").addEventListener("click", function () {
+            fechar();
+            avisar("Alimentação de hoje atualizada!");
+          });
           document.getElementById("fBtnOutraNutri").addEventListener("click", modalNutricaoRapida);
         } catch (err) {
           msgDiv.innerHTML = '<div class="tr-nutri-erro">' + esc(err.message) + (err.dica ? " " + esc(err.dica) : "") + "</div>";
@@ -1157,21 +1159,42 @@
      dado chega. "ficha" leva legenda porque o Gemini demora uns segundos e
      so a forma nao diz o que esta acontecendo. */
   function esqueleto(tipo) {
-    var cartao = function (miolo) { return '<div class="esqueleto tr-esq">' + miolo + "</div>"; };
+    var cartao = function (miolo, extraClass) {
+      return '<div class="esqueleto tr-esq' + (extraClass ? " " + extraClass : "") + '">' + miolo + "</div>";
+    };
     var faixa = '<div class="tr-esq-faixa">' +
       [30, 60, 0, 45, 80, 20, 55, 0, 70, 40, 65, 0, 50, 35].map(function (h) {
         return '<i style="height:' + Math.max(h, 5) + '%"></i>';
       }).join("") + "</div>";
-    var basal = cartao('<div class="linha curta"></div><div class="linha grande"></div><div class="linha"></div>');
-    var painel = cartao('<div class="linha curta"></div>' + faixa + '<div class="linha"></div><div class="linha"></div>');
+    var basal = cartao('<div class="linha curta"></div><div class="linha grande"></div><div class="linha"></div>', "tr-esq-energia");
+    var painel = cartao('<div class="linha curta"></div>' + faixa + '<div class="linha"></div><div class="linha"></div>', "tr-esq-painel");
     var itens = [1, 2, 3, 4, 5].map(function () {
       return '<div class="tr-esq-item"><div class="quadro"></div><div><div class="linha"></div><div class="linha curta"></div></div></div>';
     }).join("");
+
     if (tipo === "ficha") {
       return '<p class="tr-esq-legenda">Montando seu treino…</p>' +
-        cartao('<div class="linha grande"></div><div class="linha"></div><div class="linha curta" style="margin-bottom:18px"></div>' + itens);
+        cartao('<div class="linha grande"></div><div class="linha"></div><div class="linha curta" style="margin-bottom:18px"></div>' + itens, "tr-esq-ficha");
     }
-    return basal + painel + cartao('<div class="linha grande"></div>' + itens);
+
+    var concluidoHoje = false;
+    try {
+      concluidoHoje = (S.dia && S.dia.sessao && S.dia.sessao.concluida) || sessionStorage.getItem("treino_concluido") === "1";
+    } catch (e) {}
+
+    if (concluidoHoje) {
+      var maisEsq = cartao('<div class="linha curta" style="margin-bottom:10px"></div><div class="linha grande" style="height:22px"></div><div class="linha" style="margin-top:auto"></div>', "tr-esq-mais");
+      var nutriEsq = cartao('<div class="linha curta" style="margin-bottom:10px"></div><div class="linha grande" style="width:30%;height:22px"></div><div class="linha" style="margin-top:auto"></div>', "tr-esq-nutri");
+      var evoEsq = cartao('<div class="linha curta"></div><div class="linha" style="height:90px;border-radius:10px;margin:12px 0"></div><div class="linha curta"></div>', "tr-esq-evo");
+      var posEsq = '<div class="tr-pos" id="trPosEsq">' +
+        '<div class="tr-pos-dupla">' + maisEsq + nutriEsq + "</div>" +
+        evoEsq + "</div>";
+      return basal + painel + posEsq;
+    }
+
+    var nutri = cartao('<div class="linha curta" style="margin-bottom:12px"></div><div class="linha grande" style="width:30%;height:22px"></div><div class="linha" style="margin-bottom:6px"></div><div class="linha curta"></div>', "tr-esq-nutri");
+    var ficha = cartao('<div class="linha grande"></div>' + itens, "tr-esq-ficha");
+    return basal + painel + ficha + nutri;
   }
 
   function kcal(n) { return Math.round(Number(n) || 0).toLocaleString("pt-BR"); }
@@ -1352,19 +1375,34 @@
 
   /* Numero que sobe do zero na primeira abertura. Da vida a tela sem custar
      nada; quem pede menos movimento no sistema ve o numero final direto. */
-  function contar() {
+  function contar(raiz) {
     var calmo = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    tela.querySelectorAll("[data-contar]").forEach(function (el) {
-      var fim = Number(el.dataset.contar) || 0;
-      if (calmo || !fim) return;
+    var escopo = raiz || tela;
+    escopo.querySelectorAll("[data-contar]").forEach(function (el) {
+      var fim = Number(el.dataset.contar);
+      if (calmo || isNaN(fim)) return;
+      var casas = el.dataset.casas != null ? Number(el.dataset.casas) : 0;
+      var prefixo = el.dataset.prefixo || "";
+      var sufixoEl = el.querySelector("small");
+      var sufixoHtml = sufixoEl ? sufixoEl.outerHTML : "";
+      if (el._animContar) cancelAnimationFrame(el._animContar);
       var t0 = null;
       function passo(t) {
         if (t0 == null) t0 = t;
-        var k = Math.min((t - t0) / 700, 1);
-        el.textContent = kcal(fim * (1 - Math.pow(1 - k, 3)));
-        if (k < 1) requestAnimationFrame(passo);
+        var k = Math.min((t - t0) / 750, 1);
+        var ease = 1 - Math.pow(1 - k, 3);
+        var val = fim * ease;
+        var txt = casas > 0
+          ? val.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas })
+          : kcal(Math.round(val));
+        el.innerHTML = prefixo + txt + sufixoHtml;
+        if (k < 1) {
+          el._animContar = requestAnimationFrame(passo);
+        } else {
+          el._animContar = null;
+        }
       }
-      requestAnimationFrame(passo);
+      el._animContar = requestAnimationFrame(passo);
     });
   }
 
@@ -1519,7 +1557,7 @@
     var s = d.sessao;
 
     if (s && s.concluida) {
-      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + cartaoNutricao(d) + (cartaoExtra(d) || posTreino(d));
+      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + (cartaoExtra(d) ? (cartaoNutricao(d) + cartaoExtra(d)) : posTreino(d));
       ligarSessoes();
       ligarManual();
       ligarPosTreino();
@@ -1597,24 +1635,25 @@
     if (d.pode_extra === false) return "";
     var t = d.hoje_total || {};
     var feito = t.itens && t.itens.length
-      ? "Hoje você já fez " + kcal(t.calorias) + " kcal em " + (t.minutos || 0) + " min. "
-      : "A ficha de hoje está fechada. ";
+      ? "Já fez " + kcal(t.calorias) + " kcal (" + (t.minutos || 0) + " min). "
+      : "Ficha concluída. ";
     var ideias = [];
     var g = grupoMenosTreinado(d.musculos);
     if (g) {
       ideias.push({
-        rotulo: "Focar em " + rotuloGrupo(g) + " (o menos treinado)",
+        rotulo: "Foco em " + rotuloGrupo(g) + " (menos treinado)",
         pedido: "Quero treinar " + rotuloGrupo(g) + ", o grupo menos treinado nos últimos dias, uns 25 minutos",
       });
     }
     SUGESTOES_EXTRA.forEach(function (t2) { ideias.push({ rotulo: t2, pedido: t2 }); });
+    var ideiasCompactas = ideias.slice(0, 3);
     return '<section class="tr-cartao tr-mais">' +
-      "<h2>Quer treinar mais hoje?</h2>" +
-      '<p class="tr-sub">' + esc(feito) + "Escolha uma ideia ou escreva a sua. A IA monta uma ficha extra que complementa o treino, e você confirma o local antes de gerar.</p>" +
-      '<div class="tr-mais-chips">' + ideias.map(function (i) {
+      '<div class="tr-treino-cab"><h2>Quer treinar mais hoje?</h2></div>' +
+      '<p class="tr-sub" style="margin:0 0 10px">' + esc(feito) + "Escolha uma sugestão ou peça uma ficha extra.</p>" +
+      '<div class="tr-mais-chips" style="margin:0 0 12px">' + ideiasCompactas.map(function (i) {
         return '<button type="button" data-pos-pedido="' + esc(i.pedido) + '">' + esc(i.rotulo) + "</button>";
       }).join("") + "</div>" +
-      '<button type="button" class="btn btn-suave" data-pos-livre>Escrever meu pedido</button>' +
+      '<div class="tr-acoes" style="margin-top:auto"><button type="button" class="btn btn-suave btn-largo" data-pos-livre>Escrever meu pedido</button></div>' +
       "</section>";
   }
 
@@ -1660,8 +1699,8 @@
     return Object.keys(porDia).sort().map(function (dia) { return { data: dia, valor: porDia[dia] }; });
   }
 
-  async function carregarEvo() {
-    if (EVO.buscando) return;
+  async function carregarEvo(forcar) {
+    if (EVO.buscando || (!forcar && EVO.pronto)) return;
     EVO.buscando = true;
     if (!EVO.pronto) pintarEvo();
     var falhou = function () { return null; };
@@ -1681,21 +1720,31 @@
   function numerosEvo(m, serie) {
     var ult = serie[serie.length - 1], pen = serie[serie.length - 2], pri = serie[0];
     var un = "<small>" + esc(m.un) + "</small>";
-    var bloco = function (valor, legenda) { return "<div class=\"tr-evo-n\"><b>" + valor + "</b><span>" + esc(legenda) + "</span></div>"; };
+    var bloco = function (valor, legenda, valorNum, casas, prefixo) {
+      var attrContar = "";
+      if (typeof valorNum === "number" && isFinite(valorNum)) {
+        attrContar = ' data-contar="' + valorNum + '" data-casas="' + (casas || 0) + '"' +
+          (prefixo ? ' data-prefixo="' + esc(prefixo) + '"' : "");
+      }
+      return "<div class=\"tr-evo-n\"><b" + attrContar + ">" + valor + "</b><span>" + esc(legenda) + "</span></div>";
+    };
     if (m.id === "peso") {
-      return bloco(nfmt(ult.valor, 1) + un, "última pesagem, " + ddmm(ult.data)) +
-        bloco(deltaTxt(ult.valor - pri.valor, 1) + un, "desde a primeira, " + ddmm(pri.data)) +
-        bloco(String(serie.length), "dias com pesagem");
+      var dP = ult.valor - pri.valor;
+      return bloco(nfmt(ult.valor, 1) + un, "última pesagem, " + ddmm(ult.data), ult.valor, 1) +
+        bloco(deltaTxt(dP, 1) + un, "desde a primeira, " + ddmm(pri.data), Math.abs(dP), 1, dP > 0 ? "+" : dP < 0 ? "-" : "") +
+        bloco(String(serie.length), "dias com pesagem", serie.length, 0);
     }
     var soma = 0;
     serie.forEach(function (p) { soma += p.valor; });
     var ca = S.dia && S.dia.ciclo_atual;
     var vAtual = ca && ca[m.campo] != null && (m.id !== "esforco" || Number(ca[m.campo]) > 0) ? Number(ca[m.campo]) : null;
-    return bloco(nfmt(ult.valor, m.casas) + un, "último ciclo fechado, em " + ddmm(ult.data)) +
-      bloco(deltaTxt(ult.valor - pen.valor, m.casas) + un, "contra o ciclo anterior") +
-      bloco(nfmt(soma / serie.length, m.casas) + un, "média dos " + serie.length + " ciclos fechados") +
+    var dC = ult.valor - pen.valor;
+    return bloco(nfmt(ult.valor, m.casas) + un, "último ciclo fechado, em " + ddmm(ult.data), ult.valor, m.casas) +
+      bloco(deltaTxt(dC, m.casas) + un, "contra o ciclo anterior", Math.abs(dC), m.casas, dC > 0 ? "+" : dC < 0 ? "-" : "") +
+      bloco(nfmt(soma / serie.length, m.casas) + un, "média dos " + serie.length + " ciclos fechados", soma / serie.length, m.casas) +
       bloco(vAtual === null ? "-" : nfmt(vAtual, m.casas) + un,
-        ca ? "ciclo atual até agora (dia " + ca.dia_atual + " de " + ca.dias_totais + ")" : "ciclo atual");
+        ca ? "ciclo atual até agora (dia " + ca.dia_atual + " de " + ca.dias_totais + ")" : "ciclo atual",
+        vAtual, m.casas);
   }
 
   function vazioEvo(m, serie) {
@@ -1720,7 +1769,20 @@
         return '<button type="button" data-evo="' + x.id + '" aria-pressed="' + (x.id === m.id) + '">' + x.rotulo + "</button>";
       }).join("") + "</div>";
 
-    if (!EVO.pronto) return topo + '<p class="tr-sub tr-evo-msg">Carregando sua evolução…</p>';
+    if (!EVO.pronto) {
+      return topo +
+        '<div class="tr-evo-corpo">' +
+          '<div class="esqueleto" style="flex:1 1 300px;max-width:440px;height:160px;border-radius:12px;background:var(--superficie-2);display:flex;flex-direction:column;justify-content:flex-end;padding:16px;box-sizing:border-box">' +
+            '<div style="width:100%;height:65%;border-radius:8px;background:var(--separador);animation:pulsar 1.4s ease-in-out infinite"></div>' +
+          '</div>' +
+          '<div class="tr-evo-nums">' +
+            '<div class="tr-evo-n esqueleto" style="height:54px;border-radius:10px;padding:10px;box-sizing:border-box"><div class="linha curta" style="width:50%;height:14px;margin-bottom:6px"></div><div class="linha" style="width:75%;height:10px"></div></div>' +
+            '<div class="tr-evo-n esqueleto" style="height:54px;border-radius:10px;padding:10px;box-sizing:border-box"><div class="linha curta" style="width:50%;height:14px;margin-bottom:6px"></div><div class="linha" style="width:75%;height:10px"></div></div>' +
+            '<div class="tr-evo-n esqueleto" style="height:54px;border-radius:10px;padding:10px;box-sizing:border-box"><div class="linha curta" style="width:50%;height:14px;margin-bottom:6px"></div><div class="linha" style="width:75%;height:10px"></div></div>' +
+            '<div class="tr-evo-n esqueleto" style="height:54px;border-radius:10px;padding:10px;box-sizing:border-box"><div class="linha curta" style="width:50%;height:14px;margin-bottom:6px"></div><div class="linha" style="width:75%;height:10px"></div></div>' +
+          '</div>' +
+        '</div>';
+    }
     var dados = m.id === "peso" ? EVO.pesagens : EVO.ciclos;
     if (dados === null) {
       return topo + '<p class="tr-sub tr-evo-msg">Não consegui buscar esses dados agora.</p>' +
@@ -1736,11 +1798,18 @@
 
   function pintarEvo() {
     var el = document.getElementById("trEvo");
-    if (el) el.innerHTML = evoHtml();
+    if (el) {
+      el.innerHTML = evoHtml();
+      contar(el);
+    }
   }
 
   function posTreino(d) {
-    return '<div class="tr-pos" id="trPos">' + cartaoMais(d) +
+    return '<div class="tr-pos" id="trPos">' +
+      '<div class="tr-pos-dupla">' +
+        cartaoMais(d) +
+        cartaoNutricao(d) +
+      '</div>' +
       '<section class="tr-cartao tr-evo" id="trEvo">' + evoHtml() + "</section></div>";
   }
 
@@ -1753,10 +1822,10 @@
       if (b.hasAttribute("data-pos-pedido")) modalExtra(b.getAttribute("data-pos-pedido"));
       else if (b.hasAttribute("data-pos-livre")) modalExtra();
       else if (b.hasAttribute("data-evo")) { EVO.metrica = b.getAttribute("data-evo"); pintarEvo(); }
-      else if (b.hasAttribute("data-evo-tentar")) carregarEvo();
+      else if (b.hasAttribute("data-evo-tentar")) carregarEvo(true);
       else if (b.hasAttribute("data-evo-ciclos")) modalCiclos();
     });
-    if (TELA_GRANDE.matches) carregarEvo();
+    if (TELA_GRANDE.matches && !EVO.pronto) carregarEvo();
   }
   /* Janela redimensionada de celular pra PC com o bloco ja na tela: so entao busca,
      e so se ainda nao buscou (se ja buscou, o cartao ja esta pintado). */
@@ -1955,10 +2024,38 @@
 
   async function carregar() {
     try {
-      S.dia = await pedir("/hoje");
+      var promessas = [
+        pedir("/hoje"),
+        pedirRefeicao("/dia").catch(function (e) {
+          console.warn("[treino] falha ao buscar nutricao:", e.message);
+          return { refeicoes: [], totais: { kcal: 0, proteina: 0, carbo: 0, gordura: 0 } };
+        }),
+      ];
+      if (TELA_GRANDE.matches && !EVO.pronto) {
+        promessas.push(
+          Promise.all([
+            pedir("/ciclos?n=26").catch(function () { return null; }),
+            pedir("/pesagens?n=30").catch(function () { return null; }),
+          ]).then(function (r) {
+            EVO.ciclos = r[0] ? (r[0].ciclos || []) : null;
+            EVO.pesagens = r[1] ? (r[1].pesagens || []) : null;
+            EVO.pronto = true;
+          })
+        );
+      }
+      var resultados = await Promise.all(promessas);
+      S.dia = resultados[0];
+      var rNutri = resultados[1] || {};
+      S.nutricao = {
+        pronto: true,
+        refeicoes: rNutri.refeicoes || [],
+        totais: rNutri.totais || { kcal: 0, proteina: 0, carbo: 0, gordura: 0 },
+      };
+      try {
+        sessionStorage.setItem("treino_concluido", (S.dia && S.dia.sessao && S.dia.sessao.concluida) ? "1" : "0");
+      } catch (e) {}
       S.carregando = false;
       pintar();
-      carregarNutricao();
       if (S.dia.ciclo_fechado) {
         avisar("Ciclo fechado: " + S.dia.ciclo_fechado.sessoes + " treinos viraram resumo.");
       }

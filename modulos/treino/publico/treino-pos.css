@@ -1,14 +1,46 @@
-/* Modulo TREINO - depois do treino, so na tela de PC.
- * A ficha do dia fechada deixava a coluna da esquerda vazia. Ela ganha dois cartoes:
- * o atalho "Quer treinar mais hoje?" e o grafico de evolucao dos ciclos.
- * Vem depois do treino.css e do treino-visual.css. Usa so os tokens do estilos.css. */
+/* Modulo TREINO - depois do treino.
+ * Exibe os dois cartões divididos lado a lado: "Quer treinar mais hoje?" e "Alimentação de hoje",
+ * além do gráfico de evolução dos ciclos.
+ * Usa só os tokens do estilos.css. */
 
-/* No celular o bloco nem aparece. Nada muda la. */
-.tr-pos { display: none; }
+.tr-pos {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+/* Os dois cartões divididos lado a lado */
+.tr-pos-dupla {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.tr-pos-dupla > .tr-cartao,
+.tr-pos-dupla > .tr-esq {
+  margin-bottom: 0;
+  height: 100%;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 680px) {
+  .tr-pos-dupla {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 959px) {
+  /* No celular esconde apenas o gráfico de linha que é exclusivo do desktop */
+  .tr-evo { display: none; }
+}
 
 @media (min-width: 960px) {
-  /* Mesmo lugar da ficha: coluna principal, esquerda. Um bloco so, pra os dois cartoes
-     nao brigarem pela mesma celula do grid. */
+  /* Mesmo lugar da ficha: coluna principal, esquerda. Um bloco só, para os cartões
+     não brigarem pela mesma célula do grid. */
   .tr-corpo #tela > .tr-pos {
     display: grid;
     grid-column: 1;
@@ -16,6 +48,7 @@
     gap: 20px;
     align-content: start;
     min-width: 0;
+    margin-bottom: 0;
   }
   .tr-pos > .tr-cartao { margin-bottom: 0; min-width: 0; }
 

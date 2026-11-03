@@ -498,8 +498,21 @@ select.campo {
 
 /* ---------------------------------------------------------- esqueleto */
 
-.tr-esq { margin-bottom: 14px; border-radius: var(--r-grande); padding: 18px; }
-.tr-esq .linha.grande { height: 30px; width: 45%; margin-bottom: 14px; }
+.tr-esq {
+  margin-bottom: 14px;
+  border-radius: var(--r-grande);
+  padding: 20px 18px;
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+}
+.tr-esq .linha {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--separador);
+  margin-bottom: 9px;
+  animation: pulsar 1.4s ease-in-out infinite;
+}
+.tr-esq .linha.grande { height: 26px; width: 45%; margin-bottom: 16px; border-radius: 8px; }
 .tr-esq .linha.curta { width: 35%; }
 .tr-esq-faixa { display: flex; gap: 5px; align-items: flex-end; height: 70px; margin: 10px 0 14px; }
 .tr-esq-faixa i {
@@ -508,7 +521,7 @@ select.campo {
 }
 .tr-esq-item { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
 .tr-esq-item .quadro {
-  flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--separador);
+  flex: none; width: 28px; height: 28px; border-radius: 8px; background: var(--separador);
   animation: pulsar 1.4s ease-in-out infinite;
 }
 .tr-esq-item > div { flex: 1; }
@@ -753,98 +766,32 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
   color: var(--texto-2);
 }
 
-/* -------------------------------------- lembrete sutil de nutricao */
+/* -------------------------------------- alimentação do dia (nutrição no treino) */
 
+.tr-nutricao,
 .tr-lembrete-nutricao {
-  box-shadow: none;
-  border: 1px solid var(--separador);
-  background: transparent;
   transition: border-color .15s ease;
 }
-
-.tr-nutri-topo {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.tr-nutri-ident {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.tr-nutri-ico {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--acento-eco);
-  color: var(--acento);
-  display: grid;
-  place-items: center;
-  flex: none;
-}
-
-.tr-nutri-ico svg {
-  width: 20px;
-  height: 20px;
-}
-
-.tr-nutri-ico.registrado {
-  background: rgba(52, 199, 89, 0.15);
-  color: var(--sucesso, #34C759);
-}
-
-.tr-lembrete-nutricao h2 {
-  font-size: 16px;
-  color: var(--texto);
-  font-weight: 600;
-  letter-spacing: 0;
-  margin: 0;
-}
-
-.tr-nutri-rotulo-aviso {
-  display: block;
-  font-size: 13px;
-  color: var(--texto-2);
-  margin-top: 1px;
-}
-
-.tr-nutri-rotulo-ok {
-  display: block;
-  font-size: 13px;
-  color: var(--sucesso, #34C759);
-  font-weight: 500;
-  margin-top: 1px;
-}
-
-.tr-nutri-chamada {
-  margin: 10px 0 14px;
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--texto-2);
-}
-
-.tr-nutri-kcal-total {
-  font-size: 18px;
-  color: var(--texto);
-  white-space: nowrap;
-}
-.tr-nutri-kcal-total b { font-weight: 700; }
-.tr-nutri-kcal-total small { font-size: 12px; color: var(--texto-2); font-weight: normal; }
 
 .tr-nutri-macros-bar {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: 12px 0 2px;
+  margin: 12px 0;
   padding: 8px 12px;
   background: var(--superficie-2);
   border-radius: 10px;
   font-size: 13px;
   color: var(--texto-2);
+}
+
+.tr-nutri-registros {
+  margin: 10px 0 4px;
+}
+
+.tr-nutri-registros li .ic svg {
+  width: 16px;
+  height: 16px;
 }
 
 .tr-m-item {
@@ -863,6 +810,7 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
 .tr-m-cor.c { background: #FF9500; }
 .tr-m-cor.g { background: #FF2D55; }
 
+.tr-nutricao .btn,
 .tr-lembrete-nutricao .btn {
   display: inline-flex;
   align-items: center;
@@ -870,6 +818,7 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
   gap: 8px;
 }
 
+.tr-nutricao .btn svg,
 .tr-lembrete-nutricao .btn svg {
   width: 18px;
   height: 18px;
@@ -1063,7 +1012,7 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
 
   /* Ficha ativa ou gerador de treino ocupam a coluna principal (esquerda) */
   .tr-corpo #tela > .tr-sessao,
-  .tr-corpo #tela > .tr-cartao:not(.tr-energia):not(.tr-painel):not(.tr-feito-hoje):not(.tr-lembrete-nutricao) {
+  .tr-corpo #tela > .tr-cartao:not(.tr-energia):not(.tr-painel):not(.tr-feito-hoje):not(.tr-lembrete-nutricao):not(.tr-nutricao) {
     grid-column: 1;
     grid-row: 1 / span 5;
   }
@@ -1084,8 +1033,38 @@ button.tr-barra-col:focus-visible { outline: 2px solid var(--acento); outline-of
     grid-row: 3;
   }
 
+  .tr-corpo #tela > .tr-nutricao,
   .tr-corpo #tela > .tr-lembrete-nutricao {
     grid-column: 2;
+  }
+
+  /* Skeletons posicionados no grid para evitar layout shift */
+  .tr-esq {
+    padding: 24px 22px;
+  }
+
+  .tr-corpo #tela > .tr-esq-ficha {
+    grid-column: 1;
+    grid-row: 1 / span 5;
+  }
+
+  .tr-corpo #tela > .tr-esq-energia {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .tr-corpo #tela > .tr-esq-painel {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .tr-corpo #tela > .tr-esq-nutri {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .tr-corpo #tela > .tr-prog {
+    grid-column: 1;
   }
 
   /* Cartões com acabamento desktop elegante */
