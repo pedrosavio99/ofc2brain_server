@@ -1659,6 +1659,12 @@
 
   /* ---- evolucao: dados */
 
+  function somarDiasStr(iso, n) {
+    var d = new Date(iso + "T12:00:00Z");
+    if (isNaN(d.getTime())) return iso;
+    d.setUTCDate(d.getUTCDate() + (n || 1));
+    return d.toISOString().slice(0, 10);
+  }
   function diaLocal(iso) {
     var t = new Date(iso);
     if (isNaN(t.getTime())) return "";
@@ -1677,26 +1683,62 @@
     return EVO_METRICAS[0];
   }
 
-  /* Pontos [{data, valor}] do mais antigo ao mais novo. Ciclo: um ponto por ciclo FECHADO,
-     no dia em que ele fechou. O ciclo em andamento fica de fora de proposito: esta incompleto
-     e puxaria a linha pra baixo sem ser queda. Peso: uma pesagem por dia (vale a ultima). */
+  /* Pontos [{data, valor, atual}] do mais antigo ao mais novo.
+     Inclui todos os ciclos fechados E o ponto do ciclo atual em andamento,
+     permitindo comparar a evolução em tempo real sem precisar esperar o ciclo fechar. */
   function serieEvo(m) {
     var porDia = {};
     if (m.id === "peso") {
       (EVO.pesagens || []).forEach(function (p) {
         var v = Number(p.peso_kg), dia = diaLocal(p.criado_em);
-        if (v > 0 && dia) porDia[dia] = v;
+        if (v > 0 && dia) porDia[dia] = { valor: v, atual: false };
       });
-    } else {
-      (EVO.ciclos || []).forEach(function (c) {
-        var dia = String(c.fim || "").slice(0, 10), bruto = c[m.campo];
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || bruto == null) return;
-        var v = Number(bruto);
-        if (!isFinite(v) || (m.id === "esforco" && !(v > 0))) return;
-        porDia[dia] = v;
+      return Object.keys(porDia).sort().map(function (dia) {
+        return { data: dia, valor: porDia[dia].valor, atual: false };
       });
     }
-    return Object.keys(porDia).sort().map(function (dia) { return { data: dia, valor: porDia[dia] }; });
+
+    // 1. Ciclos fechados anteriores
+    (EVO.ciclos || []).forEach(function (c) {
+      var dia = String(c.fim || "").slice(0, 10), bruto = c[m.campo];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || bruto == null) return;
+      var v = Number(bruto);
+      if (!isFinite(v) || (m.id === "esforco" && !(v > 0))) return;
+      porDia[dia] = { valor: v, atual: false, numero: c.numero };
+    });
+
+    var pontos = Object.keys(porDia).sort().map(function (dia) {
+      return { data: dia, valor: porDia[dia].valor, atual: false };
+    });
+
+    // 2. Novo ponto: Ciclo atual em andamento (para comparar em tempo real)
+    var ca = EVO.ciclo_atual || (S.dia && S.dia.ciclo_atual);
+    if (ca && ca[m.campo] != null) {
+      var vAtual = Number(ca[m.campo]);
+      if (isFinite(vAtual) && (m.id !== "esforco" || vAtual > 0)) {
+        var hojeIso = (ca.hoje ? String(ca.hoje) : diaLocal(new Date().toISOString())).slice(0, 10);
+        var diaPonto = hojeIso;
+
+        // Garante que o ponto do ciclo atual fique temporalmente após o último ciclo fechado
+        if (pontos.length > 0) {
+          var ultData = pontos[pontos.length - 1].data;
+          if (diaPonto <= ultData) {
+            diaPonto = ca.fim && String(ca.fim).slice(0, 10) > ultData
+              ? String(ca.fim).slice(0, 10)
+              : somarDiasStr(ultData, 1);
+          }
+        }
+
+        pontos.push({
+          data: diaPonto,
+          valor: vAtual,
+          atual: true,
+          rotulo: "Ciclo " + (ca.numero ? ca.numero + " (atual)" : "atual"),
+        });
+      }
+    }
+
+    return pontos;
   }
 
   async function carregarEvo(forcar) {
@@ -1709,6 +1751,7 @@
       pedir("/pesagens?n=30").catch(falhou),
     ]);
     EVO.ciclos = r[0] ? (r[0].ciclos || []) : null;
+    EVO.ciclo_atual = r[0] ? (r[0].ciclo_atual || (S.dia && S.dia.ciclo_atual)) : (S.dia && S.dia.ciclo_atual);
     EVO.pesagens = r[1] ? (r[1].pesagens || []) : null;
     EVO.pronto = true;
     EVO.buscando = false;
@@ -1734,11 +1777,33 @@
         bloco(deltaTxt(dP, 1) + un, "desde a primeira, " + ddmm(pri.data), Math.abs(dP), 1, dP > 0 ? "+" : dP < 0 ? "-" : "") +
         bloco(String(serie.length), "dias com pesagem", serie.length, 0);
     }
+
+    var ca = EVO.ciclo_atual || (S.dia && S.dia.ciclo_atual);
+
+    if (ult && ult.atual && pen) {
+      // Quando o último ponto é o ciclo atual:
+      var dC = ult.valor - pen.valor;
+      var fechados = serie.filter(function (p) { return !p.atual; });
+      var somaF = 0;
+      fechados.forEach(function (p) { somaF += p.valor; });
+      var mediaF = fechados.length ? somaF / fechados.length : pen.valor;
+
+      return bloco(nfmt(ult.valor, m.casas) + un,
+          ca ? "ciclo atual (dia " + ca.dia_atual + " de " + ca.dias_totais + ")" : "ciclo atual em andamento",
+          ult.valor, m.casas) +
+        bloco(deltaTxt(dC, m.casas) + un, "vs. ciclo anterior (" + nfmt(pen.valor, m.casas) + " " + m.un + ")",
+          Math.abs(dC), m.casas, dC > 0 ? "+" : dC < 0 ? "-" : "") +
+        bloco(nfmt(pen.valor, m.casas) + un, "último ciclo fechado, em " + ddmm(pen.data),
+          pen.valor, m.casas) +
+        bloco(nfmt(mediaF, m.casas) + un,
+          "média dos " + fechados.length + (fechados.length === 1 ? " ciclo anterior" : " ciclos anteriores"),
+          mediaF, m.casas);
+    }
+
     var soma = 0;
     serie.forEach(function (p) { soma += p.valor; });
-    var ca = S.dia && S.dia.ciclo_atual;
     var vAtual = ca && ca[m.campo] != null && (m.id !== "esforco" || Number(ca[m.campo]) > 0) ? Number(ca[m.campo]) : null;
-    var dC = ult.valor - pen.valor;
+    var dC = pen ? ult.valor - pen.valor : 0;
     return bloco(nfmt(ult.valor, m.casas) + un, "último ciclo fechado, em " + ddmm(ult.data), ult.valor, m.casas) +
       bloco(deltaTxt(dC, m.casas) + un, "contra o ciclo anterior", Math.abs(dC), m.casas, dC > 0 ? "+" : dC < 0 ? "-" : "") +
       bloco(nfmt(soma / serie.length, m.casas) + un, "média dos " + serie.length + " ciclos fechados", soma / serie.length, m.casas) +
@@ -1748,23 +1813,26 @@
   }
 
   function vazioEvo(m, serie) {
-    var ca = S.dia && S.dia.ciclo_atual;
-    var falta = ca && ca.dias_restantes != null ? " Faltam " + ca.dias_restantes + (ca.dias_restantes === 1 ? " dia" : " dias") + " para o ciclo atual fechar." : "";
+    var ca = EVO.ciclo_atual || (S.dia && S.dia.ciclo_atual);
+    var falta = ca && ca.dias_restantes != null ? " Faltam " + ca.dias_restantes + (ca.dias_restantes === 1 ? " dia" : " dias") + " para este ciclo fechar." : "";
     if (m.id === "peso") {
       return serie.length
         ? "Só uma pesagem até agora (" + nfmt(serie[0].valor, 1) + " kg, em " + ddmm(serie[0].data) + "). A linha aparece com a segunda."
         : "Nenhuma pesagem registrada ainda. A linha aparece a partir da segunda.";
     }
+    if (serie.length === 1 && serie[0].atual) {
+      return "Ciclo atual em andamento (" + nfmt(serie[0].valor, m.casas) + " " + m.un + ", dia " + (ca ? ca.dia_atual : 1) + " de " + (ca ? ca.dias_totais : 14) + "). O gráfico com a linha comparativa aparecerá assim que houver outro ciclo registrado." + falta;
+    }
     return serie.length
-      ? "Só um ciclo fechado até agora. A linha aparece quando o segundo fechar." + falta
-      : "Ainda não há ciclo fechado. O gráfico começa quando o primeiro fechar." + falta;
+      ? "Só um ciclo registrado até agora. A linha comparativa aparece quando houver mais de um ponto." + falta
+      : "Ainda não há ciclo registrado. O gráfico começa quando houver treinos concluídos." + falta;
   }
 
   function evoHtml() {
     var m = metricaEvo();
     var topo = '<div class="tr-evo-topo"><h2>Sua evolução</h2>' +
       '<button type="button" class="tr-mini" data-evo-ciclos>ver resumos</button></div>' +
-      '<p class="tr-sub">Cada ponto é um ciclo de 14 dias fechado. O app só guarda o resumo de cada ciclo, então a carga usada em cada exercício não aparece aqui.</p>' +
+      '<p class="tr-sub">Comparativo dos ciclos de 14 dias com o ciclo atual em tempo real. Veja sua evolução sem precisar esperar o ciclo fechar.</p>' +
       '<div class="tr-evo-chips" role="group" aria-label="O que mostrar no gráfico">' + EVO_METRICAS.map(function (x) {
         return '<button type="button" data-evo="' + x.id + '" aria-pressed="' + (x.id === m.id) + '">' + x.rotulo + "</button>";
       }).join("") + "</div>";
@@ -1793,7 +1861,7 @@
     return topo + '<div class="tr-evo-corpo">' +
       '<grafico-linha pontos="' + esc(JSON.stringify(serie)) + '" unidade="' + esc(m.un) + '"></grafico-linha>' +
       '<div class="tr-evo-nums">' + numerosEvo(m, serie) + "</div></div>" +
-      (m.id === "peso" ? "" : '<p class="tr-evo-nota">O ciclo em andamento fica fora da linha porque ainda está incompleto.</p>');
+      (m.id === "peso" ? "" : '<p class="tr-evo-nota"><span class="tr-dot-atual"></span> O último ponto destaca o ciclo atual em andamento, permitindo comparar seu ritmo diretamente com os ciclos anteriores.</p>');
   }
 
   function pintarEvo() {
@@ -1825,12 +1893,11 @@
       else if (b.hasAttribute("data-evo-tentar")) carregarEvo(true);
       else if (b.hasAttribute("data-evo-ciclos")) modalCiclos();
     });
-    if (TELA_GRANDE.matches && !EVO.pronto) carregarEvo();
+    if (!EVO.pronto) carregarEvo();
   }
-  /* Janela redimensionada de celular pra PC com o bloco ja na tela: so entao busca,
-     e so se ainda nao buscou (se ja buscou, o cartao ja esta pintado). */
+  /* Janela redimensionada com o bloco ja na tela: busca se ainda nao buscou */
   function aoMudarTela() {
-    if (TELA_GRANDE.matches && !EVO.pronto && document.getElementById("trPos")) carregarEvo();
+    if (!EVO.pronto && document.getElementById("trPos")) carregarEvo();
   }
   if (TELA_GRANDE.addEventListener) TELA_GRANDE.addEventListener("change", aoMudarTela);
   else if (TELA_GRANDE.addListener) TELA_GRANDE.addListener(aoMudarTela);
@@ -1871,6 +1938,8 @@
           '<span class="tr-num"><b>' + feitos.length + "</b>de " + ficha.length + "</span></div>" +
         '<div class="tr-sessao-cab"><h2>' + titulo + (extra ? '<span class="tr-selo tr-selo-extra">extra</span>' : "") + "</h2>" +
           '<p class="tr-tempo-vivo" data-tempo>' + textoTempo(feitos.length, minutos) + "</p></div>" +
+        (extra ? '<button type="button" class="icone-btn tr-btn-excluir-extra" data-excluir-extra aria-label="Excluir ficha extra" title="Excluir ficha extra">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>' : "") +
       "</div>" +
       (musculos.length ? '<ul class="tr-musculos" aria-label="Músculos desta ficha">' + musculos.map(function (g) {
         return "<li>" + esc(rotuloGrupo(g)) + "</li>";
@@ -1897,7 +1966,8 @@
           "</li>";
       }).join("") + "</ol>" +
       '<div class="tr-acoes"><button class="btn btn-largo" data-fechar>Fechar treino</button>' +
-      '<button class="tr-link" data-regerar>' + (extra ? "Gerar outra extra" : "Gerar outra ficha") + "</button></div>" +
+      '<button class="tr-link" data-regerar>' + (extra ? "Gerar outra extra" : "Gerar outra ficha") + "</button>" +
+      (extra ? '<button type="button" class="tr-link tr-link-destrutivo" data-excluir-extra>Descartar ficha extra</button>' : "") + "</div>" +
       "</section>";
   }
 
@@ -1920,6 +1990,22 @@
       sec.querySelector("[data-fechar]").addEventListener("click", function () { modalFechar(s); });
       sec.querySelector("[data-regerar]").addEventListener("click", function () {
         if (extra) modalManual("mais"); else modalRegerar();
+      });
+      // Excluir ou descartar ficha extra
+      sec.querySelectorAll("[data-excluir-extra]").forEach(function (btn) {
+        btn.addEventListener("click", async function (e) {
+          e.stopPropagation();
+          if (!confirm("Deseja realmente excluir esta ficha extra?")) return;
+          try {
+            btn.disabled = true;
+            await pedir("/sessao/" + s.id, { method: "DELETE" });
+            avisar("Ficha extra excluída.");
+            await carregar();
+          } catch (err) {
+            avisar(err.message);
+            btn.disabled = false;
+          }
+        });
       });
     });
   }
@@ -2031,13 +2117,14 @@
           return { refeicoes: [], totais: { kcal: 0, proteina: 0, carbo: 0, gordura: 0 } };
         }),
       ];
-      if (TELA_GRANDE.matches && !EVO.pronto) {
+      if (!EVO.pronto) {
         promessas.push(
           Promise.all([
             pedir("/ciclos?n=26").catch(function () { return null; }),
             pedir("/pesagens?n=30").catch(function () { return null; }),
           ]).then(function (r) {
             EVO.ciclos = r[0] ? (r[0].ciclos || []) : null;
+            EVO.ciclo_atual = r[0] ? r[0].ciclo_atual : null;
             EVO.pesagens = r[1] ? (r[1].pesagens || []) : null;
             EVO.pronto = true;
           })
@@ -2045,6 +2132,7 @@
       }
       var resultados = await Promise.all(promessas);
       S.dia = resultados[0];
+      if (S.dia && S.dia.ciclo_atual) EVO.ciclo_atual = S.dia.ciclo_atual;
       var rNutri = resultados[1] || {};
       S.nutricao = {
         pronto: true,

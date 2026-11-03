@@ -18,7 +18,13 @@ const MARGEM = { esq: 10, dir: 14, topo: 22, base: 24 };
 
 export function calcularGrafico(pontos, { largura = 320, altura = 160, meta } = {}) {
   const validos = (Array.isArray(pontos) ? pontos : [])
-    .map((p) => ({ data: p?.data, valor: p?.valor, t: paraDia(p?.data) }))
+    .map((p) => ({
+      data: p?.data,
+      valor: p?.valor,
+      t: paraDia(p?.data),
+      atual: Boolean(p?.atual),
+      rotulo: p?.rotulo || "",
+    }))
     .filter((p) => p.t !== null && typeof p.valor === "number" && Number.isFinite(p.valor))
     .sort((a, b) => a.t - b.t);
   const metaValida = typeof meta === "number" && Number.isFinite(meta) ? meta : null;
@@ -35,7 +41,14 @@ export function calcularGrafico(pontos, { largura = 320, altura = 160, meta } = 
   const xDe = (t) => (t1 === t0 ? (x0 + x1) / 2 : x0 + ((t - t0) / (t1 - t0)) * (x1 - x0));
   const yDe = (v) => y0 + (1 - (v - lo) / (hi - lo)) * (y1 - y0);
 
-  const resultado = validos.map((p) => ({ data: p.data, valor: p.valor, x: coord(xDe(p.t)), y: coord(yDe(p.valor)) }));
+  const resultado = validos.map((p) => ({
+    data: p.data,
+    valor: p.valor,
+    atual: p.atual,
+    rotulo: p.rotulo,
+    x: coord(xDe(p.t)),
+    y: coord(yDe(p.valor)),
+  }));
   const linha = resultado.length > 1 ? resultado.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" ") : "";
   const area = linha ? `${linha} L${resultado.at(-1).x} ${coord(y1)} L${resultado[0].x} ${coord(y1)} Z` : "";
 
@@ -66,7 +79,9 @@ export function desenharGrafico(pontos, { meta, unidade = "", largura = 320, alt
   const { x0, x1, y1 } = g.limites;
   const sufixo = unidade ? ` ${esc(curto(unidade, 9))}` : "";
   const ultimo = g.ultimo;
-  const perto = ultimo.x > x1 - 30; // não deixa o valor sair pela direita
+  const tagAtual = ultimo.atual ? " (atual)" : "";
+  const textoPontoFinal = `${esc(numero(ultimo.valor))}${sufixo}${tagAtual}`;
+  const perto = ultimo.x > x1 - (ultimo.atual ? 56 : 30); // não deixa o valor sair pela direita
   const partes = [
     cab,
     `<defs><clipPath id="clipLinha"><rect id="clipRect" x="0" y="0" width="${largura}" height="${altura}"/></clipPath></defs>`,
@@ -78,9 +93,18 @@ export function desenharGrafico(pontos, { meta, unidade = "", largura = 320, alt
       + `<text class="rotulo" x="${x0}" y="${coord(g.metaY - 4)}" text-anchor="start">meta ${esc(numero(meta))}${sufixo}</text>`);
   }
   if (g.linha) partes.push(`<path class="linha" d="${g.linha}" clip-path="url(#clipLinha)"/>`);
+
+  // Pontos intermediários para identificar visualmente cada ciclo anterior
+  if (g.pontos.length > 1) {
+    for (let i = 0; i < g.pontos.length - 1; i++) {
+      const p = g.pontos[i];
+      partes.push(`<circle class="ponto" cx="${p.x}" cy="${p.y}" r="3.5"/>`);
+    }
+  }
+
   partes.push(
-    `<circle class="final" cx="${ultimo.x}" cy="${ultimo.y}" r="5"/>`,
-    `<text class="valor" x="${ultimo.x}" y="${coord(ultimo.y - 10)}" text-anchor="${perto ? "end" : "middle"}">${esc(numero(ultimo.valor))}${sufixo}</text>`);
+    `<circle class="final ${ultimo.atual ? "atual" : ""}" cx="${ultimo.x}" cy="${ultimo.y}" r="5"/>`,
+    `<text class="valor" x="${ultimo.x}" y="${coord(ultimo.y - 10)}" text-anchor="${perto ? "end" : "middle"}">${textoPontoFinal}</text>`);
   for (const t of g.eixo) partes.push(`<text class="eixo" x="${t.x}" y="${altura - 6}" text-anchor="${t.ancora}">${t.rotulo}</text>`);
   partes.push("</svg>");
   return partes.join("");
@@ -93,12 +117,24 @@ svg { display: block; width: 100%; height: auto; font-family: var(--fonte, syste
 .area { fill: color-mix(in srgb, var(--acento) 16%, transparent); stroke: none; }
 .linha { fill: none; stroke: var(--acento); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--acento) 25%, transparent)); }
 .meta { stroke: var(--texto-3); stroke-width: 1.25; stroke-dasharray: 4 4; opacity: 0; animation: surgeMeta .5s ease .2s forwards; }
+.ponto {
+  fill: var(--superficie);
+  stroke: var(--acento);
+  stroke-width: 2;
+  opacity: 0.9;
+}
 .final {
   fill: var(--acento);
   stroke: var(--superficie);
   stroke-width: 2.5;
   transition: r .2s ease, filter .2s ease;
   filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--acento) 60%, transparent));
+}
+.final.atual {
+  fill: var(--acento);
+  stroke: var(--superficie);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 7px var(--acento)) drop-shadow(0 1px 3px rgba(0,0,0,0.3));
 }
 .final.viajando {
   r: 6;
@@ -239,9 +275,10 @@ export class GraficoLinha extends Base {
       // O valor sobre a bolinha acompanha a trajetória com contagem viva
       if (textoValor) {
         const valAtual = primeiro.valor + (ultimo.valor - primeiro.valor) * ease;
+        const textoNum = esc(numero(progresso === 1 ? ultimo.valor : valAtual)) + sufixo;
         textoValor.setAttribute("x", curX);
         textoValor.setAttribute("y", coord(curY - 10));
-        textoValor.textContent = esc(numero(progresso === 1 ? ultimo.valor : valAtual)) + sufixo;
+        textoValor.textContent = textoNum + (progresso === 1 && ultimo.atual ? " (atual)" : "");
         textoValor.style.opacity = String(Math.min(1, 0.4 + progresso * 0.6));
       }
 
@@ -258,11 +295,11 @@ export class GraficoLinha extends Base {
         if (clipRect) clipRect.setAttribute("width", String(largura || 320));
 
         if (textoValor) {
-          const perto = ultimo.x > x1 - 30;
+          const perto = ultimo.x > x1 - (ultimo.atual ? 56 : 30);
           textoValor.setAttribute("x", ultimo.x);
           textoValor.setAttribute("y", coord(ultimo.y - 10));
           textoValor.setAttribute("text-anchor", perto ? "end" : "middle");
-          textoValor.textContent = esc(numero(ultimo.valor)) + sufixo;
+          textoValor.textContent = esc(numero(ultimo.valor)) + sufixo + (ultimo.atual ? " (atual)" : "");
           textoValor.style.opacity = "1";
         }
       }

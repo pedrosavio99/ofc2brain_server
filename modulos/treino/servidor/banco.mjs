@@ -216,6 +216,12 @@ export async function atualizarSessao(id, campos) {
   return data;
 }
 
+export async function excluirSessao(id) {
+  const { error } = await sb.from("treino_sessoes").delete().eq("id", id);
+  if (error) throw new ErroHttp(500, `excluirSessao: ${error.message}`);
+  return { ok: true };
+}
+
 /* --------------------------------------------------------------- ciclos */
 
 /** Soma N dias a uma data YYYY-MM-DD em UTC puro, evitando bugs de fuso ou horario de verao. */

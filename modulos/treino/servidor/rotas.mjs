@@ -14,7 +14,7 @@ import { ErroHttp, checarBanco, lerPerfil, salvarPerfil, listarPesagens,
 import { analisarEquipamento, normalizarRascunho, TIPOS } from "./equipamentos.mjs";
 import { listarSessoes, buscarSessao, sessaoDeHoje, sessoesDeHoje, criarSessao, hojeLocal } from "./banco.mjs";
 import { gerarFicha, localValido, LOCAIS, seriesPorGrupo } from "./ficha.mjs";
-import { atualizarSessao } from "./banco.mjs";
+import { atualizarSessao, excluirSessao } from "./banco.mjs";
 import { caloriasDaSessao, basalDiario, idadeDe, percentualDoDia,
   comparativoDoCiclo, sequenciaDeDias, analisarOfensiva, comporFraseMotivacional, duracaoEstimada } from "./calorias.mjs";
 import { analisarAtividade } from "./atividade.mjs";
@@ -462,6 +462,28 @@ export async function rotear(req, res, rota, url) {
         pulados: (sessao.ficha || []).length - feitos.length,
       },
     };
+  }
+
+  /* DELETE /sessao/:id
+     Exclui uma sessao ainda NAO concluida (ex: descartar ficha extra). */
+  const idSessaoDelete = rota.match(/^\/sessao\/([a-zA-Z0-9_-]+)$/);
+  if (req.method === "DELETE" && idSessaoDelete) {
+    const sessao = await buscarSessao(idSessaoDelete[1]);
+    exigir(sessao, 404, "Sessão não encontrada.");
+    exigir(!sessao.concluida, 409, "Sessões já concluídas não podem ser excluídas.",
+      "A conclusão é definitiva para manter o histórico e o ciclo íntegros.");
+    await excluirSessao(sessao.id);
+    return { ok: true, id: sessao.id, origem: sessao.origem };
+  }
+
+  /* DELETE /ficha/extra
+     Atalho para cancelar a ficha extra aberta de hoje. */
+  if (req.method === "DELETE" && rota === "/ficha/extra") {
+    const doDia = await sessoesDeHoje();
+    const extraAberta = doDia.find((x) => x.origem === "extra" && !x.concluida);
+    if (!extraAberta) return { ok: true, mensagem: "Nenhuma ficha extra aberta." };
+    await excluirSessao(extraAberta.id);
+    return { ok: true, id: extraAberta.id };
   }
 
   /* ------------------------------------------------ atividade manual */

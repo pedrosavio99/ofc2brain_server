@@ -76,10 +76,49 @@
 
 /* ------------------------------------------------------ sessao ativa */
 
-.tr-sessao-topo { display: flex; align-items: center; gap: 16px; }
-.tr-sessao-cab { min-width: 0; }
+.tr-sessao-topo { display: flex; align-items: center; gap: 16px; position: relative; }
+.tr-sessao-cab { min-width: 0; flex: 1; }
 .tr-sessao-cab h2 { font-size: 22px; letter-spacing: -.02em; margin-bottom: 2px; }
 .tr-tempo-vivo { font-size: 14.5px; color: var(--texto-2); margin: 0; line-height: 1.4; }
+
+/* Botao X para excluir/descartar ficha extra */
+.tr-btn-excluir-extra {
+  margin-left: auto;
+  align-self: flex-start;
+  color: var(--texto-3);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  transition: color .15s ease, background .15s ease, transform .12s ease;
+  flex-shrink: 0;
+}
+.tr-btn-excluir-extra:hover {
+  color: var(--perigo, #ff453a);
+  background: var(--destrutivo-bg, rgba(255, 69, 58, 0.12));
+}
+.tr-btn-excluir-extra:active {
+  transform: scale(0.92);
+}
+.tr-btn-excluir-extra svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tr-link-destrutivo {
+  color: var(--perigo, #ff453a) !important;
+  font-size: 13.5px;
+  opacity: 0.85;
+}
+.tr-link-destrutivo:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
 
 /* O anel: a unica coisa que se mexe sozinha, e so em resposta ao seu toque. */
 .tr-anel { position: relative; width: 72px; height: 72px; flex: none; }
