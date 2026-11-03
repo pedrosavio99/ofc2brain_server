@@ -581,11 +581,16 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
 .barra-marca:hover { opacity: .85; }
 .barra-marca:active { transform: scale(.98); }
 .barra-marca img {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   display: block;
   -webkit-user-drag: none;
   pointer-events: none;
+  transition: transform .15s ease;
+}
+
+.barra-marca-nome {
+  display: none !important;
 }
 
 .barra-separador-modulo {
@@ -643,12 +648,6 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
   height: 16px;
   color: var(--texto-3);
   opacity: .5;
-}
-
-@media (max-width: 480px) {
-  .barra-marca-nome {
-    display: none;
-  }
 }
 
 /* ===================== Card do Player de Música no Chat Conversa ===================== */
@@ -802,9 +801,9 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
     gap: 20px;
   }
 
-  .barra-marca-nome {
-    display: inline !important;
-    font-size: 15.5px;
+  .barra-marca img {
+    width: 30px;
+    height: 30px;
   }
 
   .barra-modulo-atual {

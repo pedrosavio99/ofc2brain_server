@@ -359,8 +359,14 @@ body.pg-inicio .barra-marca {
   user-select: none;
 }
 body.pg-inicio .barra-marca img {
-  width: 22px; height: 22px; display: block;
+  width: 28px; height: 28px; display: block;
   -webkit-user-drag: none; pointer-events: none;
+  transition: transform .15s ease;
+}
+@media (min-width: 860px) {
+  body.pg-inicio .barra-marca img {
+    width: 30px; height: 30px;
+  }
 }
 
 /* visivel so pra leitor de tela */

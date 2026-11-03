@@ -275,9 +275,9 @@
       marcaLink.href = "/";
       marcaLink.className = "barra-marca";
       marcaLink.title = "Ir para início do Segundo cérebro";
+      marcaLink.setAttribute("aria-label", "Segundo cérebro");
       marcaLink.innerHTML =
-        '<img src="/cerebro-mini.svg" alt="" width="22" height="22" draggable="false" />' +
-        '<span class="barra-marca-nome">Segundo cérebro</span>';
+        '<img src="/cerebro-mini.svg" alt="" width="28" height="28" draggable="false" />';
 
       marcaBloco.appendChild(marcaLink);
 
@@ -299,6 +299,13 @@
         barraInt.replaceChild(marcaBloco, marcaExistente);
       } else {
         barraInt.insertBefore(marcaBloco, barraInt.firstChild);
+      }
+    } else {
+      var nomeExistente = marcaBloco.querySelector(".barra-marca-nome");
+      if (nomeExistente) nomeExistente.remove();
+      var linkMarca = marcaBloco.querySelector(".barra-marca");
+      if (linkMarca && !linkMarca.getAttribute("aria-label")) {
+        linkMarca.setAttribute("aria-label", "Segundo cérebro");
       }
     }
 

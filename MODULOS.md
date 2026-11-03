@@ -28,18 +28,16 @@ Todos os módulos devem respeitar a mesma identidade visual no cabeçalho superi
 
 ```
 +-----------------------------------------------------------------------------------------+
-| [🧠 Segundo cérebro] / [Nome do Módulo]      [Ação 1] [Ação 2] [Ação Opcional] [•••]   |
+| [🧠] / [Nome do Módulo]                      [Ação 1] [Ação 2] [Ação Opcional] [•••]   |
 +-----------------------------------------------------------------------------------------+
-  \_____________________________________/      \_____________________________/   \___/
-     Marca Universal do Ecossistema              Ações Específicas do Módulo    Menu Eco
+  \_____________________/                      \_____________________________/   \___/
+     Marca do Início                             Ações Específicas do Módulo    Menu Eco
 ```
 
 1. **Lado Esquerdo (Marca & Hierarquia do Ecossistema)**:
-   - Logo oficial do cérebro (`/cerebro-mini.svg`).
-   - Link para o início (`/`) com o texto `Segundo cérebro`.
+   - Logo oficial do cérebro (`/cerebro-mini.svg`) como link para o início (`/`), sem texto redundante para economizar espaço em todas as telas.
    - Separador elegante (`/`).
    - Nome do módulo atual (destacado na cor de acento).
-   - *No mobile (telas ≤ 480px)*: o texto "Segundo cérebro" é omitido automaticamente, exibindo apenas `[🧠] / [Nome]`, garantindo espaço para as ações à direita sem quebrar a linha.
 
 2. **Lado Direito (Ações do Módulo + Menu Global)**:
    - **Opções Opcionais**: botões de ação exclusivos daquele módulo (ex: Nova conversa, Filtro, Atualizar, Equipamentos).
@@ -66,9 +64,8 @@ Todos os módulos devem respeitar a mesma identidade visual no cabeçalho superi
 <header class="barra" id="barra">
   <div class="barra-int">
     <div class="barra-marca-bloco">
-      <a class="barra-marca" href="/" title="Ir para início do Segundo cérebro">
-        <img src="/cerebro-mini.svg" alt="" width="22" height="22" draggable="false" />
-        <span class="barra-marca-nome">Segundo cérebro</span>
+      <a class="barra-marca" href="/" title="Ir para início do Segundo cérebro" aria-label="Segundo cérebro">
+        <img src="/cerebro-mini.svg" alt="" width="28" height="28" draggable="false" />
       </a>
       <span class="barra-separador-modulo" aria-hidden="true">/</span>
       <span class="barra-modulo-atual">Nome do Módulo</span>
