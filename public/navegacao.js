@@ -14,6 +14,20 @@
 (function () {
   "use strict";
 
+  // Aplica classe de transição suave se navegou entre módulos
+  try {
+    var rawTransEarly = sessionStorage.getItem("2brain-nav-transicao");
+    if (rawTransEarly) {
+      var tInfoEarly = JSON.parse(rawTransEarly);
+      if (tInfoEarly && Date.now() - tInfoEarly.ts < 2500) {
+        document.documentElement.classList.add("nav-transicao");
+        setTimeout(function () {
+          document.documentElement.classList.remove("nav-transicao");
+        }, 400);
+      }
+    }
+  } catch (e) {}
+
   var MODULOS = [
     {
       id: "inicio",
@@ -156,7 +170,7 @@
     var modulosHtml = MODULOS.map(function (m) {
       var ativo = m.id === moduloAtual;
       return (
-        '<a href="' + m.rota + '" class="item eco-modulo-item ' + (ativo ? "ativo" : "") + '">' +
+        '<a href="' + m.rota + '" class="item eco-modulo-item ' + (ativo ? "ativo" : "") + '" data-modulo="' + m.id + '">' +
         m.icone +
         '<div class="item-txt">' +
           '<strong>' + m.nome + (ativo ? ' <span class="badge-modulo-atual">atual</span>' : "") + "</strong>" +
@@ -231,6 +245,16 @@
       });
     });
 
+    // Event listeners dos módulos na folha com transição direcional
+    corpo.querySelectorAll(".eco-modulo-item").forEach(function (link) {
+      link.addEventListener("click", function (e) {
+        var href = link.getAttribute("href");
+        var modId = link.getAttribute("data-modulo");
+        fecharMenuEcossistema();
+        navegarComTransicao(e, href, modId);
+      });
+    });
+
     cortina.classList.add("visivel", "aberta");
     sheet.classList.add("visivel", "aberto");
   }
@@ -240,6 +264,111 @@
     var sheet = document.getElementById("ecoSheet");
     if (cortina) cortina.classList.remove("visivel", "aberta");
     if (sheet) sheet.classList.remove("visivel", "aberto");
+  }
+
+  /**
+   * Posiciona a pílula/bolinha deslizante sob o módulo ativo.
+   */
+  function posicionarIndicadorSlider(animar) {
+    var nav = document.querySelector(".barra-modulos-desktop");
+    var indicador = document.getElementById("barraIndicadorSlider");
+    if (!nav || !indicador) return;
+
+    var itemAtivo = nav.querySelector(".barra-desktop-item.ativo");
+    if (!itemAtivo) {
+      indicador.style.opacity = "0";
+      return;
+    }
+
+    var navRect = nav.getBoundingClientRect();
+    var targetRect = itemAtivo.getBoundingClientRect();
+    if (targetRect.width === 0) return; // nav invisível (ex: mobile)
+
+    var targetLeft = Math.round(targetRect.left - navRect.left);
+    var targetWidth = Math.round(targetRect.width);
+
+    if (!animar) {
+      indicador.style.transition = "none";
+    } else {
+      indicador.style.transition = "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
+    }
+
+    indicador.style.transform = "translateX(" + targetLeft + "px)";
+    indicador.style.width = targetWidth + "px";
+    indicador.style.opacity = "1";
+
+    if (!animar) {
+      indicador.offsetHeight; // Força reflow
+      requestAnimationFrame(function () {
+        indicador.style.transition = "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1)";
+      });
+    }
+  }
+
+  /**
+   * Navega entre módulos com transição inteligente:
+   * 1. A pílula da navbar desliza imediatamente para o item clicado (feedback visual instantâneo).
+   * 2. O conteúdo da tela atual suaviza de forma sutil sem solavancos nem quebra de scroll.
+   * 3. A nova página abre e seu conteúdo aparece suavemente (fade vertical).
+   */
+  function navegarComTransicao(e, url, idDestino) {
+    if (!url) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+
+    var idAtual = detectarModuloAtual();
+    if (idAtual === idDestino && (window.location.pathname === url || (url === "/" && window.location.pathname === "/index.html"))) {
+      e.preventDefault();
+      return;
+    }
+
+    e.preventDefault();
+
+    // 1. Move a pílula da navbar imediatamente para o item clicado
+    var nav = document.querySelector(".barra-modulos-desktop");
+    var indicador = document.getElementById("barraIndicadorSlider");
+
+    if (nav && indicador) {
+      var itemClicado = nav.querySelector('.barra-desktop-item[data-modulo="' + idDestino + '"]');
+      var itemAtual = nav.querySelector(".barra-desktop-item.ativo");
+
+      if (itemClicado) {
+        var navRect = nav.getBoundingClientRect();
+        var targetRect = itemClicado.getBoundingClientRect();
+        if (targetRect.width > 0) {
+          var targetLeft = Math.round(targetRect.left - navRect.left);
+
+          indicador.style.transition = "transform 0.17s cubic-bezier(0.16, 1, 0.3, 1), width 0.17s cubic-bezier(0.16, 1, 0.3, 1)";
+          indicador.style.transform = "translateX(" + targetLeft + "px)";
+          indicador.style.width = Math.round(targetRect.width) + "px";
+          indicador.style.opacity = "1";
+
+          if (itemAtual) itemAtual.classList.remove("ativo");
+          itemClicado.classList.add("ativo");
+        }
+      }
+    }
+
+    try {
+      if ("scrollRestoration" in history) {
+        history.scrollRestoration = "manual";
+      }
+      sessionStorage.setItem("2brain-nav-transicao", JSON.stringify({
+        from: idAtual,
+        to: idDestino,
+        ts: Date.now()
+      }));
+    } catch (err) {}
+
+    // 2. Suaviza o conteúdo da página atual enquanto a nav desliza
+    var conteudos = document.querySelectorAll("main, .cv-rodape");
+    conteudos.forEach(function (el) {
+      el.classList.add("anim-nav-preparando");
+    });
+
+    // 3. Redireciona em 160ms para a nova página carregar e aparecer
+    setTimeout(function () {
+      window.location.href = url;
+    }, 160);
   }
 
   function padronizarNavbar() {
@@ -303,10 +432,18 @@
     } else {
       var nomeExistente = marcaBloco.querySelector(".barra-marca-nome");
       if (nomeExistente) nomeExistente.remove();
-      var linkMarca = marcaBloco.querySelector(".barra-marca");
-      if (linkMarca && !linkMarca.getAttribute("aria-label")) {
-        linkMarca.setAttribute("aria-label", "Segundo cérebro");
+      var linkMarcaOld = marcaBloco.querySelector(".barra-marca");
+      if (linkMarcaOld && !linkMarcaOld.getAttribute("aria-label")) {
+        linkMarcaOld.setAttribute("aria-label", "Segundo cérebro");
       }
+    }
+
+    // Listener de transição ao clicar na marca (Início)
+    var linkMarca = marcaBloco.querySelector(".barra-marca");
+    if (linkMarca) {
+      linkMarca.addEventListener("click", function (e) {
+        navegarComTransicao(e, "/", "inicio");
+      });
     }
 
     // 2. Título ao rolar (remove duplicados desnecessários na barra)
@@ -330,12 +467,12 @@
       navDesktop = document.createElement("nav");
       navDesktop.className = "barra-modulos-desktop";
       navDesktop.setAttribute("aria-label", "Módulos do ecossistema");
-      navDesktop.innerHTML = MODULOS.map(function (m) {
+      var itemsHtml = MODULOS.map(function (m) {
         var ativo = m.id === moduloAtualId;
         if (m.id === "musica") {
           return (
             '<div class="barra-desktop-musica-slot" id="navMusicaSlot">' +
-              '<a href="' + m.rota + '" class="barra-desktop-item ' + (ativo ? "ativo" : "") + '" title="' + m.descricao + '">' +
+              '<a href="' + m.rota + '" class="barra-desktop-item ' + (ativo ? "ativo" : "") + '" data-modulo="' + m.id + '" title="' + m.descricao + '">' +
                 '<span class="barra-desktop-ico">' + m.icone + '</span>' +
                 '<span class="barra-desktop-nome">' + m.nome + '</span>' +
               '</a>' +
@@ -343,16 +480,56 @@
           );
         }
         return (
-          '<a href="' + m.rota + '" class="barra-desktop-item ' + (ativo ? "ativo" : "") + '" title="' + m.descricao + '">' +
+          '<a href="' + m.rota + '" class="barra-desktop-item ' + (ativo ? "ativo" : "") + '" data-modulo="' + m.id + '" title="' + m.descricao + '">' +
             '<span class="barra-desktop-ico">' + m.icone + '</span>' +
             '<span class="barra-desktop-nome">' + m.nome + '</span>' +
           '</a>'
         );
       }).join("");
+
+      navDesktop.innerHTML =
+        '<div class="barra-indicador-slider" id="barraIndicadorSlider" aria-hidden="true"></div>' +
+        itemsHtml;
+
       barraInt.insertBefore(navDesktop, acoes);
       iniciarMiniplayerUniversal();
     } else {
+      var indExistente = navDesktop.querySelector("#barraIndicadorSlider");
+      if (!indExistente) {
+        indExistente = document.createElement("div");
+        indExistente.className = "barra-indicador-slider";
+        indExistente.id = "barraIndicadorSlider";
+        indExistente.setAttribute("aria-hidden", "true");
+        navDesktop.insertBefore(indExistente, navDesktop.firstChild);
+      }
       iniciarMiniplayerUniversal();
+    }
+
+    // Intercepta cliques nos itens da barra desktop com transição direcional
+    navDesktop.querySelectorAll(".barra-desktop-item").forEach(function (btn) {
+      var modId = btn.getAttribute("data-modulo");
+      var href = btn.getAttribute("href");
+      btn.addEventListener("click", function (e) {
+        navegarComTransicao(e, href, modId);
+      });
+    });
+
+    // Posiciona o slider indicator na aba ativa da tela (já alinhado perfeitamente)
+    posicionarIndicadorSlider(false);
+
+    // Limpa a transição consumida
+    setTimeout(function () {
+      try { sessionStorage.removeItem("2brain-nav-transicao"); } catch (e) {}
+    }, 400);
+
+    // Ajusta posição em resize da tela ou término de download de fontes
+    window.addEventListener("resize", function () {
+      posicionarIndicadorSlider(false);
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () {
+        posicionarIndicadorSlider(false);
+      });
     }
 
     // Garante que o botão de Menu do Ecossistema exista

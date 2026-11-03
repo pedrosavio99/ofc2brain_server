@@ -3,9 +3,14 @@
 
 /* Altura real do viewport no celular: com 100vh a barra do navegador cobre o
    campo de digitar e voce escreve sem ver o que escreve. */
+html {
+  overflow-y: hidden;
+}
 .cv-corpo {
   height: calc(100dvh - 116px);
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
   padding: 16px 16px 8px;
   max-width: 720px;
   margin: 0 auto;

@@ -11,6 +11,13 @@
   <link rel="stylesheet" href="/musica/estilo.css" />
   <script>
     try { document.documentElement.dataset.tema = localStorage.getItem("2brain-tema") || "sistema"; } catch (e) {}
+    try {
+      var _tr = sessionStorage.getItem("2brain-nav-transicao");
+      if (_tr) {
+        var _ti = JSON.parse(_tr);
+        if (_ti && Date.now() - _ti.ts < 2500) document.documentElement.classList.add("nav-transicao");
+      }
+    } catch (e) {}
   </script>
 </head>
 <body>

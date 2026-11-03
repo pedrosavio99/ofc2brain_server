@@ -12,6 +12,16 @@
 <link rel="icon" type="image/svg+xml" href="/cerebro-mini.svg" />
 <!-- o SVG comeca a baixar junto com o HTML, senao a abertura pisca vazia -->
 <link rel="preload" as="image" href="/cerebro.svg" />
+<script>
+  try { document.documentElement.dataset.tema = localStorage.getItem("2brain-tema") || "sistema"; } catch (e) {}
+  try {
+    var _tr = sessionStorage.getItem("2brain-nav-transicao");
+    if (_tr) {
+      var _ti = JSON.parse(_tr);
+      if (_ti && Date.now() - _ti.ts < 2500) document.documentElement.classList.add("nav-transicao");
+    }
+  } catch (e) {}
+</script>
 <style>
   /* A abertura mora no HTML e nao no JS: markup injetado por script pisca
      antes de o script rodar.

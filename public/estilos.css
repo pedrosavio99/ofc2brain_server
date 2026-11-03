@@ -74,23 +74,58 @@ html[data-tema="escuro"] {
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; padding: 0; }
+html {
+  margin: 0;
+  padding: 0;
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
+  overflow-x: clip;
+  scrollbar-width: thin;
+  scrollbar-color: var(--separador) transparent;
+}
 body {
+  margin: 0;
+  padding: 0;
+  overflow-x: clip;
   font-family: var(--fonte); background: var(--fundo); color: var(--texto);
   font-size: 17px; line-height: 1.45; -webkit-font-smoothing: antialiased;
   padding-bottom: env(safe-area-inset-bottom);
   transition: background .25s ease, color .25s ease;
 }
+main {
+  overflow-x: clip;
+}
+
+/* Estilização moderna e sutil das barras de rolagem (evita quebras visuais) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--separador);
+  border-radius: var(--r-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--texto-3);
+}
+
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; touch-action: manipulation; }
 .envolucro { max-width: 720px; margin: 0 auto; padding: 0 16px 72px; }
 
 /* ===================== Barra ===================== */
+@view-transition {
+  navigation: auto;
+}
 .barra {
   position: sticky; top: 0; z-index: 30; background: var(--elevado);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid transparent; padding-top: env(safe-area-inset-top);
   transition: border-color .2s ease;
+  view-transition-name: barra-superior;
 }
 .barra.rolou { border-bottom-color: var(--separador); }
 .barra-int { max-width: 720px; margin: 0 auto; padding: 6px 12px;
@@ -806,11 +841,16 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
     height: 30px;
   }
 
+  /* Na web/desktop, a barra central já exibe claramente qual módulo está ativo.
+     Ocultamos o separador '/' e o nome do módulo para deixar o layout limpo e desafogado.
+     Em mobile (< 860px), permanecem visíveis normalmente. */
+  .barra-separador-modulo,
   .barra-modulo-atual {
-    font-size: 15.5px;
+    display: none !important;
   }
 
   .barra-modulos-desktop {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -819,9 +859,35 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
     border-radius: var(--r-pill);
     border: 1px solid var(--separador);
     margin: 0 auto;
+    isolation: isolate;
+  }
+
+  /* Pílula / Indicador deslizante suave entre os módulos */
+  .barra-indicador-slider {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    border-radius: var(--r-pill);
+    background: var(--superficie);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.09), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+                width 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.2s ease;
+    will-change: transform, width;
+  }
+
+  html[data-tema="escuro"] .barra-indicador-slider {
+    background: var(--superficie);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
 
   .barra-desktop-item {
+    position: relative;
+    z-index: 2;
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -831,20 +897,25 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
     font-weight: 500;
     color: var(--texto-2);
     text-decoration: none;
-    transition: all .16s ease;
+    background: transparent !important;
+    box-shadow: none !important;
+    transition: color 0.16s ease, transform 0.12s ease;
     white-space: nowrap;
+    user-select: none;
+    cursor: pointer;
   }
 
   .barra-desktop-item:hover {
     color: var(--texto);
-    background: var(--superficie);
   }
 
   .barra-desktop-item.ativo {
     color: var(--acento);
     font-weight: 600;
-    background: var(--superficie);
-    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+
+  .barra-desktop-item:active {
+    transform: scale(0.97);
   }
 
   .barra-desktop-ico {
@@ -862,6 +933,8 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
   .barra-desktop-musica-slot {
     display: inline-flex;
     align-items: center;
+    position: relative;
+    z-index: 2;
   }
 
   .nav-miniplayer {
@@ -1116,5 +1189,43 @@ textarea.gm-texto { margin-top: 10px; min-height: 58px; font-size: 15px; }
 
   .sheet-corpo {
     padding: 0 20px 20px;
+  }
+}
+
+/* ============================================================
+   Transições Suaves entre Telas (Nav Primeiro -> Conteúdo Suave)
+   Garante estabilidade do layout, sem scroll horizontal e sem solavancos.
+   ============================================================ */
+@keyframes paginaAparece {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html.nav-transicao main,
+html.nav-transicao .cv-rodape {
+  animation: paginaAparece 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Suavização da tela atual enquanto a pílula da navbar se move no clique */
+.anim-nav-preparando {
+  opacity: 0.65 !important;
+  transition: opacity 0.16s ease !important;
+  pointer-events: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barra-indicador-slider,
+  .anim-nav-preparando,
+  html.nav-transicao main,
+  html.nav-transicao .cv-rodape {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
   }
 }
