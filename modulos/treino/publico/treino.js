@@ -1939,7 +1939,7 @@
         '<div class="tr-sessao-cab"><h2>' + titulo + (extra ? '<span class="tr-selo tr-selo-extra">extra</span>' : "") + "</h2>" +
           '<p class="tr-tempo-vivo" data-tempo>' + textoTempo(feitos.length, minutos) + "</p></div>" +
         (extra ? '<button type="button" class="icone-btn tr-btn-excluir-extra" data-excluir-extra aria-label="Excluir ficha extra" title="Excluir ficha extra">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>' : "") +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>' : "") +
       "</div>" +
       (musculos.length ? '<ul class="tr-musculos" aria-label="Músculos desta ficha">' + musculos.map(function (g) {
         return "<li>" + esc(rotuloGrupo(g)) + "</li>";
@@ -1966,9 +1966,42 @@
           "</li>";
       }).join("") + "</ol>" +
       '<div class="tr-acoes"><button class="btn btn-largo" data-fechar>Fechar treino</button>' +
-      '<button class="tr-link" data-regerar>' + (extra ? "Gerar outra extra" : "Gerar outra ficha") + "</button>" +
-      (extra ? '<button type="button" class="tr-link tr-link-destrutivo" data-excluir-extra>Descartar ficha extra</button>' : "") + "</div>" +
+      '<button class="tr-link" data-regerar>' + (extra ? "Gerar outra extra" : "Gerar outra ficha") + "</button></div>" +
       "</section>";
+  }
+
+  /* Confirmação elegante de exclusão de ficha extra usando a folha do app */
+  function modalExcluirExtra(s) {
+    var itensQtd = (s.ficha || []).length;
+    var feitosQtd = (s.feitos || []).length;
+    var textoItens = feitosQtd > 0
+      ? "Você já marcou " + feitosQtd + " de " + itensQtd + " exercícios nesta ficha extra. Se excluir, esse progresso não será salvo."
+      : "Esta ficha extra será removida do seu treino de hoje e você voltará ao resumo das atividades.";
+
+    abrir("Excluir ficha extra", '' +
+      '<p class="tr-sub" style="margin-top:0">' + esc(textoItens) + '</p>' +
+      '<div style="margin-top:20px;display:flex;flex-direction:column;gap:10px">' +
+        '<button class="btn btn-largo" id="btnConfirmaExcluirExtra">Excluir ficha extra</button>' +
+        '<button class="btn btn-suave btn-largo" id="btnCancelaExcluirExtra">Manter ficha</button>' +
+      '</div>');
+
+    document.getElementById("btnConfirmaExcluirExtra").addEventListener("click", async function () {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = "Excluindo…";
+      try {
+        await pedir("/sessao/" + s.id, { method: "DELETE" });
+        fechar();
+        avisar("Ficha extra excluída.");
+        await carregar();
+      } catch (err) {
+        avisar(err.message);
+        btn.disabled = false;
+        btn.textContent = "Excluir ficha extra";
+      }
+    });
+
+    document.getElementById("btnCancelaExcluirExtra").addEventListener("click", fechar);
   }
 
   /* Liga os cartoes de ficha que estiverem na tela. Cada um sabe de qual
@@ -1991,22 +2024,14 @@
       sec.querySelector("[data-regerar]").addEventListener("click", function () {
         if (extra) modalManual("mais"); else modalRegerar();
       });
-      // Excluir ou descartar ficha extra
-      sec.querySelectorAll("[data-excluir-extra]").forEach(function (btn) {
-        btn.addEventListener("click", async function (e) {
+      // Excluir ficha extra (apenas no topo direito do cartão)
+      var btnExcluir = sec.querySelector("[data-excluir-extra]");
+      if (btnExcluir) {
+        btnExcluir.addEventListener("click", function (e) {
           e.stopPropagation();
-          if (!confirm("Deseja realmente excluir esta ficha extra?")) return;
-          try {
-            btn.disabled = true;
-            await pedir("/sessao/" + s.id, { method: "DELETE" });
-            avisar("Ficha extra excluída.");
-            await carregar();
-          } catch (err) {
-            avisar(err.message);
-            btn.disabled = false;
-          }
+          modalExcluirExtra(s);
         });
-      });
+      }
     });
   }
 

@@ -85,39 +85,30 @@
 .tr-btn-excluir-extra {
   margin-left: auto;
   align-self: flex-start;
-  color: var(--texto-3);
-  width: 36px;
-  height: 36px;
+  color: var(--texto-2);
+  width: 44px;
+  height: 44px;
   border-radius: var(--r-pill);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  background: transparent;
-  border: 0;
-  transition: color .15s ease, background .15s ease, transform .12s ease;
+  background: var(--superficie-2);
+  border: 1px solid var(--separador);
+  transition: color .15s ease, background .15s ease, border-color .15s ease, transform .12s ease;
   flex-shrink: 0;
 }
 .tr-btn-excluir-extra:hover {
-  color: var(--perigo, #ff453a);
-  background: var(--destrutivo-bg, rgba(255, 69, 58, 0.12));
+  color: var(--acento);
+  background: var(--acento-eco);
+  border-color: var(--acento);
 }
 .tr-btn-excluir-extra:active {
   transform: scale(0.92);
 }
 .tr-btn-excluir-extra svg {
-  width: 18px;
-  height: 18px;
-}
-
-.tr-link-destrutivo {
-  color: var(--perigo, #ff453a) !important;
-  font-size: 13.5px;
-  opacity: 0.85;
-}
-.tr-link-destrutivo:hover {
-  opacity: 1;
-  text-decoration: underline;
+  width: 22px;
+  height: 22px;
 }
 
 /* O anel: a unica coisa que se mexe sozinha, e so em resposta ao seu toque. */
