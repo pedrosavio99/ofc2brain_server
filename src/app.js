@@ -19,6 +19,7 @@ import treinoRouter from "../modulos/treino/servidor/index.js";
 import metasRouter from "../modulos/metas/servidor/index.js";
 import refeicaoRouter from "../modulos/refeicao/servidor/index.js";
 import trendradarRouter from "../modulos/trendradar/servidor/index.js";
+import linksRouter from "../modulos/links/servidor/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -112,6 +113,13 @@ app.get("/api", (_req, res) => {
       "POST   /trendradar/api/investigar      { termo, tipoEntidade, frente?, icpPagador? }",
       "POST   /trendradar/api/importar-csv    { nome?, frente?, csv }",
       "POST   /trendradar/api/relatorio       { ids?, frente?, objetivo? }",
+      "--- modulo links (links curtos) ---",
+      "GET    /links/api/health",
+      "GET    /links/api/links",
+      "POST   /links/api/links                { urls: [], titulo? }",
+      "PATCH  /links/api/links/:id            { titulo? | url_curta? }",
+      "POST   /links/api/links/:id/encurtar   { servico: isgd|dagd|tiny, alias? } (gera ou gera de novo)",
+      "DELETE /links/api/links/:id",
     ],
   });
 });
@@ -128,6 +136,7 @@ app.use("/treino", treinoRouter);
 app.use("/metas", metasRouter);
 app.use("/refeicao", refeicaoRouter);
 app.use("/trendradar", trendradarRouter);
+app.use("/links", linksRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

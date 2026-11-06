@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meus links curtos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f5f1;--card:#fff;--ink:#13221b;--mut:#566860;--line:#d3ddd6;--acc:#0a7b5c;--accink:#fff;--field:#f8faf8;--bad:#b3261e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1612;--card:#16211b;--ink:#e8f1ec;--mut:#9bb0a5;--line:#2a3b32;--acc:#3fcf9f;--accink:#06231a;--field:#0f1913;--bad:#ff8a80}}
+:root[data-theme="dark"]{--bg:#0e1612;--card:#16211b;--ink:#e8f1ec;--mut:#9bb0a5;--line:#2a3b32;--acc:#3fcf9f;--accink:#06231a;--field:#0f1913;--bad:#ff8a80}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:680px;margin:0 auto;padding:28px 16px 56px}
+h1{font-size:2rem;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+h2{font-size:1.2rem;font-weight:800;margin:0}
+.sub{color:var(--mut);margin:0 0 22px;max-width:52ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px;margin-bottom:30px}
+label{display:grid;gap:5px;font-weight:600;font-size:.92rem}
+input,textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:9px;padding:10px 12px;width:100%;min-width:0}
+textarea{resize:vertical}
+input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn,button{font:600 .95rem Figtree,system-ui,sans-serif;border-radius:9px;padding:10px 14px;border:1px solid var(--acc);background:var(--acc);color:var(--accink);cursor:pointer;text-decoration:none;display:inline-block}
+.ghost{background:transparent!important;color:var(--ink)!important;border-color:var(--line)!important}
+.msg{margin:0;min-height:1.3em;font-size:.9rem;color:var(--mut)}
+.msg.err{color:var(--bad)}
+.head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.head input{max-width:200px}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:8px}
+.t{font-weight:600}
+.s{font-size:1.45rem;font-weight:800;letter-spacing:-.01em;color:var(--acc);overflow-wrap:anywhere}
+.l{color:var(--mut);font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shorten{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.hint{font-size:.82rem;color:var(--mut);min-height:1.2em}
+.svcs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.9rem}
+.add{display:flex;gap:8px}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.sm,.acts button,.add button{padding:7px 11px;font-size:.88rem}
+.acts button.danger{color:var(--bad)!important}
+.empty{color:var(--mut);border:1px dashed var(--line);border-radius:14px;padding:22px;text-align:center}
+#pres{position:fixed;inset:0;background:var(--bg);display:grid;place-content:center;gap:18px;padding:24px;text-align:center;cursor:pointer;z-index:20}
+#pres[hidden]{display:none}
+#pres .big{font-size:clamp(2rem,9vw,6.5rem);font-weight:800;letter-spacing:-.02em;overflow-wrap:anywhere;color:var(--acc);line-height:1.1}
+#pres .cap{color:var(--mut)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
+#toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Meus links curtos</h1>
+  <p class="sub">Adicione links, escolha o encurtador e o link curto é salvo automaticamente.</p>
+
+  <section class="card" aria-label="Adicionar links">
+    <label>Links longos (um por linha)
+      <textarea id="long" rows="3" placeholder="Cole um ou vários links, um por linha"></textarea>
+    </label>
+    <label>Nome (usado só quando for um link)
+      <input id="title" autocomplete="off" placeholder="Ex.: TCC para o professor">
+    </label>
+    <div class="actions"><button id="save" type="button">Adicionar à lista</button></div>
+    <p id="msg" class="msg" role="status"></p>
+  </section>
+
+  <section aria-label="Links salvos">
+    <div class="head">
+      <h2>Salvos</h2>
+      <input id="q" type="search" placeholder="Buscar" aria-label="Buscar links">
+    </div>
+    <ul id="list"></ul>
+  </section>
+</main>
+
+<div id="pres" hidden role="dialog" aria-label="Modo apresentação">
+  <div class="cap" id="pcap"></div>
+  <div class="big" id="pbig"></div>
+  <div class="cap">Toque ou pressione Esc para fechar</div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY='links-curtos-v1', mem=[];
+  function load(){try{var r=localStorage.getItem(KEY);return r?JSON.parse(r):[]}catch(e){return mem}}
+  function persist(){mem=links;try{localStorage.setItem(KEY,JSON.stringify(links))}catch(e){}}
+  var links=load();
+  var $=function(id){return document.getElementById(id)};
+  var longI=$('long'),titleI=$('title'),msg=$('msg'),list=$('list'),q=$('q');
+  var SVCS=[['isgd','is.gd'],['dagd','da.gd'],['tiny','TinyURL']];
+
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function norm(u){
+    u=(u||'').trim(); if(!u) return null;
+    if(!/^[a-z][a-z0-9+.-]*:\/\//i.test(u)) u='https://'+u;
+    try{new URL(u);return u}catch(e){return null}
+  }
+  function host(u){try{return new URL(u).hostname}catch(e){return u}}
+  function toast(t){var el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(function(){el.classList.remove('on')},1800)}
+  function say(t,err){msg.textContent=t||'';msg.className='msg'+(err?' err':'')}
+  function copy(t){
+    function fb(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');toast('Link copiado')}catch(e){toast('Não foi possível copiar')}a.remove()}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast('Link copiado')},fb)}else fb();
+  }
+  function svcUrl(s,long,a){
+    var u=encodeURIComponent(long);
+    if(s==='isgd') return 'https://is.gd/create.php?format=simple&url='+u+(a.length>=5?'&shorturl='+a:'');
+    if(s==='dagd') return 'https://da.gd/s?url='+u+(a.length>=3?'&shorturl='+a:'');
+    return 'https://tinyurl.com/api-create.php?url='+u;
+  }
+  function hint(a){
+    if(!a) return 'Sem nome personalizado, o endereço sai aleatório.';
+    if(a.length<5) return 'Use 5 letras ou mais. Com menos, o is.gd gera um endereço aleatório.';
+    return 'O nome vale para is.gd e da.gd. O TinyURL ignora o nome. Se já estiver em uso, o site avisa.';
+  }
+
+  function jsonp(url){return new Promise(function(res,rej){
+    var n='cb'+Date.now()+Math.floor(Math.random()*1e4),sc=document.createElement('script');
+    function cl(){clearTimeout(t);delete window[n];sc.remove()}
+    var t=setTimeout(function(){cl();rej(new Error('net'))},10000);
+    window[n]=function(d){cl();res(d)};
+    sc.onerror=function(){cl();rej(new Error('net'))};
+    sc.src=url+'&callback='+n;document.head.appendChild(sc);
+  })}
+  function run(s,long,a){
+    var u=encodeURIComponent(long);
+    if(s==='isgd') return jsonp('https://is.gd/create.php?format=json&url='+u+(a.length>=5?'&shorturl='+a:'')).then(function(d){if(d.shorturl)return d.shorturl;throw new Error(d.errormessage||'Erro no is.gd')});
+    return fetch(svcUrl(s,long,a)).then(function(r){return r.text()}).then(function(t){t=t.trim();if(/^https?:\/\/\S+$/.test(t))return t;throw new Error(t.slice(0,120)||'Resposta inválida')});
+  }
+  function auto(b,x){
+    var id=x.id,svc=b.getAttribute('data-svc');
+    var al=list.querySelector('input[data-al="'+id+'"]'),a=al?al.value:'';
+    var st=list.querySelector('[data-st="'+id+'"]');
+    st.textContent='Encurtando…';
+    var btns=list.querySelectorAll('button[data-act="auto"][data-id="'+id+'"]');
+    btns.forEach(function(k){k.disabled=true});
+    run(svc,x.long,a).then(function(r){x.short=r;persist();render();toast('Link curto salvo')},function(err){
+      btns.forEach(function(k){k.disabled=false});
+      var blocked=err.message==='net'||err.name==='TypeError';
+      st.innerHTML=esc(blocked?'O navegador bloqueou a chamada.':'Erro: '+err.message)+' <a href="'+esc(svcUrl(svc,x.long,a))+'" target="_blank" rel="noopener">Abrir no site</a> e cole o resultado abaixo.';
+    });
+  }
+
+  $('save').addEventListener('click',function(){
+    var lines=longI.value.split(/\r?\n/).map(function(s){return s.trim()}).filter(Boolean);
+    if(!lines.length){say('Cole pelo menos um link.',true);longI.focus();return}
+    var ok=[],bad=0;
+    lines.forEach(function(s){var n=norm(s);n?ok.push(n):bad++});
+    if(!ok.length){say('Nenhum link válido encontrado.',true);return}
+    var t=ok.length===1?titleI.value.trim():'';
+    ok.slice().reverse().forEach(function(l,i){links.unshift({id:Date.now().toString(36)+i,title:t,long:l,short:'',at:Date.now()})});
+    persist();longI.value=titleI.value='';
+    say(ok.length+(ok.length>1?' links adicionados.':' link adicionado.')+(bad?' '+bad+' linha(s) inválida(s) ignorada(s).':''),bad>0);
+    render();
+  });
+
+  function render(){
+    var f=q.value.trim().toLowerCase();
+    var rows=links.filter(function(x){return !f||(x.title+' '+x.long+' '+x.short).toLowerCase().indexOf(f)>-1});
+    if(!rows.length){list.innerHTML='<li class="empty">'+(links.length?'Nenhum link encontrado para essa busca.':'Nenhum link salvo ainda. Cole um ou vários links acima.')+'</li>';return}
+    list.innerHTML=rows.map(function(x){
+      var id=x.id,title=esc(x.title||host(x.long)),main,acts;
+      if(x.short){
+        main='<div class="s">'+esc(x.short)+'</div>';
+        acts='<button data-act="cs" data-id="'+id+'" type="button">Copiar curto</button><button data-act="pres" data-id="'+id+'" class="ghost" type="button">Apresentar</button><button data-act="reset" data-id="'+id+'" class="ghost" type="button">Trocar link curto</button>';
+      }else{
+        main='<div class="shorten"><label>Final do endereço (opcional)<input data-al="'+id+'" autocomplete="off" placeholder="Ex.: tccpedro"></label><div class="hint" data-hint="'+id+'">'+hint('')+'</div>'+
+          '<div class="svcs">Encurtar com: '+SVCS.map(function(s){return '<button class="sm" data-act="auto" data-svc="'+s[0]+'" data-id="'+id+'" type="button">'+s[1]+'</button>'}).join('')+'</div><div class="hint" data-st="'+id+'"></div>'+
+          '<div class="add"><input data-in="'+id+'" autocomplete="off" placeholder="Cole aqui o link curto gerado" aria-label="Link curto"><button data-act="addshort" data-id="'+id+'" type="button">Salvar</button></div></div>';
+        acts='';
+      }
+      acts+='<button data-act="cl" data-id="'+id+'" class="ghost" type="button">Copiar longo</button><button data-act="del" data-id="'+id+'" class="danger ghost" type="button">Excluir</button>';
+      return '<li class="item"><div class="t">'+title+'</div>'+main+'<div class="l" title="'+esc(x.long)+'">'+esc(x.long)+'</div><div class="acts">'+acts+'</div></li>';
+    }).join('');
+  }
+  q.addEventListener('input',render);
+
+  list.addEventListener('input',function(e){
+    var el=e.target,id=el.getAttribute('data-al'); if(!id) return;
+    var a=el.value.replace(/[^A-Za-z0-9_]/g,''); if(el.value!==a) el.value=a;
+    list.querySelector('[data-hint="'+id+'"]').textContent=hint(a);
+  });
+
+  list.addEventListener('click',function(e){
+    var b=e.target.closest('button[data-act]'); if(!b) return;
+    var id=b.getAttribute('data-id'),act=b.getAttribute('data-act');
+    var i=links.findIndex(function(x){return x.id===id}); if(i<0) return;
+    var x=links[i];
+    if(act==='auto') auto(b,x);
+    else if(act==='cs') copy(x.short);
+    else if(act==='cl') copy(x.long);
+    else if(act==='pres'){$('pcap').textContent=x.title||host(x.long);$('pbig').textContent=x.short.replace(/^https?:\/\//,'');$('pres').hidden=false}
+    else if(act==='reset'){x.short='';persist();render()}
+    else if(act==='addshort'){
+      var inp=list.querySelector('input[data-in="'+id+'"]'),s=norm(inp.value);
+      if(!s){toast('Link curto inválido');return}
+      x.short=s;persist();render();toast('Link curto salvo');
+    }else if(act==='del'){
+      if(b.getAttribute('data-armed')!=='1'){b.setAttribute('data-armed','1');b.textContent='Confirmar exclusão';setTimeout(function(){if(b.isConnected){b.removeAttribute('data-armed');b.textContent='Excluir'}},3000);return}
+      links.splice(i,1);persist();render();toast('Link excluído');
+    }
+  });
+
+  $('pres').addEventListener('click',function(){this.hidden=true});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')$('pres').hidden=true});
+  render();
+})();
+</script>
+</body>
+</html>

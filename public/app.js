@@ -1583,6 +1583,11 @@ function abrirMenu() {
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 0113.7-5.7L20 8M20 12a8 8 0 01-13.7 5.7L4 16"/><path d="M20 4v4h-4M4 20v-4h4"/></svg>' +
       '<div class="item-txt"><strong>Reconstruir ligações</strong><span>Recalcula as conexões entre todas as notas</span></div></button>' +
     "</div>" +
+    '<p class="grupo-titulo">Ferramentas</p><div class="grupo">' +
+      '<button class="item" id="mLinks">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4.5 4.5 0 006.4 0l3-3a4.5 4.5 0 00-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 00-6.4 0l-3 3a4.5 4.5 0 006.4 6.4l1-1"/></svg>' +
+      '<div class="item-txt"><strong>Links curtos</strong><span>Guarde links e gere versões fáceis de digitar</span></div></button>' +
+    "</div>" +
     '<p class="grupo-titulo">Arquivo</p><div class="grupo">' +
       '<button class="item" id="mBaixar">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v11M8 11l4 4 4-4M5 20h14"/></svg>' +
@@ -1617,6 +1622,8 @@ function abrirMenu() {
   });
   $("#mSugestoes").addEventListener("click", function () { fecharSheet(); telaSugestoes(false); });
   $("#mRelink").addEventListener("click", relink);
+  // definido em /links/links.js, carregado depois deste arquivo
+  $("#mLinks").addEventListener("click", function () { window.SegundoCerebroLinks.abrir(); });
   $("#mBaixar").addEventListener("click", baixarBackup);
   $("#mRestaurar").addEventListener("click", telaRestaurar);
   $("#mArmazenamento").addEventListener("click", telaArmazenamento);
