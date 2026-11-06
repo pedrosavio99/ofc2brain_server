@@ -1184,7 +1184,11 @@ function abrirDetalhe(id) {
 
   var blocos =
     (n.resumo ? '<div class="detalhe-bloco"><p class="detalhe-rot">Resumo</p><p class="detalhe-txt">' + esc(n.resumo) + "</p></div>" : "") +
-    '<div class="detalhe-bloco"><p class="detalhe-rot">Texto original</p><p class="detalhe-txt">' + esc(n.texto_original) + "</p></div>" +
+    '<div class="detalhe-bloco"><div class="detalhe-cab"><p class="detalhe-rot">Texto original</p>' +
+      '<button type="button" class="btn-copiar" id="btnCopiar" aria-label="Copiar nota">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg>' +
+      '<span>Copiar nota</span></button></div>' +
+      '<p class="detalhe-txt">' + esc(n.texto_original) + "</p></div>" +
     (n.area ? '<div class="detalhe-bloco"><p class="detalhe-rot">Área</p><p class="detalhe-txt">' + esc(n.area) + "</p></div>" : "") +
     (n.data_evento ? '<div class="detalhe-bloco"><p class="detalhe-rot">Data</p><p class="detalhe-txt">' + esc(dataEvento(n.data_evento)) + "</p></div>" : "") +
     ((n.tags || []).length ? '<div class="detalhe-bloco"><p class="detalhe-rot">Tags</p><div class="tags">' +
@@ -1213,6 +1217,31 @@ function abrirDetalhe(id) {
       '<div class="item-txt"><strong>Apagar nota</strong></div></button></div>');
 
   $("#btnApagar").addEventListener("click", function () { apagar(n.id); });
+  $("#btnCopiar").addEventListener("click", function () { copiarTexto(n.texto_original || ""); });
+}
+
+/* Copia para a area de transferencia; cai no execCommand quando
+   navigator.clipboard nao existe (http, webviews antigos). */
+function copiarTexto(txt) {
+  function ok() { avisar("Nota copiada."); }
+  function fallback() {
+    var ta = document.createElement("textarea");
+    ta.value = txt;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, txt.length);
+    var feito = false;
+    try { feito = document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+    if (feito) ok(); else avisar("Não deu pra copiar.");
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(ok, fallback);
+  } else {
+    fallback();
+  }
 }
 
 function apagar(id) {

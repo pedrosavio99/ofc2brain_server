@@ -386,6 +386,13 @@ html[data-tema="escuro"] .barra-prog { background: #2C2C2E; }
 .detalhe-rot { font-size: 12px; color: var(--texto-2); text-transform: uppercase; letter-spacing: .04em;
   font-weight: 600; margin: 0 0 5px; }
 .detalhe-txt { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.detalhe-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 5px; }
+.detalhe-cab .detalhe-rot { margin: 0; }
+.btn-copiar { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px;
+  border: 0; border-radius: var(--r-pill); background: var(--superficie-2); color: var(--acento);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; flex: none; }
+.btn-copiar svg { width: 14px; height: 14px; }
+.btn-copiar:active { opacity: .6; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { font-size: 13px; background: var(--superficie-2); color: var(--texto-2); padding: 4px 10px; border-radius: var(--r-pill); }
 
