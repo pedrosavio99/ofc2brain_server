@@ -1,0 +1,294 @@
+/* Treino - Alimentacao (o antigo modulo Refeicao dentro do modal).
+   Tokens, folha (.sheet), botoes e @keyframes pulsar vem do /estilos.css do
+   Segundo Cerebro. TUDO aqui e escopado em .rf-modal: o treino.css e o
+   estilos.css tem .item, .nota, .selo, .vazio... com outro significado, e sem
+   o escopo eles vazariam pra dentro (e pra fora). */
+
+/* Cores dos macros, que so existem aqui. Mesmo mecanismo de tema do app. */
+.rf-modal { --rf-proteina: #5856D6; --rf-carbo: #FF9500; --rf-gordura: #FF2D55; }
+html[data-tema="escuro"] .rf-modal { --rf-proteina: #5E5CE6; --rf-carbo: #FF9F0A; --rf-gordura: #FF375F; }
+@media (prefers-color-scheme: dark) {
+  html[data-tema="sistema"] .rf-modal { --rf-proteina: #5E5CE6; --rf-carbo: #FF9F0A; --rf-gordura: #FF375F; }
+}
+
+/* ---------- a folha larga ----------
+   A .sheet do app tem 480px no desktop, o que espremia o resumo, a meta e a
+   lista numa coluna so. Com a alimentacao inteira dentro, ela abre mais larga e
+   divide em duas colunas. No celular nada muda: continua a folha de baixo. */
+@media (min-width: 640px) {
+  .sheet.tr-folha-larga { width: min(1040px, calc(100vw - 48px)); max-height: 88vh; }
+}
+
+.rf-modal { display: grid; gap: 14px; align-content: start; position: relative; padding-bottom: 6px; }
+.rf-modal * { min-width: 0; }
+.rf-sub { margin: -2px 2px 0; font-size: 14px; color: var(--texto-2); }
+
+.rf-colunas { display: grid; gap: 14px; align-items: start; }
+.rf-col { display: grid; gap: 14px; align-content: start; }
+@media (min-width: 900px) {
+  .rf-colunas { grid-template-columns: minmax(340px, 440px) minmax(0, 1fr); gap: 22px; }
+  .rf-modal .rf-secao-dia { position: static; }
+}
+
+/* ---------- pecas basicas ---------- */
+
+.rf-modal .rf-card { background: var(--superficie); border-radius: var(--r-grande); padding: 16px; box-shadow: var(--sombra); }
+.rf-modal .rf-card[hidden] { display: none; }
+
+.rf-modal .rf-rotulo { display: block; font-weight: 600; margin-bottom: 8px; font-size: 15.5px; }
+
+.rf-modal .rf-nota { margin: 0; padding: 0; background: none; font-size: 13px; color: var(--texto-2); }
+
+.rf-modal .rf-titulo-secao { margin: 4px 4px 8px; font-size: 13px; font-weight: 600; color: var(--texto-2);
+  text-transform: uppercase; letter-spacing: .04em; }
+
+.rf-modal textarea, .rf-modal input[type="text"], .rf-modal input[type="number"],
+.rf-modal input[type="date"], .rf-modal select {
+  width: 100%; border: 1.5px solid var(--separador); border-radius: 12px;
+  background: var(--superficie-2); padding: 10px 12px; outline: none; font-size: 15px;
+}
+.rf-modal textarea { resize: vertical; min-height: 84px; }
+.rf-modal textarea:focus, .rf-modal input:focus, .rf-modal select:focus {
+  border-color: var(--acento); box-shadow: 0 0 0 3px var(--acento-eco);
+}
+
+.rf-modal .linha-acoes { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.rf-modal .contador { font-size: 12px; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.rf-modal .rf-acoes-dupla { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+
+.rf-modal .rf-botao { border: 0; border-radius: var(--r-pill); padding: 9px 16px; cursor: pointer;
+  background: var(--superficie-2); font-weight: 600; font-size: 15px; }
+.rf-modal .rf-botao.primario { background: var(--acento); color: #fff; }
+.rf-modal .rf-botao.perigo-cheio { background: var(--perigo); }
+.rf-modal .rf-botao:disabled { opacity: .5; cursor: default; }
+.rf-modal .rf-botao:not(:disabled):active { transform: scale(.97); }
+.rf-modal .rf-botao-link { border: 0; background: none; padding: 0; cursor: pointer; color: var(--acento); font-size: 13px; font-weight: 500; }
+.rf-modal .rf-botao-link.perigo { color: var(--perigo); }
+
+.rf-modal .rf-aviso { border-radius: var(--r-card); padding: 10px 14px; font-size: 13px;
+  background: color-mix(in srgb, var(--alerta) 14%, var(--superficie));
+  border: 1px solid color-mix(in srgb, var(--alerta) 40%, transparent); }
+.rf-modal .rf-aviso[hidden] { display: none; }
+
+.rf-modal .rf-vazio { text-align: center; color: var(--texto-2); padding: 28px 14px; font-size: 15px; }
+
+.rf-modal .girando { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px;
+  border: 2px solid currentColor; border-right-color: transparent; animation: gira .8s linear infinite; margin-right: 6px; }
+@keyframes gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .rf-modal .girando { animation-duration: 2s; } }
+
+/* ---------- resumo + ciclo de 14 dias ---------- */
+
+.rf-modal .resumo { display: grid; gap: 12px; }
+.rf-modal .resumo-kcal { display: flex; align-items: baseline; gap: 6px; }
+.rf-modal .resumo-kcal strong { font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.rf-modal .resumo-kcal span { color: var(--texto-2); }
+
+.rf-modal .macros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.rf-modal .macro { display: grid; gap: 4px; }
+.rf-modal .macro-topo { display: flex; justify-content: space-between; font-size: 12px; color: var(--texto-2); }
+.rf-modal .macro-topo b { color: var(--texto); font-variant-numeric: tabular-nums; }
+.rf-modal .macro-barra { height: 5px; border-radius: 3px; background: var(--superficie-2); overflow: hidden; }
+.rf-modal .macro-barra i { display: block; height: 100%; border-radius: 3px; }
+
+/* A faixa do ciclo: uma barra por dia, como a tr-faixa do treino. */
+.rf-modal .semana { display: flex; gap: 4px; align-items: flex-end; height: 68px; }
+.rf-modal .semana button { flex: 1; border: 0; background: none; padding: 0; cursor: pointer; height: 100%;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; }
+.rf-modal .semana i { width: 100%; max-width: 22px; border-radius: 4px 4px 2px 2px; background: var(--acento-eco); min-height: 3px; }
+.rf-modal .semana button.atual i { background: var(--acento); }
+.rf-modal .semana span { font-size: 9px; color: var(--texto-3); max-width: 100%; overflow: hidden; }
+.rf-modal .semana button.atual span { color: var(--texto); font-weight: 600; }
+.rf-modal .semana button:active i { opacity: .7; }
+
+.rf-modal .resumo-media { margin: 0; font-size: 12.5px; color: var(--texto-2); }
+
+/* ---------- meta do dia ---------- */
+
+/* quanto do teto ja foi. Passou do teto, fica ambar: nao e erro, e informacao */
+.rf-modal .meta-barra { height: 8px; border-radius: 5px; background: var(--superficie-2); overflow: hidden; }
+.rf-modal .meta-barra[hidden] { display: none; }
+.rf-modal .meta-barra i { display: block; height: 100%; border-radius: 5px; background: var(--acento); transition: width .3s ease; }
+.rf-modal .meta-barra.estourou i { background: var(--alerta); }
+
+.rf-modal .meta { display: grid; gap: 10px; }
+.rf-modal .meta-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rf-modal .meta-topo .rf-rotulo { margin: 0; }
+.rf-modal .meta-detalhe { margin: 0; font-size: 12.5px; color: var(--texto-2); line-height: 1.45; }
+.rf-modal .meta-detalhe b { color: var(--texto); font-variant-numeric: tabular-nums; }
+.rf-modal .meta-falta { color: var(--alerta); }
+
+/* ---------- tamanho do prato (P M G) e objetivo ---------- */
+
+.rf-modal .rf-tamanhos { display: inline-flex; padding: 2px; gap: 2px; border-radius: 9px; background: var(--superficie-2); flex: none; }
+.rf-modal .rf-tamanhos button { border: 0; background: none; cursor: pointer; min-width: 30px; padding: 4px 8px;
+  border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--texto-2); }
+.rf-modal .rf-tamanhos button.ativo { background: var(--superficie); color: var(--texto); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+/* o seletor de objetivo nao cabe numa linha no celular: rola DENTRO dele */
+.rf-modal .meta .rf-tamanhos { flex: 1 1 100%; display: flex; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.rf-modal .meta .rf-tamanhos::-webkit-scrollbar { display: none; }
+.rf-modal .meta .rf-tamanhos button { white-space: nowrap; flex: 0 0 auto; }
+
+/* ---------- escrever ---------- */
+
+.rf-modal .rf-exemplos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.rf-modal .rf-exemplos > span { font-size: 12px; color: var(--texto-2); margin-right: 2px; }
+.rf-modal .rf-chip { border: 0; cursor: pointer; border-radius: var(--r-pill); padding: 5px 12px; font-size: 12.5px;
+  font-weight: 500; background: var(--superficie-2); color: var(--texto-2); }
+.rf-modal .rf-chip:hover { background: var(--acento-eco); color: var(--acento); }
+.rf-modal .rf-chip:active { transform: scale(.96); }
+
+/* ---------- rascunho ---------- */
+
+.rf-modal .rascunho { display: grid; gap: 10px; }
+.rf-modal .rascunho-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0 4px; }
+.rf-modal .rascunho-topo h2 { margin: 0; font-size: 17px; }
+
+.rf-modal .bloco { display: grid; gap: 10px; }
+.rf-modal .bloco-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.rf-modal .bloco-topo select { width: auto; flex: 1; font-weight: 600; }
+.rf-modal .bloco-topo .kcal { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rf-modal .bloco-topo h3 { flex: 1; margin: 0; font-size: 15px; }
+.rf-modal .bloco-acoes { display: flex; gap: 14px; flex-wrap: wrap; }
+.rf-modal .bloco-erro { color: var(--perigo); font-size: 13px; margin: 0; }
+/* origem da medicao: menos grave que erro, mas precisa ser lido */
+.rf-modal .bloco-aviso { margin: 0; font-size: 12.5px; color: var(--alerta);
+  background: color-mix(in srgb, var(--alerta) 12%, transparent); border-radius: 10px; padding: 8px 10px; }
+
+/* O .item do app e o item do menu; aqui e a linha de alimento. O escopo
+   .itens desfaz o que vem de la (padding, hover, largura). */
+.rf-modal .itens { display: grid; gap: 0; border-top: 1px solid var(--separador); }
+.rf-modal .itens .item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 0;
+  width: auto; min-height: 0; border-bottom: 1px solid var(--separador); background: none; }
+.rf-modal .itens .item:hover { background: none; }
+.rf-modal .itens .item:last-child { border-bottom: 0; }
+.rf-modal .item-nome input { background: none; border-color: transparent; padding: 4px 6px; margin-left: -6px; font-weight: 600; }
+.rf-modal .item-nome input:focus { background: var(--superficie-2); }
+.rf-modal .item-kcal { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; align-self: center; }
+.rf-modal .item-linha { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--texto-2); }
+.rf-modal .item-linha input[type="number"] { width: 84px; max-width: 100%; padding: 6px 8px; font-variant-numeric: tabular-nums; }
+.rf-modal .item-obs { grid-column: 1 / -1; font-size: 12px; color: var(--texto-2); }
+
+.rf-modal .selo { font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; padding: 2px 7px;
+  border-radius: var(--r-pill); background: var(--superficie-2); color: var(--texto-2); }
+.rf-modal .selo.conferir { background: color-mix(in srgb, var(--alerta) 18%, transparent); color: var(--alerta); }
+.rf-modal .selo.texto { background: var(--acento-eco); color: var(--acento); }
+.rf-modal .remover { border: 0; background: none; color: var(--texto-3); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 4px; margin-left: auto; }
+.rf-modal .remover:hover { color: var(--perigo); }
+
+.rf-modal .rodape-rascunho { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rf-modal .rodape-rascunho label { font-size: 13px; color: var(--texto-2); display: flex; align-items: center; gap: 8px; }
+.rf-modal .rodape-rascunho input[type="date"] { width: auto; }
+.rf-modal .rodape-rascunho .espaco { flex: 1; }
+
+/* ---------- salvas ---------- */
+
+.rf-modal .dia-cabeca { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.rf-modal .dia-cabeca [hidden] { display: none; }
+
+/* os cartoes do dia sao irmaos: o gap tem que vir daqui */
+.rf-modal #rf-listaDia { display: grid; gap: 12px; }
+.rf-modal #rf-listaDia .salva { padding: 14px 16px; display: grid; gap: 8px; }
+.rf-modal .salva-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rf-modal .salva-ident { display: grid; gap: 2px; }
+.rf-modal .salva-ident h3 { margin: 0; font-size: 15.5px; font-weight: 600; overflow-wrap: anywhere; }
+.rf-modal .salva-macros { margin: 0; font-size: 12px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.rf-modal .salva-kcal { font-size: 22px; font-weight: 700; line-height: 1; white-space: nowrap;
+  font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 4px; }
+.rf-modal .salva-kcal small { font-size: 11px; font-weight: 500; color: var(--texto-2); }
+
+/* itens fechados por padrao: o dia inteiro cabe na tela sem rolar */
+.rf-modal .salva-itens > summary { cursor: pointer; list-style: none; font-size: 12.5px; color: var(--texto-2);
+  padding: 4px 0; display: flex; gap: 6px; align-items: baseline; flex-wrap: nowrap; }
+.rf-modal .salva-itens > summary::-webkit-details-marker { display: none; }
+.rf-modal .salva-itens > summary::before { content: "›"; display: inline-block; color: var(--acento);
+  font-size: 15px; line-height: 1; transition: transform .15s ease; }
+.rf-modal .salva-itens[open] > summary::before { transform: rotate(90deg); }
+.rf-modal .salva-resumo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rf-modal #rf-listaDia .itens { margin-top: 4px; }
+.rf-modal #rf-listaDia .itens .item { gap: 2px 10px; padding: 8px 0; }
+.rf-modal .item-nome-txt { font-size: 14px; overflow-wrap: anywhere; }
+.rf-modal #rf-listaDia .item-kcal { font-size: 14px; }
+.rf-modal .item-det { grid-column: 1 / -1; font-size: 11.5px; color: var(--texto-3); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.rf-modal .salva-acoes { display: flex; gap: 16px; flex-wrap: wrap; }
+.rf-modal .salva-texto { font-size: 13px; color: var(--texto-2); margin: 0; }
+
+@media (min-width: 900px) {
+  .rf-modal #rf-listaDia .rf-card.salva { border: 1px solid transparent; transition: border-color .15s ease; }
+  .rf-modal #rf-listaDia .rf-card.salva:hover { border-color: var(--acento); }
+}
+
+/* ---------- esqueleto ----------
+   Mesma pulsacao do .esqueleto do app; aqui sao pecas soltas, porque o
+   esqueleto entra DENTRO dos cartoes que ja existem. */
+
+.rf-modal .rf-esq-txt, .rf-modal .rf-esq-barra, .rf-modal .rf-esq-kcal {
+  display: block; border-radius: 6px; background: var(--separador); animation: pulsar 1.4s ease-in-out infinite;
+}
+.rf-modal .rf-esq-kcal { width: 92px; height: 30px; }
+.rf-modal .rf-esq-txt { width: 100%; height: 11px; }
+.rf-modal .rf-esq-txt.curto { width: 42%; }
+.rf-modal .rf-esq-txt.medio { width: 60%; height: 14px; }
+.rf-modal .rf-esq-txt.longo { width: 78%; }
+.rf-modal .rf-esq-txt.kcal { width: 62px; height: 20px; }
+.rf-modal .semana .rf-esq-txt.curto { width: 8px; height: 8px; border-radius: 3px; }
+.rf-modal .rf-esq-barra { border-radius: 4px 4px 2px 2px; }
+.rf-modal .rf-esq-card { gap: 10px; }
+.rf-modal .rf-esq-card .salva-ident { gap: 6px; flex: 1; }
+.rf-modal .rf-esq-card .salva-topo { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.rf-modal .rf-esq-item { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--separador); }
+.rf-modal .rf-esq-item:last-child { border-bottom: 0; }
+.rf-modal .rf-esq-legenda { text-align: center; font-size: 13px; color: var(--texto-2); margin: 2px 0 10px; }
+
+/* ---------- resultado do "Registrar direto" (feedback da IA) ---------- */
+
+.rf-modal .rf-feito { display: grid; gap: 12px; border: 1.5px solid color-mix(in srgb, var(--sucesso) 45%, transparent); }
+.rf-modal .rf-feito-topo { display: flex; align-items: center; gap: 12px; }
+.rf-modal .rf-feito-topo > div { flex: 1; }
+.rf-modal .rf-feito-topo h3 { margin: 0; font-size: 16px; }
+.rf-modal .rf-feito-topo p { margin: 0; font-size: 13px; color: var(--texto-2); }
+.rf-modal .rf-feito-ico { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: color-mix(in srgb, var(--sucesso) 18%, transparent); color: var(--sucesso); }
+.rf-modal .rf-feito-ico svg { width: 18px; height: 18px; }
+.rf-modal .rf-feito-x { width: 30px; height: 30px; border-radius: 50%; font-size: 20px; line-height: 1; color: var(--texto-3); }
+.rf-modal .rf-feito-x:hover { background: var(--superficie-2); }
+.rf-modal .rf-feito-kcal { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.rf-modal .rf-feito-kcal b { font-size: 28px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.rf-modal .rf-feito-kcal span { color: var(--texto-2); font-size: 14px; }
+.rf-modal .rf-feito-macros { margin-left: 6px; font-size: 13px; }
+.rf-modal .rf-feito-ia { background: var(--acento-eco); border-radius: var(--r-card); padding: 12px 14px; }
+.rf-modal .rf-feito-ia-cab { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
+  color: var(--acento); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.rf-modal .rf-feito-ia-cab svg { width: 14px; height: 14px; }
+.rf-modal .rf-feito-ia p { margin: 0; font-size: 14px; line-height: 1.45; font-style: italic; }
+.rf-modal .rf-feito-itens { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--separador); }
+.rf-modal .rf-feito-itens li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0;
+  border-bottom: 1px solid var(--separador); font-size: 13.5px; }
+.rf-modal .rf-feito-itens li:last-child { border-bottom: 0; }
+.rf-modal .rf-feito-itens em { font-style: normal; color: var(--texto-2); font-weight: 600; white-space: nowrap; }
+
+/* ---------- confirmacao dentro da folha ---------- */
+
+.rf-modal .rf-confirma { position: sticky; bottom: 0; z-index: 3; display: grid; gap: 10px; padding: 14px 16px;
+  border-radius: var(--r-grande); background: var(--superficie); box-shadow: 0 -2px 30px rgba(0, 0, 0, .22);
+  border: 1px solid var(--separador); }
+.rf-modal .rf-confirma[hidden] { display: none; }
+.rf-modal .rf-confirma p { margin: 0; font-size: 15px; font-weight: 600; }
+.rf-modal .rf-confirma-acoes { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ---------- tela estreita ---------- */
+
+@media (max-width: 420px) {
+  .rf-modal .rf-card { padding: 14px; }
+  .rf-modal #rf-listaDia .salva { padding: 12px 14px; gap: 6px; }
+  .rf-modal .salva-resumo { display: none; }
+  .rf-modal .salva-kcal { font-size: 19px; }
+  .rf-modal .salva-ident h3 { font-size: 14.5px; }
+  .rf-modal .macros { gap: 7px; }
+  .rf-modal .semana { height: 58px; gap: 3px; }
+  .rf-modal .rf-acoes-dupla { width: 100%; }
+  .rf-modal .rf-acoes-dupla .rf-botao { flex: 1; }
+}

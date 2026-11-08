@@ -1,17 +1,17 @@
-/* Modulo REFEICAO - entrada no menu do Segundo Cerebro.
+/* Modulo FDSFLIX - entrada no menu do Segundo Cerebro.
  *
- * Mesmo padrao do aba-treino.js: MutationObserver e nao insercao unica,
+ * Mesmo padrao dos demais modulos: MutationObserver e nao insercao unica,
  * porque o abrirMenu() do app reescreve o #sheetCorpo inteiro a cada chamada.
  * O grupo "Modulos" e compartilhado: quem roda primeiro cria, os outros
  * penduram o botao dentro dele.
  */
 (function () {
-  var ROTA = "/refeicao";
-  var ROTULO = "Refeição";
-  var DESCRICAO = "Diário e calorias do dia";
-  var ID = "mRefeicao";
+  var ROTA = "/fdsflix";
+  var ROTULO = "fdsFlix";
+  var DESCRICAO = "Filmes e séries, sem anúncios";
+  var ID = "mFdsflix";
   var ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M5 3v7a2 2 0 0 0 2 2v9M9 3v9M7 3v9M15 3c-1.5 1.5-2 3.5-2 6 0 2 .8 3 2 3v9M15 3c1.2 1.2 2 3 2 5"/></svg>';
+    '<rect x="2.5" y="4" width="19" height="16" rx="3"/><path d="M10 9.2v5.6l4.6-2.8z"/></svg>';
 
   var corpo = document.getElementById("sheetCorpo");
   var titulo = document.getElementById("sheetTitulo");

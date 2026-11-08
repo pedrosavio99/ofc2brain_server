@@ -1,0 +1,199 @@
+/* fdsFlix - so o que e especifico do modulo.
+   Tokens, barra, botoes, toast e o esqueleto (@keyframes pulsar) vem do
+   /estilos.css do Segundo Cerebro, carregado antes. Mesma receita do treino.css. */
+
+/* ---------- pagina ---------- */
+
+main.envolucro.fx-envolucro { display: grid; gap: 14px; align-content: start; max-width: 1180px; }
+.fx-cabeca { padding: 4px 2px 0; }
+.fx-cabeca .subtitulao { margin-bottom: 2px; }
+
+.fx-secao { margin: 8px 4px 10px; font-size: 13px; font-weight: 600; color: var(--texto-2);
+  text-transform: uppercase; letter-spacing: .04em; }
+
+/* ---------- campos e botoes (mesma linguagem do refeicao/treino) ---------- */
+
+.fx-envolucro input[type="text"], .fx-envolucro input[type="number"], .fx-envolucro select {
+  border: 1.5px solid var(--separador); border-radius: 12px; background: var(--superficie-2);
+  padding: 10px 12px; outline: none; font-size: 15px; min-width: 0;
+}
+.fx-envolucro input:focus, .fx-envolucro select:focus {
+  border-color: var(--acento); box-shadow: 0 0 0 3px var(--acento-eco);
+}
+
+.fx-busca { display: flex; gap: 8px; }
+.fx-busca input { flex: 1; width: 100%; background: var(--superficie); box-shadow: var(--sombra); }
+
+.fx-btn { border: 0; border-radius: var(--r-pill); padding: 9px 16px; cursor: pointer; white-space: nowrap;
+  background: var(--acento); color: #fff; font-weight: 600; font-size: 14.5px; }
+.fx-btn.ghost { background: var(--superficie-2); color: var(--texto); }
+.fx-btn:disabled { opacity: .5; cursor: default; }
+.fx-btn:not(:disabled):active { transform: scale(.97); }
+.fx-link { border: 0; background: none; padding: 0; cursor: pointer; color: var(--acento);
+  font-size: 13px; font-weight: 600; text-decoration: underline; }
+
+/* ---------- aviso do servidor (cold start) ---------- */
+
+.fx-aviso { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--r-card);
+  background: var(--superficie); box-shadow: var(--sombra); font-size: 13.5px; color: var(--texto-2); line-height: 1.4; }
+.fx-aviso[hidden] { display: none; }
+.fx-aviso > span:nth-child(2) { flex: 1; min-width: 0; }
+.fx-ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--texto-3); flex: none; }
+.fx-aviso.checking .fx-ponto, .fx-aviso.waking .fx-ponto { background: var(--alerta); animation: fx-pulso 1.1s ease-in-out infinite; }
+.fx-aviso.ok .fx-ponto { background: var(--sucesso); }
+.fx-aviso.warn .fx-ponto { background: var(--alerta); }
+.fx-aviso.error .fx-ponto { background: var(--perigo); }
+.fx-aviso.error { color: var(--perigo); }
+.fx-aviso.warn { color: var(--alerta); }
+@keyframes fx-pulso { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+
+/* barra de progresso do cold start: a espera tem fim estimado (~40 s) */
+.fx-espera { width: min(320px, 80%); height: 6px; border-radius: 4px; background: rgba(255, 255, 255, .22); overflow: hidden; }
+.fx-espera[hidden] { display: none; }
+.fx-espera i { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--acento);
+  transition: width .9s linear; }
+
+/* ---------- grade de cartazes ---------- */
+
+.fx-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 14px; }
+
+.card.fx-card { padding: 0; overflow: hidden; cursor: pointer; background: var(--superficie);
+  border-radius: var(--r-card); box-shadow: var(--sombra); border: 1.5px solid transparent;
+  transition: transform .14s ease, border-color .14s ease; }
+@media (hover: hover) { .card.fx-card:hover { transform: translateY(-3px); border-color: var(--acento); } }
+.card.fx-card:active { transform: scale(.98); }
+.card.fx-card.active { border-color: var(--acento); box-shadow: 0 0 0 1px var(--acento) inset, var(--sombra); }
+
+.fx-poster { position: relative; aspect-ratio: 2 / 3; background: var(--superficie-2); }
+.fx-poster-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: 10px; text-align: center; font-size: 13px; color: var(--texto-2); }
+.fx-poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.fx-info { padding: 9px 10px 10px; min-width: 0; }
+.fx-titulo { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-meta { color: var(--texto-2); font-size: 12px; margin-top: 2px; }
+.fx-tipo { position: absolute; top: 7px; left: 7px; z-index: 1; background: rgba(0, 0, 0, .66); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; text-transform: uppercase; letter-spacing: .04em; }
+
+.fx-cont-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255, 255, 255, .25); z-index: 1; }
+.fx-cont-bar span { display: block; height: 100%; background: var(--acento); }
+.fx-cont-x { position: absolute; top: 6px; right: 6px; z-index: 2; width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(0, 0, 0, .72); color: #fff; font-size: 16px; line-height: 1; padding: 0; opacity: 0;
+  transition: opacity .15s; }
+.fx-card:hover .fx-cont-x, .fx-cont-x:focus { opacity: 1; }
+@media (hover: none) { .fx-cont-x { opacity: .85; } }
+
+.fx-vazio { grid-column: 1 / -1; color: var(--texto-2); padding: 18px 4px; font-size: 15px; }
+
+/* esqueleto dos cartazes: mesma pulsacao do .esqueleto do app, na forma do cartaz */
+.fx-esq { pointer-events: none; }
+.fx-esq .fx-poster { background: var(--separador); animation: pulsar 1.4s ease-in-out infinite; }
+.fx-esq .fx-linha { height: 11px; border-radius: 6px; background: var(--separador); margin-top: 8px;
+  animation: pulsar 1.4s ease-in-out infinite; }
+.fx-esq .fx-linha.curta { width: 45%; height: 9px; }
+.fx-esq-legenda { grid-column: 1 / -1; text-align: center; font-size: 13px; color: var(--texto-2); margin: 0 0 2px; }
+
+/* ---------- switch ---------- */
+
+.fx-switch { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none;
+  font-size: 13px; color: var(--texto-2); }
+.fx-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.fx-switch .slider { position: relative; width: 36px; height: 20px; border-radius: 999px; flex: none;
+  background: var(--texto-3); transition: background .18s; }
+.fx-switch .slider::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+  border-radius: 50%; background: #fff; transition: transform .18s; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+.fx-switch input:checked + .slider { background: var(--acento); }
+.fx-switch input:checked + .slider::after { transform: translateX(16px); }
+.fx-switch input:focus-visible + .slider { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* ---------- player ---------- */
+
+.fx-player { background: var(--superficie); border-radius: var(--r-grande); box-shadow: var(--sombra);
+  padding: 16px; scroll-margin-top: 72px; }
+.fx-player[hidden] { display: none; }
+.fx-player-cab { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  align-items: flex-start; margin-bottom: 12px; }
+.fx-player-cab > div:first-child { min-width: 0; }
+#playerTitle { font-size: 19px; font-weight: 700; letter-spacing: -.015em; overflow-wrap: anywhere; }
+#playerMeta { color: var(--texto-2); font-size: 13px; margin-top: 2px; }
+
+.fx-controles { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--texto-2); }
+.fx-controles label { display: flex; align-items: center; gap: 6px; }
+.fx-controles input[type="number"] { width: 72px; padding: 7px 9px; font-size: 14px; }
+.fx-controles select { padding: 7px 9px; font-size: 14px; }
+.fx-tv { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.fx-tv[hidden] { display: none; }
+
+.fx-video-wrap { position: relative; border-radius: 14px; overflow: hidden; background: #000; }
+.fx-video-wrap video, #embedFrame { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; border: 0; }
+#embedFrame[hidden] { display: none; }
+
+.fx-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; gap: 12px;
+  align-items: center; justify-content: center; text-align: center; padding: 16px; color: #fff;
+  background: rgba(0, 0, 0, .62); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  pointer-events: none; }
+.fx-overlay[hidden] { display: none; }
+.fx-overlay .msg { max-width: 520px; font-size: 15px; line-height: 1.4; }
+.fx-overlay button { pointer-events: auto; }
+.fx-overlay .fx-btn.ghost { background: rgba(255, 255, 255, .18); color: #fff; }
+/* esqueleto do video: faixa que brilha atras da mensagem enquanto o stream nao chega */
+.fx-overlay.esqueleto-video { background: linear-gradient(110deg, #0c0c10 30%, #1c1c24 50%, #0c0c10 70%);
+  background-size: 220% 100%; animation: fx-brilho 1.6s linear infinite; }
+@keyframes fx-brilho { to { background-position: -220% 0; } }
+.fx-spinner { width: 38px; height: 38px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .2);
+  border-top-color: var(--acento); animation: fx-gira .8s linear infinite; }
+.fx-spinner[hidden] { display: none; }
+@keyframes fx-gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .fx-spinner { animation-duration: 2s; }
+  .fx-overlay.esqueleto-video { animation: none; }
+}
+
+.fx-status { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: 13px;
+  color: var(--texto-2); line-height: 1.45; }
+.fx-selo { flex: none; padding: 2px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 800;
+  letter-spacing: .05em; margin-top: 1px; }
+.fx-selo.working, .fx-selo.warn { background: var(--alerta); color: #241a00; }
+.fx-selo.ok { background: var(--sucesso); color: #04220f; }
+.fx-selo.error { background: var(--perigo); color: #fff; }
+
+/* player alternativo (embed) */
+.fx-embed { margin-top: 12px; padding: 12px 14px; border-radius: var(--r-card); background: var(--superficie-2); font-size: 13px; }
+.fx-embed[hidden] { display: none; }
+.fx-embed .embed-note { color: var(--texto-2); margin-bottom: 8px; line-height: 1.4; }
+.fx-embed-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.fx-embed-btns button { border: 1.5px solid transparent; border-radius: var(--r-pill); padding: 6px 13px; cursor: pointer;
+  background: var(--superficie); color: var(--texto); font-weight: 600; font-size: 13px; }
+.fx-embed-btns button.active { border-color: var(--acento); color: var(--acento); }
+.fx-embed .embed-safe { margin-top: 10px; }
+
+/* barra de legenda */
+.fx-legenda { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px;
+  padding: 10px 12px; border-radius: var(--r-card); background: var(--superficie-2); font-size: 13px; color: var(--texto-2); }
+.fx-legenda[hidden] { display: none; }
+.fx-legenda .sub-title { font-weight: 700; color: var(--texto); }
+.fx-legenda .sub-lang { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.fx-legenda .sub-lang select { padding: 6px 9px; font-size: 13px; max-width: 190px; background: var(--superficie); }
+.fx-legenda .sub-divider { width: 1px; height: 18px; background: var(--separador); }
+.fx-legenda input[type="number"] { width: 84px; padding: 6px 8px; font-size: 13px; background: var(--superficie); }
+.fx-passo { border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; background: var(--superficie);
+  color: var(--texto); font-size: 12.5px; font-weight: 700; }
+.fx-passo:active { transform: scale(.95); }
+.fx-legenda .sub-hint { font-size: 12px; color: var(--texto-3); }
+
+.fx-dica { margin: 8px auto 0; padding-top: 14px; border-top: 1px solid var(--separador); color: var(--texto-3);
+  font-size: 12px; line-height: 1.55; text-align: center; max-width: 760px; }
+.fx-dica[hidden] { display: none; }
+
+/* ---------- responsivo ---------- */
+
+@media (max-width: 640px) {
+  .fx-grade { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  .fx-player { padding: 12px; }
+  .fx-controles { gap: 6px; }
+  .fx-legenda .sub-hint { flex-basis: 100%; }
+  .fx-legenda .sub-divider { display: none; }
+}
+@media (min-width: 960px) {
+  main.envolucro.fx-envolucro { padding: 0 32px 80px; }
+  .fx-grade { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px; }
+}

@@ -5,7 +5,8 @@
  *  - Início (Segundo Cérebro / Memória)
  *  - Conversa (Assistente IA integrado)
  *  - Treino (Fichas, cargas e séries)
- *  - Refeições (Nutrição, calorias e macros)
+ *  - fdsFlix (Filmes e séries)
+ *  (Refeições agora vive dentro do Treino, em "Alimentação")
  *  - Trabalho (ClickUp e tarefas)
  *  - Música (Player Sua Música e rádio)
  *
@@ -59,13 +60,13 @@
         '<path d="M6 7v10M18 7v10M2 9v6M22 9v6M6 12h12"/></svg>',
     },
     {
-      id: "refeicao",
-      nome: "Refeições",
-      rota: "/refeicao",
-      descricao: "Nutrição, macronutrientes e diário alimentar",
+      id: "fdsflix",
+      nome: "fdsFlix",
+      rota: "/fdsflix",
+      descricao: "Filmes e séries, com legendas e sem anúncios",
       icone:
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>',
+        '<rect x="2.5" y="4" width="19" height="16" rx="3"/><path d="M10 9.2v5.6l4.6-2.8z"/></svg>',
     },
     {
       id: "trabalho",
@@ -860,7 +861,7 @@
 
     renderizarMiniplayerNavbar(estado);
 
-    // Se o usuário estava com a música tocando e mudou de tela (ex: /treino, /refeicao)
+    // Se o usuário estava com a música tocando e mudou de tela (ex: /treino, /fdsflix)
     if (moduloAtual !== "musica" && estado && estado.tocando && estado.faixa && estado.faixa.audio) {
       tocarOuPausarLocal(estado, true);
     }
@@ -913,6 +914,69 @@
         }
       }
     }, true);
+  }
+
+  /**
+   * Acorda o servidor do fdsFlix (Render gratuito, ~40 s de cold start) por baixo
+   * dos panos, para que ele já esteja de pé quando você abrir o módulo.
+   *
+   * Não pode custar nada à navegação:
+   *  - roda só quando o navegador está ocioso, depois que a tela já pintou;
+   *  - é um GET simples (sem header customizado, sem preflight) e sem cookies;
+   *  - falha em silêncio: nenhuma tela depende dele;
+   *  - no máximo 1 aviso a cada 10 min (compartilhado entre abas), e nenhum com
+   *    "economizar dados" ligado. O Render gratuito dorme após ~15 min parado;
+   *  - na própria tela do fdsFlix não faz nada: ela mesma já acorda e acompanha.
+   * Guarda "fdsflix.awake" no sessionStorage para a tela do fdsFlix saber que não
+   * precisa mostrar o aviso de espera.
+   */
+  function acordarFdsflix() {
+    var BASE = "https://fdsflix.onrender.com";
+    var INTERVALO_MS = 10 * 60 * 1000;
+    var CHAVE_PING = "fdsflix.ping";
+    try {
+      if (detectarModuloAtual() === "fdsflix") return;
+      var rede = navigator.connection;
+      if (rede && rede.saveData) return;
+      var ultimo = Number(localStorage.getItem(CHAVE_PING) || 0);
+      if (Date.now() - ultimo < INTERVALO_MS) return;
+      localStorage.setItem(CHAVE_PING, String(Date.now()));
+    } catch (e) {
+      return;
+    }
+
+    var ctrl = typeof AbortController === "function" ? new AbortController() : null;
+    var limite = setTimeout(function () { if (ctrl) ctrl.abort(); }, 75000);
+
+    var opcoes = { cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer", priority: "low" };
+    if (ctrl) opcoes.signal = ctrl.signal;
+
+    fetch(BASE + "/api/health", opcoes)
+      .then(function (r) {
+        clearTimeout(limite);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        try { sessionStorage.setItem("fdsflix.awake", String(Date.now())); } catch (e) {}
+      })
+      .catch(function () {
+        clearTimeout(limite);
+        // não conseguiu acordar: libera nova tentativa na próxima página
+        try { localStorage.removeItem(CHAVE_PING); } catch (e) {}
+      });
+  }
+
+  function agendarAquecimentoFdsflix() {
+    var rodar = function () { setTimeout(acordarFdsflix, 800); };
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(rodar, { timeout: 4000 });
+    } else {
+      setTimeout(rodar, 2500);
+    }
+  }
+
+  if (document.readyState === "complete") {
+    agendarAquecimentoFdsflix();
+  } else {
+    window.addEventListener("load", agendarAquecimentoFdsflix, { once: true });
   }
 
   // Inicialização automática quando o DOM estiver pronto

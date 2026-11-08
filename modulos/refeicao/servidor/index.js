@@ -1,34 +1,26 @@
 /**
- * Modulo REFEICAO.
+ * Modulo REFEICAO (somente API).
  *
- * Mesmo contrato dos modulos do Segundo Cerebro (trabalho, conversa, treino):
- * exporta um Router do Express que serve, sob o prefixo onde for montado:
+ * A tela saiu: a Alimentacao agora vive dentro do modal do Treino
+ * (modulos/treino/publico/alimentacao.js), que fala com as mesmas rotas daqui.
+ * O que este modulo ainda serve, sob o prefixo onde for montado (/refeicao):
  *
- *   GET  /                      a tela (publico/refeicao.html)
- *   GET  /refeicao.css|.js      os estaticos
- *   *    /api/...               as rotas de dados (ver servidor/rotas.mjs)
+ *   GET  /        redireciona para /treino#alimentacao (links e favoritos antigos)
+ *   *    /api/... as rotas de dados (ver servidor/rotas.mjs)
  *
- * Aqui ele roda sozinho, montado pelo src/app.js deste projeto. Para levar pro
- * 2brain: copie modulos/refeicao e src/ia, e monte com app.use("/refeicao").
+ * O Treino, a Conversa e o Metas continuam consumindo /refeicao/api.
  */
-import path from "path";
-import { fileURLToPath } from "url";
 import express from "express";
 import { ErroHttp } from "./banco.mjs";
 import { rotear } from "./rotas.mjs";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PUBLICO = path.join(__dirname, "..", "publico");
-const PAGINA = path.join(PUBLICO, "refeicao.html");
-
 const router = express.Router();
 
+/* Link antigo da tela: abre o modal de alimentacao dentro do Treino. */
 router.get("/", (_req, res) => {
   res.set("Cache-Control", "no-store");
-  res.sendFile(PAGINA);
+  res.redirect(302, "/treino#alimentacao");
 });
-
-router.use(express.static(PUBLICO, { fallthrough: true, maxAge: 0, index: false }));
 
 /* Dados. Tudo que comecar com /api cai no roteador do modulo. A medicao leva
    segundos (IA forte), entao nada de cache em lugar nenhum. */

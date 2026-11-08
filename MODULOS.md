@@ -12,8 +12,8 @@ O Segundo Cérebro é um ecossistema integrado composto por módulos especializa
 |---|---|---|
 | **Início** | `/` | Mural de notas, memórias, sinapses e pesquisa semântica. |
 | **Conversa** | `/conversa` | Assistente IA conectado aos dados de todos os outros módulos. |
-| **Treino** | `/treino` | Fichas de musculação, séries, cargas e gasto calórico. |
-| **Refeições** | `/refeicao` | Diário alimentar, cálculo de macronutrientes e metas calóricas. |
+| **Treino** | `/treino` | Fichas de musculação, séries, cargas e gasto calórico. Inclui a **Alimentação** (modal): diário alimentar, macros, ciclo de 14 dias e meta calórica. |
+| **fdsFlix** | `/fdsflix` | Filmes e séries (busca TMDB, player próprio sem anúncios, legendas, continuar assistindo). A API roda em `https://fdsflix.onrender.com` (Render gratuito: cold start de até ~40 s). |
 | **Trabalho** | `/trabalho` | Integração com ClickUp, planejamento diário (daily) e prazos. |
 | **Música** | `/musica` | Player Sua Música, streaming de áudio e rádio infinita. |
 | **TrendRadar** | `/trendradar` | Radar estratégico de tendências e oportunidades B2B nas 6 frentes de mercado. |
@@ -151,3 +151,20 @@ Se você criar um novo módulo (ex: `sono`, `financeiro`, `leitura`):
 3. **Registrar no Catálogo (`public/navegacao.js`)**:
    Adicione seu módulo ao array `MODULOS` com id, nome, rota, descrição e ícone SVG.
 4. **Adicionar ao Conector da IA (`modulos/conversa/servidor/ecossistema.mjs`)** se o módulo contiver informações relevantes para o assistente.
+
+
+---
+
+## 6. Notas: Alimentação dentro do Treino e módulo fdsFlix
+
+- **Refeição não tem mais aba nem tela própria.** A tela inteira (resumo do dia, ciclo de 14 dias, meta,
+  calcular/registrar direto, corrigir, excluir) virou o modal **Alimentação** do Treino
+  (`modulos/treino/publico/alimentacao.js` + `alimentacao.css`, tudo escopado em `.rf-modal`).
+  Abre pelo ícone de talheres da barra do Treino ou pelo cartão "Alimentação de hoje".
+  `/refeicao` (página) redireciona para `/treino#alimentacao`; a API `/refeicao/api/*` continua igual e é
+  usada pelo Treino, pela Conversa e pelo Metas.
+- **fdsFlix** (`modulos/fdsflix`) não tem API própria: a tela fala direto, do navegador, com
+  `https://fdsflix.onrender.com` (CORS liberado). O `/pin.js` só carimba chamadas da mesma origem, então o PIN
+  do 2brain nunca vai para lá. Como o Render gratuito dorme, `navegacao.js` faz um aquecimento silencioso
+  (`/api/health`, no máximo 1x a cada 10 min, só quando o navegador está ocioso) e a tela tem esqueletos e
+  barra de espera para o cold start.

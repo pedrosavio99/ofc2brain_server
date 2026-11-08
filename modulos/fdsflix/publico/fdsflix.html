@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR" data-tema="sistema">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<!-- Reaproveita os tokens e componentes do Segundo Cerebro.
+     fdsflix.css so acrescenta o que e especifico daqui. -->
+<link rel="stylesheet" href="/estilos.css" />
+<link rel="stylesheet" href="/fdsflix/fdsflix.css" />
+<title>fdsFlix</title>
+<link rel="icon" type="image/svg+xml" href="/cerebro-mini.svg" />
+<script>
+  // Antes da primeira pintura, senao o tema escuro pisca branco.
+  try { document.documentElement.dataset.tema = localStorage.getItem("2brain-tema") || "sistema"; } catch (e) {}
+  try {
+    var _tr = sessionStorage.getItem("2brain-nav-transicao");
+    if (_tr) {
+      var _ti = JSON.parse(_tr);
+      if (_ti && Date.now() - _ti.ts < 2500) document.documentElement.classList.add("nav-transicao");
+    }
+  } catch (e) {}
+</script>
+</head>
+<body data-modulo="fdsflix">
+
+<header class="barra" id="barra">
+  <div class="barra-int">
+    <div class="barra-marca-bloco">
+      <a class="barra-marca" href="/" title="Ir para início do Segundo cérebro" aria-label="Segundo cérebro">
+        <img src="/cerebro-mini.svg" alt="" width="28" height="28" draggable="false" />
+      </a>
+      <span class="barra-separador-modulo" aria-hidden="true">/</span>
+      <span class="barra-modulo-atual">fdsFlix</span>
+    </div>
+    <div class="barra-acoes">
+      <button class="icone-btn btn-menu-eco" id="btnMenuEco" aria-label="Menu do ecossistema" title="Menu do ecossistema">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="envolucro fx-envolucro">
+  <div class="fx-cabeca">
+    <h1 class="titulao">fdsFlix</h1>
+    <p class="subtitulao">Busca no TMDB · player sem anúncios · legendas em português</p>
+  </div>
+
+  <div class="fx-busca">
+    <input id="searchInput" type="text" placeholder="Buscar filme ou série…" autocomplete="off" spellcheck="false" aria-label="Buscar filme ou série" />
+    <button id="clearBtn" class="fx-btn ghost" type="button">Limpar</button>
+  </div>
+
+  <!-- aviso do servidor (Render gratuito acorda em ate ~40 s) -->
+  <div id="serverNotice" class="fx-aviso" hidden>
+    <span class="fx-ponto"></span>
+    <span id="noticeText"></span>
+    <button id="noticeRetry" class="fx-link" type="button" hidden>Tentar de novo</button>
+  </div>
+
+  <section id="continueSection" hidden>
+    <div class="fx-secao">Continuar assistindo</div>
+    <div id="continueRow" class="fx-grade"></div>
+  </section>
+
+  <div>
+    <div id="sectionTitle" class="fx-secao">Populares</div>
+    <div id="results" class="fx-grade"></div>
+  </div>
+
+  <section id="playerSection" class="fx-player" hidden>
+    <div class="fx-player-cab">
+      <div>
+        <div id="playerTitle"></div>
+        <div id="playerMeta"></div>
+      </div>
+      <div class="fx-controles">
+        <span id="tvControls" class="fx-tv" hidden>
+          <label>T <input id="seasonInput" type="number" min="1" value="1" /></label>
+          <label>E <input id="episodeInput" type="number" min="1" value="1" /></label>
+          <label class="fx-switch" title="Ao terminar o episódio, abre o próximo sozinho (com contagem de 5 s para cancelar)">
+            <input id="autoNextToggle" type="checkbox" />
+            <span class="slider"></span>
+            <span>Auto-próximo</span>
+          </label>
+        </span>
+        <label>Qualidade
+          <select id="qualitySelect">
+            <option value="">Auto</option>
+            <option value="1080">1080p</option>
+            <option value="720">720p</option>
+            <option value="480">480p</option>
+            <option value="360">360p</option>
+          </select>
+        </label>
+        <label>Início (min)
+          <input id="startInput" type="number" min="0" step="0.5" value="0" />
+        </label>
+        <button id="reloadBtn" class="fx-btn ghost" type="button">Recarregar</button>
+        <button id="closeBtn" class="fx-btn ghost" type="button">Fechar</button>
+      </div>
+    </div>
+
+    <div class="fx-video-wrap">
+      <video id="nativePlayer" controls playsinline preload="metadata" crossorigin="anonymous"></video>
+      <iframe id="embedFrame" hidden title="Player alternativo" allowfullscreen
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="origin"></iframe>
+      <div id="overlay" class="fx-overlay">
+        <div id="spinner" class="fx-spinner"></div>
+        <div id="overlayText" class="msg">Carregando…</div>
+        <div id="overlayBar" class="fx-espera" hidden><i></i></div>
+        <button id="overlayRetry" class="fx-btn ghost" type="button" hidden>Tentar de novo</button>
+        <button id="overlayCancel" class="fx-btn ghost" type="button" hidden>Cancelar</button>
+      </div>
+    </div>
+
+    <div id="embedBar" class="fx-embed" hidden>
+      <div class="embed-note">
+        Nenhuma fonte direta tem este título. Dá para tentar um <strong>player alternativo (embed)</strong>.
+        Eles rodam no site de terceiros: podem ter anúncios e <em>não</em> salvam o progresso.
+      </div>
+      <div id="embedBtns" class="fx-embed-btns"></div>
+      <label class="fx-switch embed-safe" title="Impede o player de terceiros de abrir pop-ups, novas abas e de redirecionar esta página. Alguns players se recusam a tocar em modo seguro: se der erro, desligue.">
+        <input id="embedSafeToggle" type="checkbox" />
+        <span class="slider"></span>
+        <span>Modo seguro (bloquear pop-ups e novas abas)</span>
+      </label>
+    </div>
+
+    <div id="subBar" class="fx-legenda" hidden>
+      <label class="sub-lang">Legenda
+        <select id="subLangSelect" aria-label="Idioma da legenda"></select>
+      </label>
+      <span class="sub-divider"></span>
+      <span class="sub-title">Sincronia</span>
+      <button id="subMinus" class="fx-passo" type="button" title="Adiantar a legenda 0,5 s">−0,5s</button>
+      <input id="subOffsetInput" type="number" step="0.5" min="-600" max="600" value="0"
+             title="Atraso em segundos (positivo = legenda mais tarde)" aria-label="Atraso da legenda em segundos" />
+      <button id="subPlus" class="fx-passo" type="button" title="Atrasar a legenda 0,5 s">+0,5s</button>
+      <button id="subReset" class="fx-passo" type="button" title="Zerar o ajuste">0</button>
+      <span class="sub-hint">positivo = legenda mais tarde · o “Início (min)” já é compensado</span>
+    </div>
+
+    <div id="playerStatus" class="fx-status">
+      <span id="statusBadge" class="fx-selo working">PREPARANDO</span>
+      <span id="statusText">Selecione um título…</span>
+    </div>
+  </section>
+
+  <p id="deployHint" class="fx-dica" hidden>
+    O servidor do fdsFlix roda no plano gratuito do Render: o primeiro acesso depois de um tempo parado
+    pode levar até ~40 segundos para a máquina acordar. O 2brain já o acorda por baixo dos panos quando você entra.
+  </p>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="/pin.js"></script>
+<script src="/navegacao.js"></script>
+<script src="/fdsflix/vendor/hls.min.js"></script>
+<script src="/fdsflix/fdsflix.js"></script>
+</body>
+</html>

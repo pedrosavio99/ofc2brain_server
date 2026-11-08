@@ -20,6 +20,7 @@ import metasRouter from "../modulos/metas/servidor/index.js";
 import refeicaoRouter from "../modulos/refeicao/servidor/index.js";
 import trendradarRouter from "../modulos/trendradar/servidor/index.js";
 import linksRouter from "../modulos/links/servidor/index.js";
+import fdsflixRouter from "../modulos/fdsflix/servidor/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -113,6 +114,8 @@ app.get("/api", (_req, res) => {
       "POST   /trendradar/api/investigar      { termo, tipoEntidade, frente?, icpPagador? }",
       "POST   /trendradar/api/importar-csv    { nome?, frente?, csv }",
       "POST   /trendradar/api/relatorio       { ids?, frente?, objetivo? }",
+      "--- modulo fdsflix (filmes e series; a API real roda em https://fdsflix.onrender.com) ---",
+      "GET    /fdsflix                        (tela do modulo; fala direto com o servico externo)",
       "--- modulo links (links curtos) ---",
       "GET    /links/api/health",
       "GET    /links/api/links",
@@ -137,6 +140,7 @@ app.use("/metas", metasRouter);
 app.use("/refeicao", refeicaoRouter);
 app.use("/trendradar", trendradarRouter);
 app.use("/links", linksRouter);
+app.use("/fdsflix", fdsflixRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
