@@ -93,6 +93,7 @@
     langToken: 0,
     applyingLang: false,
     captions: [],
+    recs: [],
     popToken: 0,
     popularFallback: false,
     wakeTimer: null,
@@ -494,32 +495,58 @@
     try { return localStorage.getItem(EMBED_SAFE_KEY) !== '0'; } catch (err) { return true; }
   }
 
+  function markActiveServer(index) {
+    Array.prototype.slice.call($('embedBtns').children).forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-embed') === String(index));
+    });
+  }
+
+  // Volta ao player normal (vídeo nativo), sem painel de servidores nem iframe.
   function hideEmbed() {
     state.embedIndex = -1;
     var frame = $('embedFrame');
     frame.hidden = true;
     frame.removeAttribute('src');
+    $('serverPicker').hidden = true;
     $('nativePlayer').hidden = false;
     $('embedBar').hidden = true;
-    Array.prototype.slice.call($('embedBtns').children).forEach(function (btn) {
-      btn.classList.remove('active');
-    });
+    $('embedTrocar').hidden = true;
+    markActiveServer(-1);
   }
 
+  // Nada direto tocou: o painel de servidores toma o lugar do player (um só
+  // player na tela). Cada card é um servidor; escolher um troca pelo iframe.
   function showEmbedOptions() {
     var item = state.selected;
     if (!item || !/^\d+$/.test(String(item.id))) return;
 
     var box = $('embedBtns');
-    box.innerHTML = '';
-    EMBED_PROVIDERS.forEach(function (provider, index) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'ghost';
-      btn.textContent = provider.name;
-      btn.setAttribute('data-embed', String(index));
-      box.appendChild(btn);
-    });
+    if (!box.children.length) {
+      EMBED_PROVIDERS.forEach(function (provider, index) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'fx-srv';
+        btn.setAttribute('data-embed', String(index));
+        btn.innerHTML =
+          '<span class="fx-srv-ico">' + escapeHtml(provider.name.charAt(0)) + '</span>' +
+          '<span class="fx-srv-nome">' + escapeHtml(provider.name) + '</span>' +
+          '<span class="fx-srv-sub">Servidor ' + (index + 1) + '</span>';
+        box.appendChild(btn);
+      });
+    }
+
+    state.embedIndex = -1;
+    var frame = $('embedFrame');
+    frame.hidden = true;
+    frame.removeAttribute('src');
+    try { $('nativePlayer').pause(); } catch (err) { /* ignore */ }
+    $('nativePlayer').hidden = true;
+    hideOverlay();
+    markActiveServer(-1);
+
+    $('serverPicker').hidden = false;
+    $('embedAtual').textContent = '';
+    $('embedTrocar').hidden = true;
     $('embedBar').hidden = false;
   }
 
@@ -532,6 +559,7 @@
     try { $('nativePlayer').pause(); } catch (err) { /* ignore */ }
     hideOverlay();
     $('nativePlayer').hidden = true;
+    $('serverPicker').hidden = true;
 
     var frame = $('embedFrame');
     frame.hidden = false;
@@ -541,13 +569,14 @@
     else frame.removeAttribute('sandbox');
     frame.src = url;
     state.embedIndex = index;
+    markActiveServer(index);
 
-    Array.prototype.slice.call($('embedBtns').children).forEach(function (btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-embed') === String(index));
-    });
+    $('embedAtual').textContent = 'Servidor: ' + provider.name;
+    $('embedTrocar').hidden = false;
+    $('embedBar').hidden = false;
     setStatus('warn', 'Player alternativo: ' + provider.name +
       (embedSafeEnabled() ? ' · modo seguro ligado (sem pop-ups)' : ' · modo seguro DESLIGADO') +
-      ' — site de terceiros, não salva o progresso. Se der erro de sandbox, desligue o modo seguro; se não abrir, tente outro.');
+      ' — site de terceiros, não salva o progresso. Se der erro de sandbox, desligue o modo seguro; se não abrir, troque o servidor.');
   }
 
   /* ---------------------------------------------------------------- */
@@ -1246,6 +1275,60 @@
       });
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Recomendados (lista vertical ao lado do player)                   */
+  /* ---------------------------------------------------------------- */
+
+  var REC_MAX = 24;
+
+  // Sem endpoint de "parecidos" no servidor externo, recomenda o que o usuário
+  // já tem à vista: a grade atual (populares/busca), o que está em andamento e a
+  // lista fixa de clássicos. O título em exibição nunca aparece na própria lista.
+  function buildRecs(current) {
+    var seen = {};
+    var out = [];
+    function push(item) {
+      if (!item || item.id == null || !item.type) return;
+      var key = item.type + ':' + item.id;
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push({ id: item.id, type: item.type, title: item.title, year: item.year || '', poster: item.poster || '' });
+    }
+    if (current) seen[current.type + ':' + current.id] = true;
+
+    state.items.forEach(push);
+    Object.keys(progress)
+      .sort(function (a, b) { return (progress[b].u || 0) - (progress[a].u || 0); })
+      .forEach(function (key) { push(progress[key]); });
+    FALLBACK_POPULAR.forEach(push);
+    return out.slice(0, REC_MAX);
+  }
+
+  function renderRecs() {
+    state.recs = buildRecs(state.selected);
+    var html = '';
+    state.recs.forEach(function (item, i) {
+      var poster = item.poster ? 'https://image.tmdb.org/t/p/w185' + item.poster : '';
+      var img = poster
+        ? '<img src="' + escapeHtml(poster) + '" alt="" loading="lazy" onerror="this.remove()">'
+        : '';
+      html +=
+        '<button class="fx-rec-item" type="button" data-ri="' + i + '" title="' + escapeHtml(item.title) + '">' +
+          '<span class="fx-rec-capa"><span class="fx-poster-fallback">' + escapeHtml(item.title) + '</span>' + img + '</span>' +
+          '<span class="fx-rec-txt">' +
+            '<span class="fx-rec-nome">' + escapeHtml(item.title) + '</span>' +
+            '<span class="fx-rec-meta">' + escapeHtml(item.year || '') + (item.year ? ' · ' : '') + (item.type === 'tv' ? 'Série' : 'Filme') + '</span>' +
+          '</span>' +
+        '</button>';
+    });
+    $('recList').innerHTML = html;
+    $('recList').scrollTop = 0;
+  }
+
+  function lockPage(on) {
+    document.body.classList.toggle('fx-modal-aberto', on);
+  }
+
   function selectItem(index) {
     var item = state.items[index];
     if (item) openItem(item);
@@ -1291,13 +1374,15 @@
       }
     }
     $('playerSection').hidden = false;
+    $('playerSection').scrollTop = 0;
+    lockPage(true);
+    renderRecs();
 
     Array.prototype.slice.call(document.querySelectorAll('.fx-card')).forEach(function (card) {
       var cardItem = card.dataset.index !== undefined ? state.items[Number(card.dataset.index)] : null;
       card.classList.toggle('active', Boolean(cardItem) && String(cardItem.id) === String(item.id) && cardItem.type === item.type);
     });
 
-    $('playerSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
     renderPlayer();
   }
 
@@ -1313,10 +1398,10 @@
     state.selected = null;
     renderContinue();
     $('playerSection').hidden = true;
+    lockPage(false);
     Array.prototype.slice.call(document.querySelectorAll('.fx-card')).forEach(function (card) {
       card.classList.remove('active');
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /* ---------------------------------------------------------------- */
@@ -1349,6 +1434,20 @@
     renderPlayer();
   });
   $('closeBtn').addEventListener('click', closePlayer);
+
+  // Esc fecha o modal (só o botão Fechar também; clique no fundo não, para não
+  // derrubar o filme sem querer).
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !$('playerSection').hidden) closePlayer();
+  });
+
+  $('recList').addEventListener('click', function (event) {
+    var btn = event.target.closest ? event.target.closest('[data-ri]') : null;
+    if (!btn) return;
+    openItem(state.recs[Number(btn.getAttribute('data-ri'))]);
+  });
+
+  $('embedTrocar').addEventListener('click', showEmbedOptions);
 
   $('subLangSelect').addEventListener('change', function () {
     applySubLangByIndex(this.value === 'off' ? -1 : Number(this.value));

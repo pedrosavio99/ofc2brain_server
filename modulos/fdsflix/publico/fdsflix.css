@@ -107,9 +107,39 @@ main.envolucro.fx-envolucro { display: grid; gap: 14px; align-content: start; ma
 
 /* ---------- player ---------- */
 
+/* modal: o proprio .fx-modal rola; o player fica a esquerda e os recomendados a direita */
+body.fx-modal-aberto { overflow: hidden; }
+.fx-modal { position: fixed; inset: 0; z-index: 60; overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(0, 0, 0, .78); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  padding: 20px 16px calc(24px + env(safe-area-inset-bottom)); }
+.fx-modal[hidden] { display: none; }
+.fx-modal-caixa { max-width: 1440px; margin: 0 auto; display: grid; gap: 16px; align-items: start;
+  grid-template-columns: minmax(0, 1fr) 340px; }
+
 .fx-player { background: var(--superficie); border-radius: var(--r-grande); box-shadow: var(--sombra);
-  padding: 16px; scroll-margin-top: 72px; }
-.fx-player[hidden] { display: none; }
+  padding: 16px; min-width: 0; }
+
+/* recomendados: lista vertical que rola sozinha, estilo "proximos" do YouTube */
+.fx-rec { position: sticky; top: 0; min-width: 0; display: flex; flex-direction: column;
+  max-height: calc(100vh - 40px); background: var(--superficie); border-radius: var(--r-grande);
+  box-shadow: var(--sombra); padding: 14px 10px 10px 14px; }
+.fx-rec-titulo { font-size: 13px; font-weight: 700; color: var(--texto-2); text-transform: uppercase;
+  letter-spacing: .04em; margin: 0 4px 10px 0; }
+.fx-rec-lista { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 0;
+  padding-right: 4px; scroll-snap-type: y proximity; overscroll-behavior: contain; }
+.fx-rec-item { display: flex; gap: 12px; align-items: center; text-align: left; width: 100%; cursor: pointer;
+  border: 1.5px solid transparent; border-radius: 12px; background: var(--superficie-2); padding: 6px;
+  color: var(--texto); scroll-snap-align: start; flex: none; transition: border-color .14s ease, transform .14s ease; }
+@media (hover: hover) { .fx-rec-item:hover { border-color: var(--acento); } }
+.fx-rec-item:active { transform: scale(.98); }
+.fx-rec-capa { position: relative; flex: none; width: 64px; aspect-ratio: 2 / 3; border-radius: 8px;
+  overflow: hidden; background: var(--separador); }
+.fx-rec-capa .fx-poster-fallback { font-size: 10px; padding: 4px; }
+.fx-rec-capa img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.fx-rec-txt { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fx-rec-nome { font-weight: 600; font-size: 14px; line-height: 1.3; display: -webkit-box;
+  -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.fx-rec-meta { color: var(--texto-2); font-size: 12px; }
 .fx-player-cab { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   align-items: flex-start; margin-bottom: 12px; }
 .fx-player-cab > div:first-child { min-width: 0; }
@@ -123,9 +153,26 @@ main.envolucro.fx-envolucro { display: grid; gap: 14px; align-content: start; ma
 .fx-tv { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .fx-tv[hidden] { display: none; }
 
-.fx-video-wrap { position: relative; border-radius: 14px; overflow: hidden; background: #000; }
-.fx-video-wrap video, #embedFrame { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; border: 0; }
-#embedFrame[hidden] { display: none; }
+.fx-video-wrap { position: relative; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 16 / 9; }
+.fx-video-wrap video, #embedFrame { display: block; width: 100%; height: 100%; background: #000; border: 0; }
+#embedFrame[hidden], #nativePlayer[hidden] { display: none; }
+
+/* painel de servidores: ocupa o lugar do player quando a base direta nao tem o titulo */
+.fx-servidores { position: absolute; inset: 0; z-index: 1; overflow-y: auto; display: flex; flex-direction: column;
+  gap: 14px; padding: 18px; background: linear-gradient(160deg, #101016, #1b1b26); color: #fff; }
+.fx-servidores[hidden] { display: none; }
+.fx-srv-nota { font-size: 13.5px; line-height: 1.45; color: rgba(255, 255, 255, .75); max-width: 640px; }
+.fx-srv-nota strong { display: block; color: #fff; font-size: 16px; margin-bottom: 2px; }
+.fx-srv-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.fx-srv { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; cursor: pointer;
+  border: 1.5px solid rgba(255, 255, 255, .14); border-radius: 14px; background: rgba(255, 255, 255, .07); color: #fff;
+  transition: transform .14s ease, border-color .14s ease, background .14s ease; }
+@media (hover: hover) { .fx-srv:hover { border-color: var(--acento); background: rgba(255, 255, 255, .13); transform: translateY(-2px); } }
+.fx-srv:active { transform: scale(.97); }
+.fx-srv-ico { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--acento); font-weight: 800; font-size: 17px; }
+.fx-srv-nome { font-weight: 700; font-size: 14px; }
+.fx-srv-sub { font-size: 11.5px; color: rgba(255, 255, 255, .55); }
 
 .fx-overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; gap: 12px;
   align-items: center; justify-content: center; text-align: center; padding: 16px; color: #fff;
@@ -157,14 +204,13 @@ main.envolucro.fx-envolucro { display: grid; gap: 14px; align-content: start; ma
 .fx-selo.error { background: var(--perigo); color: #fff; }
 
 /* player alternativo (embed) */
-.fx-embed { margin-top: 12px; padding: 12px 14px; border-radius: var(--r-card); background: var(--superficie-2); font-size: 13px; }
+.fx-embed { margin-top: 12px; padding: 10px 14px; border-radius: var(--r-card); background: var(--superficie-2);
+  font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .fx-embed[hidden] { display: none; }
-.fx-embed .embed-note { color: var(--texto-2); margin-bottom: 8px; line-height: 1.4; }
-.fx-embed-btns { display: flex; flex-wrap: wrap; gap: 6px; }
-.fx-embed-btns button { border: 1.5px solid transparent; border-radius: var(--r-pill); padding: 6px 13px; cursor: pointer;
-  background: var(--superficie); color: var(--texto); font-weight: 600; font-size: 13px; }
-.fx-embed-btns button.active { border-color: var(--acento); color: var(--acento); }
-.fx-embed .embed-safe { margin-top: 10px; }
+.fx-embed .embed-atual { font-weight: 700; color: var(--texto); }
+.fx-embed .embed-atual:empty { display: none; }
+.fx-embed .fx-btn { padding: 6px 13px; font-size: 13px; background: var(--superficie); }
+.fx-embed .fx-btn[hidden] { display: none; }
 
 /* barra de legenda */
 .fx-legenda { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px;
@@ -186,7 +232,16 @@ main.envolucro.fx-envolucro { display: grid; gap: 14px; align-content: start; ma
 
 /* ---------- responsivo ---------- */
 
+@media (max-width: 960px) {
+  /* telas estreitas: recomendados descem para baixo do player (a lista segue vertical) */
+  .fx-modal-caixa { grid-template-columns: minmax(0, 1fr); }
+  .fx-rec { position: static; max-height: none; }
+  .fx-rec-lista { overflow: visible; }
+}
 @media (max-width: 640px) {
+  .fx-modal { padding: 10px 8px 20px; }
+  .fx-servidores { padding: 12px; gap: 10px; }
+  .fx-srv-grade { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
   .fx-grade { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
   .fx-player { padding: 12px; }
   .fx-controles { gap: 6px; }
