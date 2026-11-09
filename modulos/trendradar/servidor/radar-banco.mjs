@@ -1,5 +1,5 @@
 /**
- * Persistencia do radar vivo (Supabase). Sao 4 tabelas, em supabase/trendradar-v2.sql.
+ * Persistencia do radar vivo (Supabase). Sao 3 tabelas, em supabase/trendradar-v2.sql.
  *
  * Se as tabelas ainda nao existem, NADA quebra: o radar funciona em memoria
  * (vale enquanto o processo vive) e avisa UMA vez como corrigir. Em serverless
@@ -18,7 +18,14 @@ const KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE
 const sb = createClient(URL || "http://invalido", KEY || "invalido", { auth: { persistSession: false, autoRefreshToken: false } });
 
 const DICA = "Rode supabase/trendradar-v2.sql no SQL Editor do Supabase.";
-const estado = { ausente: false, avisou: false };
+const DICA_ESQUEMA = "O banco está na versão antiga do radar. Rode de novo supabase/trendradar-v2.sql no SQL Editor (é seguro repetir).";
+const estado = { ausente: false, esquemaAntigo: false, avisou: false };
+
+/** Coluna nova que o banco ainda nao tem (SQL antigo). PostgREST: PGRST204. */
+export function colunaAusente(e) {
+  const msg = String((e && (e.message || e.details)) || "");
+  return (e && e.code === "PGRST204") || /Could not find the '.+' column|column .+ of relation .+ does not exist/i.test(msg);
+}
 
 /** Erro de "tabela nao existe" do PostgREST/Postgres. */
 export function tabelaAusente(e) {
@@ -27,6 +34,11 @@ export function tabelaAusente(e) {
 }
 
 function falhou(e, onde) {
+  if (colunaAusente(e)) {
+    estado.esquemaAntigo = true;
+    if (!estado.avisou) { estado.avisou = true; console.warn(`[radar] ${DICA_ESQUEMA}`); }
+    return;
+  }
   if (tabelaAusente(e)) {
     estado.ausente = true;
     if (!estado.avisou) { estado.avisou = true; console.warn(`[radar] tabelas do radar vivo nao existem. ${DICA}`); }
@@ -35,11 +47,12 @@ function falhou(e, onde) {
   console.warn(`[radar] ${onde}: ${e && e.message}`);
 }
 
-export const radarBancoOk = () => !estado.ausente;
-export const dicaDoBanco = () => (estado.ausente ? DICA : "");
+export const radarBancoOk = () => !estado.ausente && !estado.esquemaAntigo;
+export const dicaDoBanco = () => (estado.ausente ? DICA : estado.esquemaAntigo ? DICA_ESQUEMA : "");
+export const motivoDoBanco = () => (estado.ausente ? "ausente" : estado.esquemaAntigo ? "esquema" : "");
 
 /* Memoria de reserva (so enquanto o processo vive). */
-const mem = { pulso: new Map(), descobertas: new Map(), itens: new Map(), coletas: [] };
+const mem = { pulso: new Map(), descobertas: new Map(), coletas: [] };
 
 /* ---------------------------------------------------------------- pulso */
 
@@ -93,7 +106,10 @@ export async function listarDescobertas({ status = null, limite = 30 } = {}) {
     let q = sb.from("radar_descobertas").select("*").order("criado_em", { ascending: false }).limit(limite);
     if (status) q = Array.isArray(status) ? q.in("status", status) : q.eq("status", status);
     const { data, error } = await q;
-    if (!error) return data || [];
+    if (!error) {
+      if (data && data[0] && !("origem" in data[0])) estado.esquemaAntigo = true; // SQL antigo: faltam colunas
+      return data || [];
+    }
     falhou(error, "listarDescobertas");
   }
   const todas = [...mem.descobertas.values()].sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
@@ -105,7 +121,7 @@ export async function atualizarDescoberta(id, campos) {
   for (const [k, v] of mem.descobertas) if (v.id === id) mem.descobertas.set(k, { ...v, ...patch });
   if (estado.ausente) return;
   const { error } = await sb.from("radar_descobertas").update(patch).eq("id", id);
-  if (error) falhou(error, "atualizarDescoberta");
+  if (error) { falhou(error, "atualizarDescoberta"); if (colunaAusente(error)) throw new Error(DICA_ESQUEMA); }
 }
 
 export async function buscarDescoberta(id) {
@@ -116,22 +132,24 @@ export async function buscarDescoberta(id) {
   return data;
 }
 
-/* ---------------------------------------------------------------- itens */
+/* ---------------------------------------------------------------- alvos */
 
-export async function gravarItem(item) {
-  mem.itens.set(item.id, item);
-  if (estado.ausente) return;
-  const { error } = await sb.from("radar_itens").upsert({ id: item.id, dados: item, atualizado_em: new Date().toISOString() }, { onConflict: "id" });
-  if (error) falhou(error, "gravarItem");
-}
-
-export async function listarItensSalvos() {
-  if (!estado.ausente) {
-    const { data, error } = await sb.from("radar_itens").select("dados").limit(500);
-    if (!error) return (data || []).map((r) => r.dados).filter(Boolean);
-    falhou(error, "listarItensSalvos");
-  }
-  return [...mem.itens.values()];
+/**
+ * Grava um alvo que NAO veio da descoberta automatica (pesquisa sua ou CSV).
+ * Se o assunto ja existe (mesma chave), atualiza em vez de duplicar. Devolve a linha.
+ */
+export async function gravarAlvo(linha) {
+  const agora = new Date().toISOString();
+  const nova = { ...linha, atualizado_em: agora };
+  const existente = mem.descobertas.get(nova.chave);
+  const base = { id: existente ? existente.id : "mem-" + nova.chave, criado_em: existente ? existente.criado_em : agora, ...existente, ...nova };
+  mem.descobertas.set(nova.chave, base);
+  if (estado.ausente) return base;
+  const { data, error } = await sb.from("radar_descobertas")
+    .upsert({ ...nova, criado_em: undefined }, { onConflict: "chave" }).select().maybeSingle();
+  if (error) { falhou(error, "gravarAlvo"); if (colunaAusente(error)) throw new Error(DICA_ESQUEMA); return base; }
+  if (data) mem.descobertas.set(nova.chave, data);
+  return data || base;
 }
 
 /* --------------------------------------------------------------- coletas */

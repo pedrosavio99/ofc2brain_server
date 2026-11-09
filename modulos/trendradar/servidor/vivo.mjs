@@ -90,30 +90,11 @@ export function filtrarRelevantes(itens, termo) {
 }
 
 /**
- * Buscas de imprensa por oportunidade. O `termoBusca` da semente e uma frase
- * longa ("automacao whatsapp clinica medica") e o Google Noticias exige todas as
- * palavras: voltava 0 a 1 materia. Aqui cada oportunidade tem 2 buscas curtas e
- * amplas, que acompanham o ASSUNTO e nao a frase exata do produto.
- * Itens sem entrada (os que voce pesquisa) usam o proprio termo.
+ * Buscas de imprensa de um alvo. O Google Noticias exige todas as palavras, entao
+ * frase longa volta 0 a 1 materia: o termo do alvo e sempre curto (2 a 5 palavras).
  */
-export const TERMOS_IMPRENSA = {
-  "tr-agentes-whatsapp-clinicas": ["atendimento WhatsApp clínicas", "agendamento consultas inteligência artificial clínica"],
-  "tr-auditoria-glosas-medicas-tiss": ["glosas médicas convênios", "TISS ANS faturamento clínicas"],
-  "tr-conciliacao-taxas-marketplaces": ["taxas marketplace lojistas", "Mercado Livre Shopee vendedores taxas"],
-  "tr-simulador-reforma-tributaria-ibs-cbs": ["reforma tributária IBS CBS empresas", "split payment reforma tributária"],
-  "tr-regua-recuperacao-pix-inadimplencia": ["inadimplência empresas Pix", "Pix Automático cobrança"],
-  "tr-conformidade-nr1-riscos-psicossociais": ["NR-1 riscos psicossociais", "NR-1 saúde mental empresas"],
-  "tr-auditoria-ponto-passivo-trabalhista": ["passivo trabalhista horas extras", "controle de ponto empresas TST"],
-  "tr-copiloto-licitacoes-pncp": ["licitações PNCP", "nova lei de licitações fornecedores"],
-  "tr-monitor-diarios-oficiais-licencas": ["licença ambiental diário oficial", "alvará licenciamento empresas"],
-  "tr-diario-obra-audio-foto-construtoras": ["gestão de obras construtoras", "diário de obra"],
-  "tr-gestao-pmoc-manutencao-climatizacao-solar": ["PMOC ar condicionado", "manutenção usina solar"],
-  "tr-gateway-observabilidade-lgpd-llm": ["LGPD inteligência artificial empresas", "custo LLM empresas agentes de IA"],
-  "tr-hype-wrapper-generico-pdf": ["chat com PDF IA", "ferramentas de IA para estudantes"],
-};
-
 export function termosDoItem(item) {
-  return TERMOS_IMPRENSA[item.id] || [item.termoBusca || item.nome].filter(Boolean);
+  return [item.termo || item.termoBusca || item.nome].filter(Boolean);
 }
 
 /**
@@ -192,16 +173,19 @@ export function contarJanelas(itens, agora = new Date(), preferir = "") {
 }
 
 /**
- * Estado do pulso. Pouco dado = "sem_dado" (nunca finge tendencia). Pura.
+ * Estado do pulso. Pouco dado (menos de 6 materias nas duas janelas) = "sem_dado": nunca
+ * finge tendencia. De 2 para 3 materias nao e "+50%", e ruido. Pura.
  * @returns {{estado:'subindo'|'esfriando'|'estavel'|'sem_dado', variacaoPct:number|null, sete:number, anteriores:number}}
  */
 export function estadoDoPulso({ sete = 0, anteriores = 0 } = {}) {
-  if (sete + anteriores < 4) return { estado: "sem_dado", variacaoPct: null, sete, anteriores };
-  const variacaoPct = anteriores === 0 ? (sete >= 3 ? 100 : 0) : Math.round(((sete - anteriores) / anteriores) * 100);
+  const total = sete + anteriores;
+  const amostraPequena = total < 12;
+  if (total < 6) return { estado: "sem_dado", variacaoPct: null, sete, anteriores, amostraPequena: true };
+  const variacaoPct = anteriores === 0 ? (sete >= 4 ? 100 : 0) : Math.round(((sete - anteriores) / anteriores) * 100);
   let estado = "estavel";
-  if (variacaoPct >= 35 && sete >= 3) estado = "subindo";
-  else if (variacaoPct <= -35 && anteriores >= 3) estado = "esfriando";
-  return { estado, variacaoPct, sete, anteriores };
+  if (variacaoPct >= 40 && sete >= 4) estado = "subindo";
+  else if (variacaoPct <= -40 && anteriores >= 4) estado = "esfriando";
+  return { estado, variacaoPct, sete, anteriores, amostraPequena };
 }
 
 /** 0..100: 50 e neutro; sobe com variacao positiva e com volume. Pura. */
@@ -213,35 +197,21 @@ export function momentumScore({ variacaoPct, sete }) {
 }
 
 /**
- * A pontuacao "viva": a tese editorial (base) pesa 65%, o pulso medido 35%.
- * Sem dado do pulso, fica a base. Pura.
+ * Linhas diarias de radar_pulso de UM alvo -> pulso de hoje + serie real (um ponto
+ * por dia de coleta). Sem linhas, `pulso` e null: a tela diz "ainda sem medicao". Pura.
+ * @param {object[]} linhas  qualquer ordem
  */
-export function pontuacaoViva(base, pulso) {
-  const b = Number.isFinite(Number(base)) ? Number(base) : 50;
-  const m = pulso ? momentumScore(pulso) : null;
-  return m == null ? Math.round(b) : Math.max(0, Math.min(100, Math.round(b * 0.65 + m * 0.35)));
-}
-
-/**
- * Cola o pulso nos itens: `pulso`, `pontuacaoViva` e `historicoPulso` (dias
- * reais de coleta). Nao muda o item original. Pura.
- * @param {object[]} itens
- * @param {Map<string, object[]>} porItem  item_id -> linhas de radar_pulso (qualquer ordem)
- */
-export function enriquecerComPulso(itens, porItem) {
-  return itens.map((it) => {
-    const linhas = [...((porItem && porItem.get(it.id)) || [])].sort((a, b) => String(a.dia).localeCompare(String(b.dia)));
-    const ultima = linhas[linhas.length - 1];
-    if (!ultima) return { ...it, pontuacaoViva: Math.round(Number(it.pontuacao) || 50), pulso: null, historicoPulso: [] };
-    const e = estadoDoPulso({ sete: ultima.mencoes_7d, anteriores: ultima.mencoes_prev_7d });
-    const pulso = { ...e, dia: String(ultima.dia).slice(0, 10), manchetes: ultima.manchetes || [] };
-    return {
-      ...it,
-      pulso,
-      pontuacaoViva: pontuacaoViva(it.pontuacao, pulso),
-      historicoPulso: linhas.slice(-14).map((l) => ({ data: String(l.dia).slice(0, 10), valor: l.mencoes_7d })),
-    };
-  });
+export function pulsoDeLinhas(linhas = []) {
+  const ord = [...linhas].sort((a, b) => String(a.dia).localeCompare(String(b.dia)));
+  const ultima = ord[ord.length - 1];
+  if (!ultima) return { pulso: null, serie: [], calor: null };
+  const e = estadoDoPulso({ sete: ultima.mencoes_7d, anteriores: ultima.mencoes_prev_7d });
+  const pulso = { ...e, dia: String(ultima.dia).slice(0, 10), manchetes: ultima.manchetes || [] };
+  return {
+    pulso,
+    serie: ord.slice(-30).map((l) => ({ data: String(l.dia).slice(0, 10), valor: l.mencoes_7d })),
+    calor: momentumScore(pulso),
+  };
 }
 
 /* ------------------------------------------------------------ descoberta */
@@ -267,7 +237,7 @@ export const CONSULTAS_FRENTE = {
  */
 /* Redes sociais e afins nao sao fonte de mercado B2B. */
 const RE_NAO_B2B = /pessoa f[ií]sica|benefici[aá]ri|cidad[aã]|consumidor|aposentad|usu[aá]rios? final|brasileiros|segurad[oa]s?\b|pacientes?\b|eleitor|torcedor/i;
-const FONTES_FRACAS = /instagram|facebook|youtube|tiktok|kwai|twitter|^x$|pinterest|reddit|whatsapp/i;
+const FONTES_FRACAS = /instagram|facebook|youtube|tiktok|kwai|twitter|^x$|pinterest|reddit|whatsapp|vietnam|\.vn\b/i;
 
 export function sanearDescobertas(bruto, manchetes, chavesExistentes = new Set()) {
   const lista = Array.isArray(bruto && bruto.descobertas) ? bruto.descobertas : [];

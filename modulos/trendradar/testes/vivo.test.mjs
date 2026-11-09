@@ -6,10 +6,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   decodificar, parseRss, dedupePorTitulo, contarJanelas, estadoDoPulso, momentumScore,
-  pontuacaoViva, enriquecerComPulso, filtrarRelevantes, sanearDescobertas, assuntoParecido, radicaisDe, termosDoItem, pulsoDoItem,
+  pulsoDeLinhas, filtrarRelevantes, sanearDescobertas, assuntoParecido, radicaisDe, termosDoItem, pulsoDoItem,
 } from "../servidor/vivo.mjs";
 import { cronAutorizado } from "../servidor/coleta.mjs";
-import { evidenciasDaImprensa } from "../servidor/nucleo.mjs";
+import { lerCsvTrends } from "../servidor/nucleo.mjs";
+import { sanearHipoteses } from "../servidor/ia.mjs";
+import { cartaoDoAlvo, montarCartoes, resumoDosCartoes, visivel, idPulso } from "../servidor/cartoes.mjs";
 
 const AGORA = new Date("2026-11-09T12:00:00Z");
 const dias = (n) => new Date(AGORA.getTime() - n * 86400000).toISOString();
@@ -53,34 +55,33 @@ test("estado do pulso: pouco dado nunca vira tendência", () => {
   assert.equal(estadoDoPulso({ sete: 15, anteriores: 3 }).estado, "subindo");
   assert.equal(estadoDoPulso({ sete: 3, anteriores: 8 }).estado, "esfriando");
   assert.equal(estadoDoPulso({ sete: 10, anteriores: 9 }).estado, "estavel");
-  assert.equal(estadoDoPulso({ sete: 4, anteriores: 0 }).variacaoPct, 100, "do zero não divide por zero");
+  assert.equal(estadoDoPulso({ sete: 6, anteriores: 0 }).variacaoPct, 100, "do zero não divide por zero");
+  assert.equal(estadoDoPulso({ sete: 3, anteriores: 2 }).estado, "sem_dado", "de 2 para 3 matérias não é +50%, é ruído");
+  assert.equal(estadoDoPulso({ sete: 4, anteriores: 0 }).estado, "sem_dado");
+  const pequeno = estadoDoPulso({ sete: 5, anteriores: 3 });
+  assert.deepEqual([pequeno.estado, pequeno.amostraPequena], ["subindo", true], "sobe, mas avisa que a amostra é pequena");
+  assert.equal(estadoDoPulso({ sete: 15, anteriores: 3 }).amostraPequena, false);
 });
 
-test("pontuação viva: sem pulso fica a tese; com pulso sobe ou desce, sempre 0..100", () => {
-  assert.equal(pontuacaoViva(80, null), 80);
-  assert.equal(pontuacaoViva(80, { variacaoPct: null, sete: 1 }), 80, "sem dado, sem ajuste");
-  const sobe = pontuacaoViva(60, { variacaoPct: 300, sete: 20 });
-  const desce = pontuacaoViva(60, { variacaoPct: -90, sete: 1 });
-  assert.ok(sobe > 60 && desce < 60, `sobe=${sobe} desce=${desce}`);
-  assert.ok(pontuacaoViva(100, { variacaoPct: 900, sete: 99 }) <= 100);
-  assert.ok(pontuacaoViva(0, { variacaoPct: -900, sete: 0 }) >= 0);
+test("momentum: sem dado é null, com dado fica sempre entre 0 e 100", () => {
   assert.equal(momentumScore({ variacaoPct: null, sete: 5 }), null);
+  assert.ok(momentumScore({ variacaoPct: 900, sete: 99 }) <= 100);
+  assert.ok(momentumScore({ variacaoPct: -900, sete: 0 }) >= 0);
+  assert.ok(momentumScore({ variacaoPct: 300, sete: 20 }) > 50 && momentumScore({ variacaoPct: -90, sete: 1 }) < 50);
 });
 
-test("enriquecer: usa a coleta mais recente, monta histórico real e não muta o item", () => {
-  const item = { id: "a", pontuacao: 70 };
-  const porItem = new Map([["a", [
-    { item_id: "a", dia: "2026-11-08", mencoes_7d: 4, mencoes_prev_7d: 4, manchetes: [] },
-    { item_id: "a", dia: "2026-11-09", mencoes_7d: 12, mencoes_prev_7d: 4, manchetes: [{ titulo: "x" }] },
-  ]]]);
-  const [r, sem] = enriquecerComPulso([item, { id: "b", pontuacao: 50 }], porItem);
+test("pulsoDeLinhas: usa a coleta mais recente, monta a série dia a dia e sem coleta devolve vazio honesto", () => {
+  const linhas = [
+    { dia: "2026-11-09", mencoes_7d: 12, mencoes_prev_7d: 4, manchetes: [{ titulo: "x" }] },
+    { dia: "2026-11-08", mencoes_7d: 4, mencoes_prev_7d: 4, manchetes: [] },
+  ];
+  const r = pulsoDeLinhas(linhas);
   assert.equal(r.pulso.estado, "subindo");
   assert.equal(r.pulso.dia, "2026-11-09");
-  assert.deepEqual(r.historicoPulso.map((h) => h.valor), [4, 12]);
-  assert.ok(r.pontuacaoViva > 70);
-  assert.equal(sem.pulso, null);
-  assert.equal(sem.pontuacaoViva, 50);
-  assert.equal(item.pulso, undefined);
+  assert.deepEqual(r.serie.map((h) => h.valor), [4, 12], "ordena por dia mesmo vindo desordenado");
+  assert.ok(r.calor > 50);
+  const vazio = pulsoDeLinhas([]);
+  assert.deepEqual(vazio, { pulso: null, serie: [], calor: null });
 });
 
 test("relevância: 'gestão de eventos' não passa novela; plural e flexão casam pelo radical", () => {
@@ -90,18 +91,16 @@ test("relevância: 'gestão de eventos' não passa novela; plural e flexão casa
   assert.equal(filtrarRelevantes(itens, "de da do").length, 3, "sem termo significativo não filtra");
 });
 
-test("termos de imprensa: a semente usa buscas curtas, o item pesquisado usa o próprio termo", () => {
-  assert.equal(termosDoItem({ id: "tr-copiloto-licitacoes-pncp" }).length, 2);
-  assert.deepEqual(termosDoItem({ id: "tr-pesq-x", termoBusca: "prospeccao de clientes" }), ["prospeccao de clientes"]);
+test("termos de imprensa: o alvo pesquisa pelo próprio termo, curto", () => {
+  assert.deepEqual(termosDoItem({ termo: "NR-1 riscos psicossociais" }), ["NR-1 riscos psicossociais"]);
+  assert.deepEqual(termosDoItem({ nome: "Algo" }), ["Algo"]);
 });
 
 test("pulsoDoItem: junta as buscas, filtra o ruído de cada uma e falha só se TODAS falharem", async () => {
-  const item = { id: "tr-copiloto-licitacoes-pncp", termoBusca: "x", nome: "Licitações" };
-  const buscar = async (t) => (t === "licitações PNCP"
-    ? [n("Licitações no PNCP crescem", 1), n("Futebol: rodada final", 1)]
-    : [n("Nova lei de licitações e fornecedores", 2)]);
+  const item = { termo: "licitações PNCP" };
+  const buscar = async () => [n("Licitações no PNCP crescem", 1), n("Futebol: rodada final", 1), n("Nova lei de licitações e fornecedores", 2)];
   const j = await pulsoDoItem(item, AGORA, buscar);
-  assert.equal(j.sete, 2, "o item de futebol é descartado pelo filtro");
+  assert.equal(j.sete, 2, "só o futebol é descartado pelo filtro (a outra casa pelo radical licit)");
   await assert.rejects(() => pulsoDoItem(item, AGORA, async () => { throw new Error("fora"); }), /não respondeu/);
 });
 
@@ -143,12 +142,62 @@ test("cron: só passa com o segredo exato; sem segredo configurado nunca passa",
   assert.equal(cronAutorizado("Bearer qualquer", undefined), false);
 });
 
-test("evidências de investigação: só o que tem fonte, e dizem quando não há nada", () => {
-  assert.match(evidenciasDaImprensa(null)[0], /não respondeu/);
-  assert.match(evidenciasDaImprensa({ sete: 0, anteriores: 0, manchetes: [] })[0], /Nenhuma matéria/);
-  const e = evidenciasDaImprensa({ sete: 5, anteriores: 2, manchetes: [{ titulo: "Algo", fonte: "Valor", data: "2026-11-08" }] });
-  assert.match(e[0], /5 matéria\(s\).*2/);
-  assert.match(e[1], /"Algo" \(Valor, 2026-11-08\)/);
+test("CSV do Google Trends: lê nome e série, ignora cabeçalho e lixo, limita 0..100", () => {
+  const { nome, serie } = lerCsvTrends("Semana,automação clínica: (Brasil)\n2026-05-01,31\n2026-06-01,<1\n2026-07-01,140\nlixo,abc\n", "");
+  assert.equal(nome, "automação clínica");
+  assert.deepEqual(serie.map((p) => p.valor), [31, 1, 100]);
+  assert.equal(lerCsvTrends("2026-05,10\n2026-06,20", "Meu termo").nome, "Meu termo");
+  assert.equal(lerCsvTrends("", "").serie.length, 0);
+});
+
+test("hipóteses da IA: só aproveita resposta completa, limpa travessão e frente inválida vira null", () => {
+  assert.equal(sanearHipoteses(null), null);
+  assert.equal(sanearHipoteses({ nome: "curto" }), null);
+  const h = sanearHipoteses({
+    nome: "Painel de conformidade NR-1 para indústrias", frente: "esportes", quemPaga: "indústrias com mais de 100 funcionários",
+    dores: ["Não sabem mapear risco psicossocial — e temem multa", "x"], concorrentesProvaveis: ["Planilhas"], testeRapido: "Ligar para 5 gestores de RH.", validar: ["Disposição a pagar"],
+  });
+  assert.equal(h.frente, null, "frente fora da lista não é aceita");
+  assert.equal(h.dores.length, 1, "dor curtinha demais é descartada");
+  assert.doesNotMatch(h.dores[0], /—/);
+});
+
+test("cartão: só carrega o que foi medido ou citado, e sem coleta o pulso é null", () => {
+  const row = { id: "u1", chave: "nr 1 riscos", status: "nova", origem: "radar", titulo: "NR-1", frente: "regtech", termo: "NR-1 riscos",
+    porque_agora: "AGU abriu consulta.", sinais: [{ titulo: "t", fonte: "f", url: "https://x", data: "2026-11-08" }],
+    criado_em: new Date(AGORA.getTime() - 3600000).toISOString(), serie: null, regioes: null, dossie: null };
+  const sem = cartaoDoAlvo(row, [], AGORA.getTime());
+  assert.equal(sem.pulso, null);
+  assert.equal(sem.novo, true);
+  assert.equal(sem.trends, null);
+  assert.equal(sem.curva, null, "sem série real não existe curva");
+  assert.equal(sem.regioes, null);
+  const com = cartaoDoAlvo(row, [{ dia: "2026-11-09", mencoes_7d: 9, mencoes_prev_7d: 3, manchetes: [] }], AGORA.getTime());
+  assert.equal(com.pulso.estado, "subindo");
+  const csv = cartaoDoAlvo({ ...row, origem: "csv", status: "investigada", serie: [{ data: "1", valor: 10 }, { data: "2", valor: 20 }, { data: "3", valor: 30 }, { data: "4", valor: 40 }] }, [], AGORA.getTime());
+  assert.ok(csv.curva && csv.curva.classificacaoCurva, "a curva só nasce de série real (CSV/SerpApi)");
+});
+
+test("visibilidade: descartada some; nova parada há 3 semanas sai da frente; salva e pesquisa ficam", () => {
+  const velho = new Date(AGORA.getTime() - 30 * 86400000).toISOString();
+  const novo = new Date(AGORA.getTime() - 86400000).toISOString();
+  assert.equal(visivel({ status: "descartada", criado_em: novo }, AGORA.getTime()), false);
+  assert.equal(visivel({ status: "nova", origem: "radar", criado_em: velho }, AGORA.getTime()), false);
+  assert.equal(visivel({ status: "nova", origem: "radar", criado_em: novo }, AGORA.getTime()), true);
+  assert.equal(visivel({ status: "salva", origem: "radar", criado_em: velho }, AGORA.getTime()), true);
+  assert.equal(visivel({ status: "investigada", origem: "pesquisa", criado_em: velho }, AGORA.getTime()), true);
+});
+
+test("montarCartoes: pega o pulso pela chave, ordena do mais novo e resume sem inventar", () => {
+  const mk = (id, chave, criado, extra = {}) => ({ id, chave, status: "nova", origem: "radar", titulo: id, frente: "fintech", termo: chave, criado_em: criado, sinais: [], ...extra });
+  const rows = [mk("a", "aa", dias(5)), mk("b", "bb", dias(1)), mk("c", "cc", dias(2), { status: "descartada" })];
+  const pulsos = new Map([[idPulso("aa"), [{ dia: "2026-11-09", mencoes_7d: 10, mencoes_prev_7d: 2, manchetes: [] }]]]);
+  const cards = montarCartoes(rows, pulsos, AGORA.getTime());
+  assert.deepEqual(cards.map((c) => c.id), ["b", "a"]);
+  assert.equal(cards[1].pulso.estado, "subindo");
+  assert.equal(cards[0].pulso, null);
+  const r = resumoDosCartoes(cards);
+  assert.deepEqual([r.total, r.subindo, r.comMedicao, r.novos], [2, 1, 1, 1]);
 });
 
 test("acesso: o cron do radar passa do PIN (tem segredo próprio), o resto do radar não", async () => {

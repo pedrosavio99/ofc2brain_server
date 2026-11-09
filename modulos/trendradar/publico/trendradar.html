@@ -11,7 +11,7 @@
     <title>TrendRadar</title>
     <link rel="icon" type="image/svg+xml" href="/cerebro-mini.svg" />
     <link rel="stylesheet" href="/estilos.css" />
-    <link rel="stylesheet" href="/trendradar/trendradar.css" />
+    <link rel="stylesheet" href="/trendradar/radar.css" />
     <script>
       try {
         document.documentElement.dataset.tema =
@@ -97,33 +97,21 @@
 
     <main class="envolucro tr-envolucro" id="app">
       <h1 class="titulao">TrendRadar</h1>
-      <p class="subtitulao" id="resumoTopo">Carregando panorama das 6 frentes de mercado…</p>
+      <p class="subtitulao" id="resumoTopo">Lendo o que a imprensa publicou…</p>
 
-      <!-- Hoje no radar: sinais novos e movimento na imprensa (radar-hoje.js) -->
-      <section id="radarHoje" class="tr-hoje" aria-live="polite" hidden></section>
-      <!-- Banner discreto de alerta de cota (visivel apenas se houver alerta critico/esgotado) -->
-      <section id="bannerAlertaCota" class="tr-alerta-cota" hidden></section>
+      <!-- Estado da coleta e avisos (banco sem tabelas, coleta em andamento, erro) -->
+      <div id="trAviso" aria-live="polite"></div>
 
-      <!-- Barra de busca padronizada com /estilos.css -->
+      <!-- Resumo do dia: cada bloco tambem filtra a lista -->
+      <section id="trResumo" class="tr-resumo" aria-label="Resumo do radar"></section>
+
       <div class="busca" id="caixaBusca">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
           <circle cx="11" cy="11" r="7" />
           <path d="M20 20l-3.5-3.5" />
         </svg>
-        <input
-          id="campoBusca"
-          type="search"
-          placeholder="Buscar oportunidade, empresa, dor, estado ou tecnologia..."
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button
-          class="limpar"
-          id="limparBusca"
-          type="button"
-          data-acao="limpar-busca"
-          aria-label="Limpar busca"
-        >
+        <input id="campoBusca" type="search" placeholder="Buscar assunto, dor ou manchete…" autocomplete="off" spellcheck="false" />
+        <button class="limpar" id="limparBusca" type="button" data-acao="limpar-busca" aria-label="Limpar busca">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <circle cx="12" cy="12" r="10" fill="currentColor" opacity=".28" />
             <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" />
@@ -131,91 +119,25 @@
         </button>
       </div>
 
-      <!-- Seletor segmentado de agrupamento -->
-      <nav class="segmentado" id="abasGrupo" role="tablist" aria-label="Modo de organização">
-        <div class="indicador" id="indicadorGrupo"></div>
-        <button
-          type="button"
-          role="tab"
-          data-acao="mudar-aba"
-          data-grupo="frente"
-          class="ativo"
-        >
-          6 Frentes
-        </button>
-        <button
-          type="button"
-          role="tab"
-          data-acao="mudar-aba"
-          data-grupo="objetivo"
-        >
-          4 Objetivos
-        </button>
-        <button
-          type="button"
-          role="tab"
-          data-acao="mudar-aba"
-          data-grupo="curva"
-        >
-          Curva &amp; Hype
-        </button>
-        <button
-          type="button"
-          role="tab"
-          data-acao="mudar-aba"
-          data-grupo="validacao"
-        >
-          Validação
-        </button>
+      <nav class="segmentado" id="trOrdem" role="tablist" aria-label="Ordenar o radar">
+        <div class="indicador" id="trIndicador"></div>
+        <button type="button" role="tab" data-acao="ordem" data-ordem="recentes" class="ativo">Mais novos</button>
+        <button type="button" role="tab" data-acao="ordem" data-ordem="alta">Em alta</button>
+        <button type="button" role="tab" data-acao="ordem" data-ordem="combina">Pra você</button>
       </nav>
 
-      <!-- Chips de filtro por frente e recortes ativos -->
-      <div id="filtros" role="toolbar" aria-label="Filtrar frentes do radar"></div>
+      <div id="trFiltros" role="toolbar" aria-label="Filtrar por frente"></div>
 
-      <!-- Conteudo principal (secoes e cartoes de oportunidades) -->
-      <div id="conteudo" aria-live="polite"></div>
+      <div id="trLista" class="tr-lista" aria-live="polite"></div>
+      <p id="trRodape" class="tr-rodape"></p>
     </main>
 
-    <!-- Barra flutuante de selecao para relatorio comparativo -->
-    <div class="tr-barra-plano" id="barraSelecao" hidden>
-      <div class="tr-barra-plano-info">
-        <span class="tr-barra-plano-contador" id="contadorSelecao">0</span>
-        <div>
-          <strong id="tituloSelecao">Oportunidades selecionadas</strong>
-          <small id="subtituloSelecao">Prontas para relatório comparativo</small>
-        </div>
-      </div>
-      <div class="tr-barra-plano-acoes">
-        <button
-          type="button"
-          class="btn btn-suave"
-          data-acao="limpar-selecao"
-        >
-          Limpar
-        </button>
-        <button
-          type="button"
-          class="btn"
-          data-acao="abrir-relatorio"
-        >
-          Relatório MD / PDF
-        </button>
-      </div>
-    </div>
-
-    <!-- Cortina e Sheet (Opcoes, Dossie 6 Perguntas, Pesquisar Alvo, Importar CSV, Relatorio MD/PDF, Cotas) -->
     <div class="cortina" id="cortina" data-acao="fechar-sheet"></div>
     <div class="sheet tr-sheet" id="sheet" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="puxador"></div>
       <div class="sheet-cab">
         <h3 id="sheetTitulo">Opções</h3>
-        <button
-          class="icone-btn"
-          id="fecharSheet"
-          type="button"
-          data-acao="fechar-sheet"
-          aria-label="Fechar painel"
-        >
+        <button class="icone-btn" id="fecharSheet" type="button" data-acao="fechar-sheet" aria-label="Fechar painel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
@@ -224,12 +146,10 @@
       <div class="sheet-corpo" id="sheetCorpo"></div>
     </div>
 
-    <!-- Toast de feedback -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script src="/pin.js"></script>
     <script src="/navegacao.js"></script>
-    <script src="/trendradar/trendradar.js"></script>
-    <script src="/trendradar/radar-hoje.js"></script>
+    <script src="/trendradar/radar.js"></script>
   </body>
 </html>

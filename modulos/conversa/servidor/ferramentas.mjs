@@ -23,7 +23,7 @@ import * as bancoRefeicao from "../../refeicao/servidor/banco.mjs";
 import * as metasRefeicao from "../../refeicao/servidor/metas.mjs";
 import { metasDeHoje } from "../../metas/servidor/registro.mjs";
 import * as clickup from "../../trabalho/servidor/clickup.mjs";
-import { resumoDoRadar } from "../../trendradar/servidor/nucleo.mjs";
+import { resumoDoRadar } from "../../trendradar/servidor/coleta.mjs";
 import { gerarEmbeddings } from "../../../src/embeddings.js";
 import * as banco from "./banco.mjs";
 import { buscarNotas, montarTsQuery } from "./busca.mjs";

@@ -1,54 +1,77 @@
-# Módulo TrendRadar — Segundo Cérebro (`modulos/trendradar`)
+# TrendRadar (`modulos/trendradar`)
 
-Radar estratégico de inteligência de mercado B2B integrado ao ecossistema **Segundo Cérebro**. Organiza as **6 Frentes de Mercado** e **4 Objetivos Simultâneos**, respondendo às **6 Perguntas de Decisão** (série temporal e anti-hype, concentração geográfica nas 27 UFs, dores recorrentes, lacunas competitivas, ICP pagador e auditoria de evidências).
+Radar de oportunidades B2B que só mostra **dado coletado**. Não existe catálogo fixo, score editorial nem estimativa: se algo não foi medido, a tela diz que não mediu.
 
-## Arquitetura no Segundo Cérebro
+Prefixo HTTP: `/trendradar`. Persistência: Supabase (`supabase/trendradar-v2.sql`), com reserva em memória enquanto as tabelas não existem.
 
-- **Prefixo HTTP**: `/trendradar`
-- **Persistência**: o catálogo base vem de `dados-historico.json` (somente leitura na Vercel). O que muda (pulso diário, descobertas, itens pesquisados) fica no Supabase (`supabase/trendradar-v2.sql`), com reserva em memória se as tabelas não existirem.
-- **Design System Oficial (`/estilos.css`)**:
-  - Tela principal enxuta com barra superior oficial (`Segundo cérebro / TrendRadar`), busca rápida, controle segmentado animado (`.segmentado` + `.indicador`) e chips das 6 frentes.
-  - Todas as ferramentas avançadas (**Pesquisar Alvo**, **Importar CSV Google Trends**, **Relatório Executivo MD/PDF**, **Síntese Executiva da IA**, **Monitor de Cotas de API**, **Seletor de Modelo de IA**, **Filtro por Tipo de Alvo**, **Lente dos 4 Objetivos** e **Aparência/Tema**) ficam concentradas no menu `•••` (`Opções`) da navbar.
+## O que aparece na tela
 
-## Radar vivo (muda todo dia)
+Cada cartão é uma linha de `radar_descobertas`, de uma de três origens:
 
-O catálogo de oportunidades é uma **tese editorial** (métricas estimadas, rotuladas como tal na tela). O que o torna vivo é uma **coleta diária** com dados reais:
+| origem | de onde vem |
+|---|---|
+| `radar` | achado sozinho pela coleta diária, a partir de manchetes reais |
+| `pesquisa` | um alvo que você pesquisou (menu ••• ou lupa) |
+| `csv` | uma série do Google Trends que você exportou e importou |
 
-1. **Pulso de imprensa**: para cada oportunidade, quantas matérias *distintas* (dedup por título, filtro de relevância) o Google Notícias teve nos últimos 7 dias contra os 7 anteriores. Estados: `subindo` / `esfriando` / `estável` / `sem dado` (precisa de ≥4 menções, ±35% e ≥3 de volume). A pontuação vira `0,65 × tese + 0,35 × momentum`. A foto diária fica em `radar_pulso`, então o histórico real cresce a cada dia.
-2. **Descobertas**: manchetes recentes de cada frente → uma chamada ao Groq propõe oportunidades **ancoradas nas manchetes** (links vêm dos dados, nunca do modelo; mínimo 2 fontes distintas; só B2B com "quem paga" nomeado; sem repetir assunto já proposto, mesmo com outras palavras).
-3. **Afinidade**: embedding de cada descoberta contra as suas notas; só aparece "Combina com você" acima de 0,72 de similaridade (`RADAR_PISO_AFINIDADE`).
+E cada cartão só carrega o que tem fonte:
 
-A tela **Hoje no radar** (topo da página) mostra sinais novos (Investigar / Conversar / Salvar / Descartar) e o movimento da imprensa. "Conversar" abre `/conversa?abrir=…` e os sinais novos também entram como cartão "Radar" no feed da Conversa.
+- **Manchetes** (veículo, data, link) que sustentam o assunto.
+- **Pulso de imprensa**: matérias distintas do Google Notícias nos últimos 7 dias contra os 7 anteriores. Menos de 6 matérias no total = "sem dado" (nunca finge tendência); amostra pequena é avisada. A série diária cresce a cada coleta.
+- **Série e regiões do Google Trends**, só se vieram de CSV seu ou da `SERPAPI_KEY`.
+- **Leitura da IA** (quem paga, dores, soluções que já existem, teste de 7 dias): sempre rotulada "hipótese a validar". Se a IA não responde, o campo fica vazio; nunca entra texto pronto.
+- **Combina com você**: nota sua mais parecida (embedding), só acima de 0,72 de similaridade (`RADAR_PISO_AFINIDADE`).
 
-**Operação**
-- Rode `supabase/trendradar-v2.sql` uma vez (4 tabelas, RLS ligado). Sem ele tudo funciona em memória e a tela avisa que o histórico não é guardado.
-- Cron diário em `vercel.json` (`0 9 * * *` UTC = 06:00 BRT) chama `GET /trendradar/api/cron/coletar`. Exige `CRON_SECRET` nas variáveis da Vercel; sem ela a rota responde 503 (nunca fica aberta).
-- Se os dados têm mais de 14 h, o painel dispara uma coleta sozinho (uma vez por sessão). `POST /api/coletar` força manualmente.
-- Rotas novas: `GET /api/hoje`, `POST /api/coletar`, `PATCH /api/descobertas`, `POST /api/descobertas/investigar`.
+A contagem de matérias mede **atenção da imprensa**, não demanda de mercado. Valide com clientes antes de construir.
 
-**Limites honestos**: contagem de matérias é um *proxy* de interesse (ruidoso, pode oscilar com poucos números); as métricas da tese editorial não são coleta; a investigação aprofundada ainda gera reclamações/concorrentes por LLM, apresentados como hipóteses a validar.
+## Como o radar se alimenta
 
-## Estrutura de Arquivos e Variáveis de Ambiente
+Uma coleta por dia (cron da Vercel) e sob demanda quando os dados têm mais de 14 h:
 
-O módulo **não possui `.env` próprio**: ele consome diretamente o `.env` da raiz do **Segundo Cérebro** (e as *Environment Variables* da Vercel), reaproveitando nativamente `GEMINI_API_KEYS`, `GEMINI_MODELOS`, `GROQ_API_KEY`, `GROQ_CHAT_MODEL` e `PIN_ACESSO`, além das 3 chaves opcionais de coleta externa (`SERPAPI_KEY`, `NEWSAPI_KEY` e `GNEWS_API_KEY`).
+1. **Descoberta**: ~18 buscas de manchetes dos últimos 3 dias (3 por frente) → uma chamada ao Groq propõe oportunidades **ancoradas nas manchetes**. Filtros: link vem dos dados (nunca do modelo), mínimo 2 veículos diferentes, só B2B com "quem paga" nomeado, sem repetir assunto já visto (inclusive descartado, mesmo com outras palavras), sem expandir siglas.
+2. **Afinidade** com suas notas.
+3. **Pulso** de cada alvo vivo (inclusive os recém descobertos), gravado em `radar_pulso`.
+
+"Nova" que ninguém tocou em 21 dias sai da frente (a linha fica no banco). Descartada nunca volta.
+
+## Operação
+
+- Rode `supabase/trendradar-v2.sql` (3 tabelas, RLS ligado, idempotente). **Se você rodou a versão anterior, rode de novo**: ela completa as colunas `origem`, `dossie`, `serie` e `regioes`. Sem isso a tela avisa "Falta atualizar o banco" e pesquisar/investigar não salvam.
+- Cron diário em `vercel.json` (`0 9 * * *` UTC = 06:00 BRT) chama `GET /trendradar/api/cron/coletar`. Exige `CRON_SECRET` na Vercel; sem ela a rota responde 503 (nunca fica aberta). O cron é opcional: sem ele a coleta roda na primeira abertura do dia, mas o histórico só cresce nos dias em que você abre.
+- Variáveis opcionais: `RADAR_PERFIL`, `GROQ_MODEL_RADAR`, `RADAR_PISO_AFINIDADE`, `SERPAPI_KEY` (série e regiões do Trends).
+
+## Rotas
+
+| rota | uso |
+|---|---|
+| `GET /api/radar` | cartões + resumo + saúde da coleta |
+| `POST /api/coletar` `{forcar?}` | coleta sob demanda |
+| `GET /api/cron/coletar` | cron (Bearer `CRON_SECRET`) |
+| `PATCH /api/descobertas` `{id,status}` | `nova` / `salva` / `descartada` |
+| `POST /api/descobertas/investigar` `{id}` | imprensa nova + hipóteses da IA na mesma linha |
+| `POST /api/investigar` `{termo}` | pesquisa um alvo novo |
+| `POST /api/importar-csv` `{csv,nome?,frente?}` | importa série do Trends |
+| `GET /api/cotas` | uso das APIs opcionais |
+
+## Arquivos
 
 ```text
 modulos/trendradar/
-├── dados-historico.json  # Base histórica das oportunidades e 27 UFs
-├── README.md             # Documentação do módulo
 ├── servidor/
-│   ├── index.js          # Monta express.Router(), assets estáticos e rotas
-│   ├── rotas.mjs         # Endpoints REST (/api/itens, /api/investigar, /api/importar-csv, /api/relatorio, /api/cotas)
-│   ├── nucleo.mjs        # Lógica de domínio, cache TTL, controle de cotas e gerador Markdown
-│   ├── ia.mjs            # Cascata resiliente Gemini -> Groq -> Heurística determinística local
-│   ├── vivo.mjs          # Radar vivo: RSS, pulso de imprensa, momentum, descoberta por IA (puro e testável)
-│   ├── coleta.mjs        # Orquestra a coleta diária (pulso + descobertas + afinidade) e o cron
-│   └── radar-banco.mjs   # Persistência Supabase (radar_*) com reserva em memória
-├── testes/               # node --test (npm test)
-└── publico/
-    ├── radar-hoje.js     # Seção "Hoje no radar"
-    ├── aba-trendradar.js # Injeta atalho no menu Opções (•••) da página inicial (/)
-    ├── trendradar.html   # Casca HTML seguindo o padrão Segundo Cérebro
-    ├── trendradar.css    # Estilos específicos usando exclusivamente tokens de /estilos.css
-    └── trendradar.js     # Cliente SPA e menu de ferramentas completo
+│   ├── index.js        # Router Express, estáticos e erros
+│   ├── rotas.mjs       # Endpoints
+│   ├── coleta.mjs      # Coleta diária (descoberta, afinidade, pulso), montarRadar, resumo p/ Conversa
+│   ├── vivo.mjs        # Puro e testável: RSS, janelas 7d x 7d, estado do pulso, saneamento das descobertas
+│   ├── cartoes.mjs     # Linha do banco -> cartão da tela (puro)
+│   ├── nucleo.mjs      # Config, cotas, guardas HTTP, pesquisa de alvo e importação de CSV
+│   ├── ia.mjs          # Hipóteses a partir das manchetes (null se a IA falhar)
+│   └── radar-banco.mjs # Supabase (radar_*) com reserva em memória e detecção de SQL desatualizado
+├── publico/
+│   ├── trendradar.html, radar.js, radar.css
+│   └── aba-trendradar.js   # atalho no menu do app
+└── testes/             # npm test
 ```
+
+## O que foi removido (e por quê)
+
+O catálogo de 15 oportunidades fixas, o gerador de estados "estimados", o "dossiê plausível" de modelo pronto, o score editorial, a lente dos 4 objetivos, a síntese executiva e o relatório comparativo MD/PDF. Todos eram construídos sobre números que não vinham de coleta. O relatório pode voltar, construído sobre os cartões reais.

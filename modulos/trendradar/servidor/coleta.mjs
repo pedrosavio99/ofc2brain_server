@@ -15,15 +15,15 @@
 import crypto from "node:crypto";
 import * as db from "../../../src/db.js";
 import { gerarEmbeddings } from "../../../src/embeddings.js";
-import { carregarOportunidadesPersistidas } from "./nucleo.mjs";
 import {
-  buscarNoticias, pulsoDoItem, emLotes, dedupePorTitulo, normalizarChave,
-  CONSULTAS_FRENTE, sanearDescobertas, descobrirComIa, enriquecerComPulso,
+  buscarNoticias, pulsoDoItem, emLotes, dedupePorTitulo,
+  CONSULTAS_FRENTE, sanearDescobertas, descobrirComIa,
 } from "./vivo.mjs";
 import {
   gravarPulso, chavesConhecidas, gravarDescobertas, registrarColeta, ultimaColeta, radarBancoOk,
-  pulsosRecentes, listarDescobertas, dicaDoBanco,
+  pulsosRecentes, listarDescobertas, dicaDoBanco, motivoDoBanco,
 } from "./radar-banco.mjs";
+import { montarCartoes, resumoDosCartoes, visivel, idPulso } from "./cartoes.mjs";
 
 const DIA_MS = 86400000;
 export const VALIDADE_COLETA_MS = 14 * 3600000;
@@ -68,19 +68,9 @@ async function coletarUmaVez({ agora = new Date(), limiteMs = LIMITE_PADRAO_MS }
   const erros = [];
   const dia = new Date(agora.getTime() - 3 * 3600000).toISOString().slice(0, 10);
 
-  /* 1. pulso */
-  const itens = await carregarOportunidadesPersistidas();
-  const monitorados = itens;
-  const res = await emLotes(monitorados, 6, async (it) => {
-    const j = await pulsoDoItem(it, agora);
-    return { item_id: it.id, dia, mencoes_7d: j.sete, mencoes_prev_7d: j.anteriores, manchetes: j.manchetes, coletado_em: new Date().toISOString() };
-  });
-  const linhas = res.filter((r) => r.ok).map((r) => r.valor);
-  res.forEach((r, i) => { if (!r.ok) erros.push(`pulso ${monitorados[i].id}: ${r.erro}`); });
-  await gravarPulso(linhas);
-
-  /* 2. descoberta */
+  /* 1. descoberta: manchetes por frente -> oportunidades ancoradas nelas */
   let novas = 0;
+  const ativos = async () => (await listarDescobertas({ status: ["nova", "salva", "investigada"], limite: 120 })).filter((r) => visivel(r));
   if (restante() > 15000) {
     const consultas = Object.entries(CONSULTAS_FRENTE).flatMap(([frente, qs]) => qs.map((q) => ({ frente, q })));
     const feeds = await emLotes(consultas, 6, async ({ frente, q }) => {
@@ -93,10 +83,10 @@ async function coletarUmaVez({ agora = new Date(), limiteMs = LIMITE_PADRAO_MS }
 
     if (manchetes.length >= 8) {
       try {
+        // assunto ja visto (inclusive o que voce descartou) nao volta como novo
         const existentes = await chavesConhecidas();
-        // o que ja monitoramos tambem conta como "conhecido"
-        for (const it of itens) existentes.add(normalizarChave(it.termoBusca || it.nome));
-        const bruto = await descobrirComIa(manchetes, itens.map((i) => i.nome), [...existentes].slice(-40));
+        const atuais = await ativos();
+        const bruto = await descobrirComIa(manchetes, atuais.map((a) => a.titulo), [...existentes].slice(-40));
         let descobertas = sanearDescobertas(bruto, manchetes, existentes);
         descobertas = await acharAfinidades(descobertas);
         novas = await gravarDescobertas(descobertas);
@@ -108,6 +98,21 @@ async function coletarUmaVez({ agora = new Date(), limiteMs = LIMITE_PADRAO_MS }
     }
   } else {
     erros.push("descoberta pulada: tempo esgotado");
+  }
+
+  /* 2. pulso de cada alvo vivo (inclusive os recem descobertos): historico real */
+  let linhas = [];
+  if (restante() > 5000) {
+    const alvos = await ativos();
+    const res = await emLotes(alvos, 6, async (a) => {
+      const j = await pulsoDoItem({ termo: a.termo }, agora);
+      return { item_id: idPulso(a.chave), dia, mencoes_7d: j.sete, mencoes_prev_7d: j.anteriores, manchetes: j.manchetes, coletado_em: new Date().toISOString() };
+    });
+    linhas = res.filter((r) => r.ok).map((r) => r.valor);
+    res.forEach((r, i) => { if (!r.ok) erros.push(`pulso ${alvos[i].termo}: ${r.erro}`); });
+    await gravarPulso(linhas);
+  } else {
+    erros.push("pulso pulado: tempo esgotado");
   }
 
   const resumo = { itens: linhas.length, novas, erros, ms: Date.now() - t0, persistente: radarBancoOk() };
@@ -136,35 +141,39 @@ export function cronAutorizado(cabecalho, segredo) {
   return crypto.timingSafeEqual(recebido, esperado);
 }
 
-/** O que a tela "Hoje no radar" mostra. */
-export async function montarHoje(agora = Date.now()) {
-  const [base, porItem, novas, salvas, def] = await Promise.all([
-    carregarOportunidadesPersistidas(),
-    pulsosRecentes(30).catch(() => new Map()),
-    listarDescobertas({ status: "nova", limite: 8 }).catch(() => []),
-    listarDescobertas({ status: "salva", limite: 20 }).catch(() => []),
+/** Tudo que a tela do radar mostra: cartoes reais, resumo e saude da coleta. */
+export async function montarRadar(agora = Date.now()) {
+  const [rows, porId, def] = await Promise.all([
+    listarDescobertas({ status: ["nova", "salva", "investigada"], limite: 200 }).catch(() => []),
+    pulsosRecentes(45).catch(() => new Map()),
     coletaDefasada(agora),
   ]);
-  const itens = enriquecerComPulso(base, porItem);
-  const comPulso = itens.filter((i) => i.pulso && i.pulso.estado !== "sem_dado");
-  const movimentos = itens
-    .filter((i) => i.pulso && (i.pulso.estado === "subindo" || i.pulso.estado === "esfriando"))
-    .sort((a, b) => Math.abs(b.pulso.variacaoPct) - Math.abs(a.pulso.variacaoPct))
-    .slice(0, 6)
-    .map((i) => ({
-      id: i.id, nome: i.nome, frente: i.frente, estado: i.pulso.estado, variacaoPct: i.pulso.variacaoPct,
-      mencoes7d: i.pulso.sete, anteriores: i.pulso.anteriores, pontuacaoViva: i.pontuacaoViva,
-      manchete: (i.pulso.manchetes && i.pulso.manchetes[0]) || null,
-    }));
+  const cartoes = montarCartoes(rows, porId, agora);
   return {
     coletadoEm: def.ultima, defasado: def.defasada,
-    banco: { ok: radarBancoOk(), dica: dicaDoBanco() },
-    novas, salvas: salvas.length, movimentos,
-    resumo: {
-      monitorados: itens.length, comPulso: comPulso.length,
-      subindo: itens.filter((i) => i.pulso && i.pulso.estado === "subindo").length,
-      esfriando: itens.filter((i) => i.pulso && i.pulso.estado === "esfriando").length,
-      novas: novas.length,
-    },
+    banco: { ok: radarBancoOk(), dica: dicaDoBanco(), motivo: motivoDoBanco() },
+    resumo: resumoDosCartoes(cartoes),
+    cartoes,
   };
+}
+
+/** Texto curto pra Conversa (ferramenta ver_radar). So o que o radar mediu ou achou. */
+export async function resumoDoRadar() {
+  const { cartoes, resumo, coletadoEm } = await montarRadar();
+  if (!cartoes.length) {
+    return "### TrendRadar\n- Ainda não há nada coletado. A coleta roda uma vez por dia (ou na primeira abertura do radar).";
+  }
+  const nome = (c) => c.titulo;
+  const pct = (c) => `${c.pulso.variacaoPct > 0 ? "+" : ""}${c.pulso.variacaoPct}%`;
+  const subindo = cartoes.filter((c) => c.pulso && c.pulso.estado === "subindo").slice(0, 4);
+  const novos = cartoes.filter((c) => c.novo).slice(0, 4);
+  const comNota = cartoes.filter((c) => c.afinidade && c.afinidade.nota_id).slice(0, 3);
+  const quando = coletadoEm ? new Date(coletadoEm).toISOString().slice(0, 10) : "nunca";
+  return [
+    "### TrendRadar (dados coletados de imprensa real, última coleta " + quando + ")",
+    `- ${resumo.total} alvos no radar (${resumo.novos} novos, ${resumo.salvos} salvos, ${resumo.investigados} investigados)`,
+    subindo.length ? `- Subindo na imprensa (7d vs 7d anteriores): ${subindo.map((c) => `${nome(c)} (${pct(c)})`).join("; ")}` : "",
+    novos.length ? `- Sinais novos: ${novos.map(nome).join("; ")}` : "",
+    comNota.length ? `- Combinam com notas dele(a): ${comNota.map(nome).join("; ")}` : "",
+  ].filter(Boolean).join("\n");
 }
