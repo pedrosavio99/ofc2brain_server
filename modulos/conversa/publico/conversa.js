@@ -182,6 +182,48 @@
     }
   }
 
+  /* Markdown minimo e SEGURO. A fala do cerebro agora vem em texto livre, com
+     negrito, listas e bloco de codigo (modo tecnico). Tudo passa por esc() ANTES
+     de virar tag, e so as tags abaixo existem: nada que o modelo escreva vira
+     HTML de verdade. Links nao sao renderizados de proposito. */
+  function inlineMd(s) {
+    var t = esc(s);
+    t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    t = t.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    // asterisco de italico nao tem espaco colado por dentro: "2 * 3 * 4" e conta, nao italico
+    t = t.replace(/(^|[^*\w])\*(?=[^\s*])([^*\n]*?[^\s*])\*(?!\w)/g, "$1<em>$2</em>");
+    return t;
+  }
+
+  function blocoMd(p) {
+    var out = [], lista = null, par = [];
+    function fechaPar() { if (par.length) { out.push("<p>" + par.join("<br>") + "</p>"); par = []; } }
+    function fechaLista() { if (lista) { out.push("</" + lista + ">"); lista = null; } }
+    p.split("\n").forEach(function (l) {
+      var ul = l.match(/^\s*[-*]\s+(.*)$/), ol = l.match(/^\s*\d+[.)]\s+(.*)$/), h = l.match(/^#{1,4}\s+(.*)$/);
+      if (ul || ol) {
+        fechaPar();
+        var tipo = ul ? "ul" : "ol";
+        if (lista !== tipo) { fechaLista(); out.push("<" + tipo + ">"); lista = tipo; }
+        out.push("<li>" + inlineMd((ul || ol)[1]) + "</li>");
+      } else if (!l.trim()) { fechaPar(); fechaLista(); }
+      else if (h) { fechaPar(); fechaLista(); out.push("<p><strong>" + inlineMd(h[1]) + "</strong></p>"); }
+      else { fechaLista(); par.push(inlineMd(l)); }
+    });
+    fechaPar(); fechaLista();
+    return out.join("");
+  }
+
+  function mdParaHtml(src) {
+    return String(src || "").replace(/\r\n/g, "\n").split(/(```[\s\S]*?```)/g).map(function (p, i) {
+      if (i % 2 === 1) {
+        var m = p.match(/^```[\w+-]*\n?([\s\S]*?)\n?```$/);
+        return "<pre><code>" + esc(m ? m[1] : p.replace(/```/g, "")) + "</code></pre>";
+      }
+      return blocoMd(p);
+    }).join("");
+  }
+
   function bolha(texto, quem) {
     var s = fluxo.querySelector(".cv-sugestoes");
     if (s) s.remove();
@@ -192,7 +234,12 @@
     var matchMusica = quem === "cerebro" ? String(texto || "").match(/\[TOCAR_MUSICA:\s*([^\]]+)\]/i) : null;
     var textoLimpo = String(texto || "").replace(/\[TOCAR_MUSICA:\s*([^\]]+)\]/gi, "").trim();
 
-    d.textContent = textoLimpo || (matchMusica ? "Separei esse som pra você ouvir:" : "");
+    if (quem === "cerebro" && textoLimpo) {
+      d.classList.add("md");
+      d.innerHTML = mdParaHtml(textoLimpo);   // esc() antes de qualquer tag: ver mdParaHtml
+    } else {
+      d.textContent = textoLimpo || (matchMusica ? "Separei esse som pra você ouvir:" : "");
+    }
     fluxo.appendChild(d);
     paraBaixo();
 
@@ -356,9 +403,11 @@
         await derramar(rap.mensagens, function () { return chegouReal; });
       }
 
-      // acabou a rapida e o forte ainda nao voltou: narra em vez de ficar mudo
+      /* acabou a rapida e o forte ainda nao voltou: narra em vez de ficar mudo.
+         Em modo sensivel (desabafo, crise) NAO narra: "relendo aquela nota
+         sobre..." em cima de uma dor soa como relatorio. Fica o "to te ouvindo". */
       var encerrarNarracao = null;
-      if (!chegouReal) {
+      if (!chegouReal && !ctx.sensivel) {
         sumir(sinal);
         encerrarNarracao = narrarEspera(ctx.notas || [], function () { return chegouReal; });
       }
@@ -374,9 +423,17 @@
 
       await derramar(resp.mensagens || [], null);
 
-      if (ctx.achado && ctx.achado.fortes > 0) {
+      if (!ctx.sensivel && ctx.achado && ctx.achado.fortes > 0) {
         rodape(ctx.achado.fortes + (ctx.achado.fortes === 1 ? " nota usada" : " notas usadas"));
       }
+
+      /* Memoriza DEPOIS da resposta, sem esperar e sem travar a tela: em
+         serverless o servidor nao pode fazer isso depois de responder, e aqui
+         a pessoa ja esta lendo. Falha e silenciosa de proposito. */
+      pedir("/memorizar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversa_id: conversaId, ordem: ctx.ordem }),
+      }, 60000).catch(function () {});
     } catch (e) {
       sumir(sinal);
       erro(e.message);
@@ -438,8 +495,86 @@
     });
   }
 
+  // --- memorias: fatos sobre voce, que voce le, corrige e apaga ---
+  var listaMemorias = document.getElementById("listaMemorias");
+  var memoriaNova = document.getElementById("memoriaNova");
+  var btnAddMemoria = document.getElementById("btnAddMemoria");
+
+  function desenharMemorias(ms) {
+    listaMemorias.innerHTML = "";
+    if (!ms || !ms.length) {
+      var v = document.createElement("div");
+      v.className = "cv-vazio";
+      v.textContent = "Nenhuma memória ainda. Ele guarda fatos que você conta (projetos, pessoas, rotina). Você também pode escrever um.";
+      listaMemorias.appendChild(v);
+      return;
+    }
+    ms.forEach(function (m) {
+      var li = document.createElement("div");
+      li.className = "cv-traco" + (m.ativo === false ? " off" : "");
+
+      var txt = document.createElement("div");
+      txt.className = "cv-traco-txt";
+      txt.textContent = m.fato;   // texto livre: nunca innerHTML
+      var sub = document.createElement("div");
+      sub.className = "cv-traco-sub";
+      sub.textContent = (m.categoria || "outro") + " · " + String(m.criado_em || "").slice(0, 10) +
+        (m.valido_ate ? " · vale até " + m.valido_ate : "");
+      if (m.fixado) {
+        var pin = document.createElement("span");
+        pin.className = "cv-pin"; pin.textContent = "  FIXADA";
+        sub.appendChild(pin);
+      }
+      txt.appendChild(sub);
+
+      // fixar protege: o sistema nunca reescreve nem desativa uma memoria fixada
+      var fixar = miniBotao(SVG_ESTRELA, m.fixado ? "Desafixar" : "Fixar (ele nunca muda)", "cv-estrela");
+      fixar.addEventListener("click", async function () {
+        try { await pedir("/memorias/" + m.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fixado: !m.fixado }) }); await carregarMemorias(); }
+        catch (e) { alert(e.message); }
+      });
+      var lixo = miniBotao(SVG_LIXO, "Apagar", "cv-lixo");
+      lixo.addEventListener("click", async function () {
+        if (!confirm('Apagar a memória "' + m.fato + '"?')) return;
+        try { await pedir("/memorias/" + m.id, { method: "DELETE" }); await carregarMemorias(); }
+        catch (e) { alert(e.message); }
+      });
+
+      li.appendChild(txt); li.appendChild(fixar); li.appendChild(lixo);
+      listaMemorias.appendChild(li);
+    });
+  }
+
+  async function carregarMemorias() {
+    if (!listaMemorias) return;
+    try {
+      var r = await pedir("/memorias", {});
+      desenharMemorias(r.memorias || []);
+    } catch (e) {
+      listaMemorias.innerHTML = "";
+      var d = document.createElement("div");
+      d.className = "cv-vazio";
+      // 503 = SQL novo nao rodado: a dica do servidor diz o que fazer
+      d.textContent = (e.dados && e.dados.dica) ? e.message + " " + e.dados.dica : e.message;
+      listaMemorias.appendChild(d);
+    }
+  }
+
+  async function addMemoria() {
+    var f = memoriaNova.value.trim();
+    if (!f) return;
+    btnAddMemoria.disabled = true;
+    try {
+      await pedir("/memorias", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fato: f }) });
+      memoriaNova.value = "";
+      await carregarMemorias();
+    } catch (e) { alert(e.message); }
+    finally { btnAddMemoria.disabled = false; }
+  }
+
   async function abrirAlma() {
     folha.hidden = false;
+    carregarMemorias();
     almaMeta.textContent = "carregando...";
     try {
       var a = await pedir("/alma", {});
@@ -660,6 +795,8 @@
   btnDestilar.addEventListener("click", destilarAgora);
   btnSalvarAlma.addEventListener("click", salvarAlma);
   btnAddTraco.addEventListener("click", addTraco);
+  if (btnAddMemoria) btnAddMemoria.addEventListener("click", addMemoria);
+  if (memoriaNova) memoriaNova.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addMemoria(); } });
   tracoNovo.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addTraco(); } });
   folha.addEventListener("click", function (e) { if (e.target === folha) folha.hidden = true; });
 

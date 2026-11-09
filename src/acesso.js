@@ -52,6 +52,10 @@ const ESTATICO = /\.(js|mjs|css|html|svg|png|jpe?g|gif|webp|ico|webmanifest|woff
 export function ehPublico(caminho) {
   const p = String(caminho || "").split("?")[0];
   if (p === "/health" || p === "/acesso") return true;
+  /* /mcp NAO tem PIN porque cliente MCP (Claude, ChatGPT, Cursor) nao tem tela
+     pra digitar. Isto NAO e "aberto": o proprio endpoint exige Bearer MCP_TOKEN
+     e responde 503 se a variavel nao existir. Ver modulos/conversa/servidor/mcp.mjs. */
+  if (p === "/mcp" || p === "/mcp/") return true;
   if (CASCA.includes(p) || CASCA.includes(p.replace(/\/$/, ""))) return true;
   return ESTATICO.test(p);
 }

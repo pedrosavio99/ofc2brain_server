@@ -103,7 +103,6 @@ async function umaChamada(chave, modelo, systemPrompt, userPrompt, opcoes = {}) 
     model: modelo,
     // 0.2 continua o padrao: e o certo pra classificar nota. Conversa pede mais.
     temperature: opcoes.temperatura ?? 0.2,
-    response_format: { type: "json_object" },
     messages: [
       { role: "system", content: systemPrompt },
       ...historico,
@@ -117,6 +116,9 @@ async function umaChamada(chave, modelo, systemPrompt, userPrompt, opcoes = {}) 
   if (opcoes.raciocinio && /gpt-oss/i.test(modelo)) {
     corpo.reasoning_effort = opcoes.raciocinio;
   }
+  // formato "texto": resposta livre (fala da conversa). Padrao continua JSON.
+  if (opcoes.formato !== "texto") corpo.response_format = { type: "json_object" };
+  if (opcoes.maxTokens) corpo.max_tokens = opcoes.maxTokens;
   const resposta = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${chave}` },
@@ -135,6 +137,7 @@ async function umaChamada(chave, modelo, systemPrompt, userPrompt, opcoes = {}) 
   }
 
   const dados = await resposta.json();
+  if (opcoes.formato === "texto") return String(dados.choices?.[0]?.message?.content ?? "").trim();
   return parseJSONSeguro(dados.choices?.[0]?.message?.content ?? "{}");
 }
 
@@ -213,6 +216,15 @@ export async function chatJSONDetalhado(systemPrompt, userPrompt, opcoes = {}) {
   }
 
   throw ultimoErro || new Error("Groq indisponivel.");
+}
+
+/**
+ * Resposta em texto livre. Mesmo rodizio de chaves; so muda o formato.
+ * Usada como reserva da fala final da conversa quando o Gemini nao responde.
+ * @returns {Promise<{ dados: string, meta: object }>}
+ */
+export async function chatTextoDetalhado(systemPrompt, userPrompt, opcoes = {}) {
+  return chatJSONDetalhado(systemPrompt, userPrompt, { ...opcoes, formato: "texto" });
 }
 
 /** Estado das chaves, pra diagnostico. */

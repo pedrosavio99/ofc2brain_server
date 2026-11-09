@@ -42,6 +42,52 @@ function extrairVetor(resp) {
 }
 
 /**
+ * Varios embeddings numa UNICA requisicao (o embedContent aceita lista).
+ * A conversa reescreve a pergunta em 2 ou 3 consultas por turno; uma ida por
+ * consulta triplicaria a latencia e a cota de requisicoes, que e o que aperta
+ * primeiro no plano gratuito.
+ *
+ * Mesma ordem da entrada. Lista com textos vazios devolve null nessas posicoes.
+ * Se o lote falhar, cai pro caminho de um por um (gerarEmbedding).
+ * @param {string[]} textos
+ * @returns {Promise<(number[]|null)[]>}
+ */
+export async function gerarEmbeddings(textos) {
+  const entradas = (Array.isArray(textos) ? textos : []).map((t) => String(t ?? "").trim());
+  const validos = entradas.map((t, i) => ({ t, i })).filter((x) => x.t);
+  const saida = entradas.map(() => null);
+  if (!validos.length) return saida;
+  if (validos.length === 1) {
+    saida[validos[0].i] = await gerarEmbedding(validos[0].t);
+    return saida;
+  }
+
+  const chaves = listaChaves();
+  if (chaves.length === 0) throw new Error("Sem GEMINI_API_KEY(S): embedding indisponivel.");
+
+  for (const chave of chaves) {
+    try {
+      const resp = await getCliente(chave).models.embedContent({
+        model: MODELO_EMBEDDING,
+        contents: validos.map((x) => x.t),
+        config: { outputDimensionality: 768 },
+      });
+      const lista = Array.isArray(resp?.embeddings) ? resp.embeddings : [];
+      if (lista.length === validos.length && lista.every((e) => e?.values?.length)) {
+        validos.forEach((x, n) => { saida[x.i] = Array.from(lista[n].values); });
+        return saida;
+      }
+    } catch {
+      // tenta a proxima chave; no fim cai pro caminho individual
+    }
+  }
+  // lote recusado em todas as chaves: um por um, em paralelo
+  const individuais = await Promise.all(validos.map((x) => gerarEmbedding(x.t)));
+  validos.forEach((x, n) => { saida[x.i] = individuais[n]; });
+  return saida;
+}
+
+/**
  * Gera o embedding de um texto via Gemini. Tenta as chaves em ordem;
  * se uma falhar (cota/erro), cai pra proxima.
  * @param {string} texto

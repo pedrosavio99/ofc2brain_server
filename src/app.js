@@ -21,6 +21,7 @@ import refeicaoRouter from "../modulos/refeicao/servidor/index.js";
 import trendradarRouter from "../modulos/trendradar/servidor/index.js";
 import linksRouter from "../modulos/links/servidor/index.js";
 import fdsflixRouter from "../modulos/fdsflix/servidor/index.js";
+import mcpRouter from "../modulos/conversa/servidor/mcp.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
@@ -140,6 +141,8 @@ app.use("/metas", metasRouter);
 app.use("/refeicao", refeicaoRouter);
 app.use("/trendradar", trendradarRouter);
 app.use("/links", linksRouter);
+// MCP do segundo cerebro: se autentica sozinho (Bearer MCP_TOKEN), ver acesso.js
+app.use("/mcp", mcpRouter);
 app.use("/fdsflix", fdsflixRouter);
 
 app.use((err, _req, res, _next) => {

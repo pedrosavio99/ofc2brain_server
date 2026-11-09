@@ -31,6 +31,22 @@ html {
 }
 @keyframes cv-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
+/* Resposta em markdown: os blocos cuidam do espacamento, nao o pre-wrap. */
+.cv-bolha.md { white-space: normal; }
+.cv-bolha.md p { margin: 0 0 .65em; }
+.cv-bolha.md p:last-child, .cv-bolha.md ul:last-child, .cv-bolha.md ol:last-child, .cv-bolha.md pre:last-child { margin-bottom: 0; }
+.cv-bolha.md ul, .cv-bolha.md ol { margin: 0 0 .65em; padding-left: 1.3em; }
+.cv-bolha.md li { margin: .15em 0; }
+.cv-bolha.md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em;
+  background: var(--superficie-2); border-radius: 5px; padding: 1px 5px;
+}
+.cv-bolha.md pre {
+  margin: 0 0 .65em; padding: 10px 12px; overflow-x: auto; max-width: 100%;
+  background: var(--superficie-2); border: 1px solid var(--separador); border-radius: 10px;
+}
+.cv-bolha.md pre code { background: none; padding: 0; font-size: .85em; white-space: pre; }
+
 .cv-bolha.pessoa {
   align-self: flex-end;
   background: var(--acento);

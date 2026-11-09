@@ -175,10 +175,13 @@ async function umaTentativa(chave, modelo, instrucaoSistema, prompt, opcoes, com
     systemInstruction: instrucaoSistema,
     temperature: opcoes.temperatura ?? 0.7,
     maxOutputTokens: opcoes.maxTokens ?? 8192,
-    responseMimeType: "application/json",
   };
+  /* JSON mode so quando o chamador quer JSON. Resposta de conversa vai em texto
+     livre: forcar formato degrada o raciocinio (Tam et al. 2024) e e a causa do
+     "devolveu JSON invalido" quando o thinking come o orcamento de tokens. */
+  if (opcoes.formato !== "texto") config.responseMimeType = "application/json";
   if (comPensamento) {
-    config.thinkingConfig = { thinkingLevel: process.env.GEMINI_THINKING || "HIGH" };
+    config.thinkingConfig = { thinkingLevel: opcoes.pensamento || process.env.GEMINI_THINKING || "HIGH" };
   }
   /* Sem opcoes.mensagens manda a string crua, exatamente como antes: as
      chamadas de insight e de sugestao nao percebem diferenca nenhuma. */
@@ -220,7 +223,8 @@ export async function gerarJSONDetalhado(instrucaoSistema, prompt, opcoes = {}) 
   const estado = { ultimoErro: null, tentativas: 0 };
 
   // 1a rodada: os modelos escolhidos no .env
-  let r = await percorrer(chaves, listaModelos(), instrucaoSistema, prompt, opcoes, estado);
+  const modelosDaChamada = Array.isArray(opcoes.modelos) && opcoes.modelos.length ? opcoes.modelos : listaModelos();
+  let r = await percorrer(chaves, modelosDaChamada, instrucaoSistema, prompt, opcoes, estado);
   if (r.ok) return { dados: r.dados, meta: r.meta };
 
   // 2a rodada: se nenhum dos configurados serviu, pergunta a API o que existe
@@ -233,13 +237,25 @@ export async function gerarJSONDetalhado(instrucaoSistema, prompt, opcoes = {}) 
     if (r.ok) return { dados: r.dados, meta: r.meta };
   }
 
-  const modelos = listaModelos();
+  const modelos = modelosDaChamada;
   const emEspera = chaves.filter((c) => modelos.every((m) => emDescanso(c, m))).length;
   throw new Error(
     `Gemini indisponivel apos ${estado.tentativas} tentativa(s) em ${chaves.length} chave(s)` +
     (emEspera ? `. ${emEspera} chave(s) em espera por cota` : "") +
     `. Ultimo erro: ${estado.ultimoErro && estado.ultimoErro.message ? estado.ultimoErro.message : estado.ultimoErro}`
   );
+}
+
+/**
+ * Resposta em TEXTO LIVRE (sem JSON mode). E o que a conversa usa para a fala
+ * final. Mesma estrategia de rodizio de chaves e modelos do gerarJSONDetalhado.
+ * @param {object} [opcoes] { temperatura, maxTokens, mensagens, modelos, pensamento }
+ *        modelos    lista que sobrescreve GEMINI_MODELOS so nesta chamada
+ *        pensamento MINIMAL | LOW | MEDIUM | HIGH, so nesta chamada
+ * @returns {Promise<{ dados: string, meta: object }>}  dados = o texto
+ */
+export async function gerarTextoDetalhado(instrucaoSistema, prompt, opcoes = {}) {
+  return gerarJSONDetalhado(instrucaoSistema, prompt, { ...opcoes, formato: "texto" });
 }
 
 /** Tenta cada modelo em cada chave. Devolve { ok, dados } no primeiro sucesso. */
@@ -253,11 +269,11 @@ async function percorrer(chaves, modelos, instrucaoSistema, prompt, opcoes, esta
       for (const comPensamento of [true, false]) {
         estado.tentativas++;
         try {
-          const texto = limparCercas(
-            await umaTentativa(chave, modelo, instrucaoSistema, prompt, opcoes, comPensamento)
-          );
+          const bruto = await umaTentativa(chave, modelo, instrucaoSistema, prompt, opcoes, comPensamento);
+          // em texto livre as cercas sao codigo de verdade: nao se mexe
+          const texto = opcoes.formato === "texto" ? String(bruto || "").trim() : limparCercas(bruto);
           if (!texto) throw new Error("resposta vazia");
-          const dados = JSON.parse(texto);
+          const dados = opcoes.formato === "texto" ? texto : JSON.parse(texto);
           ponteiro++;
           const totalChaves = listaChaves().length;
           console.log(

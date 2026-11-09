@@ -101,6 +101,16 @@
     </div>
     <div class="cv-tracos" id="listaTracos"></div>
 
+    <!-- Memorias: fatos duraveis que ele guardou sobre voce. Editavel de
+         proposito: memoria errada contamina toda resposta depois, entao voce
+         precisa poder ler, fixar e apagar. -->
+    <label class="cv-folha-sub" for="memoriaNova" style="margin-top:14px;display:block">Memórias (o que ele sabe sobre você)</label>
+    <div class="cv-alma-add">
+      <input id="memoriaNova" placeholder="Escreva um fato: ex. Prepara entrevista pra sexta" />
+      <button class="cv-btn" id="btnAddMemoria">Adicionar</button>
+    </div>
+    <div class="cv-tracos" id="listaMemorias"></div>
+
     <!-- Observacao livre, escrita por voce. O destilador nao mexe aqui. -->
     <label class="cv-folha-sub" for="almaTexto" style="margin-top:14px;display:block">Sua observação</label>
     <textarea id="almaTexto" rows="6" placeholder="Algo que você queira que ele leve em conta e que não sai sozinho da conversa."></textarea>

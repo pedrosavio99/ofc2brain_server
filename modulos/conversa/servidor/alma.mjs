@@ -61,7 +61,7 @@ export async function salvarAlma(perfil, turnosLidos) {
 }
 
 const ROTULO = {
-  vocabulario: "Palavras e expressoes que ela usa",
+  vocabulario: "Palavras e expressoes que a pessoa usa",
   ritmo: "Ritmo e tamanho",
   tom: "Tom",
   formato: "Formato da resposta",
@@ -79,7 +79,7 @@ export function blocoDaAlma(tracos) {
   if (!ativos.length) {
     return (
       "Voce ainda nao sabe como essa pessoa fala. Nao invente um registro.\n" +
-      "Espelhe o jeito dela nesta conversa e repare no vocabulario: isso vira memoria depois."
+      "Espelhe o jeito da pessoa nesta conversa e repare no vocabulario: isso vira memoria depois."
     );
   }
   const porCat = new Map();
@@ -96,7 +96,7 @@ export function blocoDaAlma(tracos) {
     partes.push(`${ROTULO[cat]}:\n${linhas.join("\n")}`);
   }
   return (
-    "COMO ELA FALA. Responda no mesmo registro, sem imitar de forma caricata e\n" +
+    "COMO A PESSOA FALA. Responda no mesmo registro, sem imitar de forma caricata e\n" +
     "sem comentar que voce esta fazendo isso:\n\n" + partes.join("\n\n")
   );
 }

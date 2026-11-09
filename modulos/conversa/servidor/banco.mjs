@@ -143,7 +143,8 @@ export async function buscarTurno(conversaId, ordem) {
 export async function ultimosTurnos(conversaId, n = 8) {
   const { data, error } = await sb
     .from("conversa_turnos")
-    .select("ordem, papel, texto, criado_em")
+    // meta vai junto: o planejador le o modo da resposta anterior pra nao dar tranco
+    .select("ordem, papel, texto, criado_em, meta")
     .eq("conversa_id", conversaId)
     .order("ordem", { ascending: false })
     .limit(Math.max(1, Math.min(Number(n) || 8, 40)));
@@ -297,4 +298,126 @@ export async function panoramaBase() {
   if (error) throw new Error(`panoramaBase: ${error.message}`);
   panoramaCache = { em: Date.now(), dados: data || null };
   return panoramaCache.dados;
+}
+
+
+/* ------------------------------------------------------------------
+   Meta do turno e RPC generica.
+   ------------------------------------------------------------------ */
+
+/**
+ * Mescla campos no meta de UM turno. Le e grava so a coluna meta.
+ * Serve pra marcar "memorizado" sem reescrever o turno inteiro.
+ */
+export async function mesclarMetaTurno(conversaId, ordem, patch) {
+  const atual = await buscarTurno(conversaId, ordem);
+  if (!atual) return null;
+  const meta = { ...(atual.meta || {}), ...patch };
+  const { error } = await sb.from("conversa_turnos").update({ meta }).eq("id", atual.id);
+  if (error) throw new Error(`mesclarMetaTurno: ${error.message}`);
+  return meta;
+}
+
+/**
+ * Chama uma funcao do banco. Existe porque as buscas hibridas sao RPC e este
+ * modulo e o unico que fala com o Supabase por aqui. O erro leva o `code` do
+ * Postgres/PostgREST pra quem chama saber se a funcao simplesmente ainda nao
+ * foi criada (42883 / PGRST202) e cair no plano B em vez de quebrar.
+ */
+export async function chamarRpc(nome, args) {
+  const { data, error } = await sb.rpc(nome, args);
+  if (error) {
+    const e = new Error(`${nome}: ${error.message}`);
+    e.code = error.code;
+    e.faltaFuncao = error.code === "42883" || error.code === "PGRST202" || /could not find the function|does not exist/i.test(error.message || "");
+    throw e;
+  }
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   Memorias: fatos duraveis sobre a pessoa. Ver supabase/conversa-v2.sql.
+   O sistema nunca apaga de verdade: desativa. Quem apaga e a pessoa, pela tela.
+   ------------------------------------------------------------------ */
+
+const COLUNAS_MEMORIA = "id, fato, categoria, importancia, fixado, ativo, valido_ate, criado_em, atualizado_em";
+
+function erroDeTabelaMemoria(error) {
+  const e = new Error(`memorias: ${error.message}`);
+  e.code = error.code;
+  e.faltaTabela = error.code === "42P01" || /does not exist|schema cache/i.test(error.message || "");
+  return e;
+}
+
+export async function listarMemorias({ incluirInativas = false } = {}) {
+  let q = sb.from("memorias").select(COLUNAS_MEMORIA);
+  if (!incluirInativas) q = q.eq("ativo", true);
+  const { data, error } = await q
+    .order("fixado", { ascending: false })
+    .order("importancia", { ascending: false })
+    .order("atualizado_em", { ascending: false })
+    .limit(300);
+  if (error) throw erroDeTabelaMemoria(error);
+  return data || [];
+}
+
+/** As que entram em TODO turno: fixadas ou muito importantes, e ainda validas. */
+export async function memoriasFixadas(n = 8) {
+  const hoje = new Date().toISOString().slice(0, 10);
+  /* A validade e filtrada aqui e nao na query: dois .or() no mesmo pedido
+     dependem de como o PostgREST combina parametros repetidos, e errar isso
+     devolveria memoria vencida sem ninguem perceber. */
+  const { data, error } = await sb.from("memorias")
+    .select("id, fato, categoria, importancia, fixado, valido_ate, atualizado_em")
+    .eq("ativo", true)
+    .or("fixado.eq.true,importancia.gte.4")
+    .order("fixado", { ascending: false })
+    .order("importancia", { ascending: false })
+    .order("atualizado_em", { ascending: false })
+    .limit(40);
+  if (error) throw erroDeTabelaMemoria(error);
+  return (data || [])
+    .filter((m) => !m.valido_ate || String(m.valido_ate) >= hoje)
+    .slice(0, Math.max(1, Math.min(n, 20)));
+}
+
+/** `embedding` ja vem como array de numeros (ou null). */
+export async function inserirMemoria({ fato, categoria = "outro", importancia = 3, fixado = false, validoAte = null, embedding = null, origem = {} }) {
+  const linha = {
+    fato: String(fato).trim().slice(0, 400),
+    categoria: String(categoria || "outro").slice(0, 30),
+    importancia: Math.max(1, Math.min(5, Number(importancia) || 3)),
+    fixado: Boolean(fixado),
+    valido_ate: validoAte || null,
+    embedding: embedding ? "[" + embedding.map(Number).join(",") + "]" : null,
+    origem_conversa: origem.conversaId || null,
+    origem_ordem: Number.isFinite(origem.ordem) ? origem.ordem : null,
+  };
+  const { data, error } = await sb.from("memorias").insert(linha).select(COLUNAS_MEMORIA).single();
+  if (error) throw erroDeTabelaMemoria(error);
+  return data;
+}
+
+export async function atualizarMemoria(id, campos) {
+  const patch = { atualizado_em: new Date().toISOString() };
+  if (typeof campos.fato === "string" && campos.fato.trim()) patch.fato = campos.fato.trim().slice(0, 400);
+  if (typeof campos.categoria === "string") patch.categoria = campos.categoria.slice(0, 30);
+  if (typeof campos.fixado === "boolean") patch.fixado = campos.fixado;
+  if (typeof campos.ativo === "boolean") patch.ativo = campos.ativo;
+  if (Number.isFinite(Number(campos.importancia))) patch.importancia = Math.max(1, Math.min(5, Number(campos.importancia)));
+  if (campos.validoAte !== undefined) patch.valido_ate = campos.validoAte || null;
+  if (campos.embedding) patch.embedding = "[" + campos.embedding.map(Number).join(",") + "]";
+  if (Object.keys(patch).length <= 1) throw new ErroHttp(400, "Nada pra mudar.");
+  const { data, error } = await sb.from("memorias").update(patch).eq("id", id).select(COLUNAS_MEMORIA).maybeSingle();
+  if (error) throw erroDeTabelaMemoria(error);
+  if (!data) throw new ErroHttp(404, "Memoria nao encontrada.");
+  return data;
+}
+
+/** Exclusao de verdade: so pela tela, por decisao da pessoa. */
+export async function excluirMemoria(id) {
+  const { data, error } = await sb.from("memorias").delete().eq("id", id).select("id");
+  if (error) throw erroDeTabelaMemoria(error);
+  if (!(data || []).length) throw new ErroHttp(404, "Memoria nao encontrada.");
+  return { ok: true, id };
 }

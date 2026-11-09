@@ -109,24 +109,48 @@ O arquivo `public/navegacao.js`:
 
 A premissa do Segundo Cérebro é que **a IA central conhece a rotina e os dados dos outros módulos**.
 
-### Como a Conexão Funciona
+### Como a Conexão Funciona (pipeline por turno)
 
-1. **Contexto no Servidor (`modulos/conversa/servidor/ecossistema.mjs`)**:
-   - As funções `obterContextoRefeicoes()` e `obterContextoTreinos()` consultam o banco do Supabase e retornam resumos em texto puro sobre as refeições do dia (calorias, macros, itens) e treinos (status da sessão, ficha, peso, altura).
-   - O bloco gerado é injetado diretamente no prompt da LLM (Gemini / Groq) nas rotas `/contexto` e `/responder`.
+Cada mensagem passa por camadas, nesta ordem (`modulos/conversa/servidor/turno.mjs`):
 
-2. **Integração com Música**:
-   - A IA sabe que possui o módulo de música e, ao recomendar ou ser solicitada para tocar músicas ("toca um forró", "música pra treinar"), inclui a tag:
-     `[TOCAR_MUSICA: termo ou artista]`
-   - O frontend da conversa (`conversa.js`) intercepta a tag, consulta a rota `/conversa/api/musica/busca?q=...` e renderiza um **card interativo de música** com capa, título, artista e botão Play/Pause direto no chat.
+1. **Planejador** (`planejador.mjs`): uma chamada barata ao Groq decide o **modo** (direto, resgate, parceiro,
+   escuta, reflexão, técnico, pensar junto, execução, exploração, organizar, análise), o tamanho da resposta,
+   a carga emocional, reescreve a pergunta de forma autônoma, gera 1–3 consultas de busca e escolhe as ferramentas.
+   Se o Groq falhar, cai numa heurística local. **Crise e janelas de data são regras fixas, nunca decididas pelo modelo.**
+2. **Ferramentas** (`ferramentas-spec.mjs` + `ferramentas.mjs`): um registro único (`buscar_notas`, `notas_por_periodo`,
+   `buscar_memoria`, `buscar_conversas`, `ver_treinos`, `ver_refeicoes`, `ver_peso`, `ver_metas`, `ver_tarefas`,
+   `ver_lembretes`, `ver_radar`). Rodam em paralelo, com timeout, e nunca derrubam o turno.
+3. **Busca híbrida** (`busca.mjs`): vetor (pgvector) + texto (FTS português) fundidos por RRF no Postgres, rerank por LLM e corte relativo.
+4. **Memória** (`memoria.mjs`): fatos atômicos sobre a pessoa (estilo Mem0: ADD/UPDATE/DELETE/NOOP). Roda via `POST /memorizar`
+   chamado pelo front depois da resposta. Memórias fixadas por você nunca são alteradas pelo sistema. Editáveis no painel "Alma".
+5. **Evidência** (`evidencia.mjs`): monta o bloco consultado com orçamento de caracteres e avisa quando nada foi achado (evita invenção).
+6. **Resposta** (`resposta.mjs` + `modos.mjs`): texto livre (sem JSON mode), com instrução e "thinking" por modo, e ponte entre o modo anterior e o atual.
+
+### Conexão com o MCP (clientes externos)
+
+`POST /mcp` (`mcp.mjs`) expõe as mesmas ferramentas, somente leitura, mais `consultar` (pergunta em linguagem natural),
+para Claude, ChatGPT, Cursor etc. Exige `Authorization: Bearer <MCP_TOKEN>`; sem `MCP_TOKEN` no ambiente responde 503.
+O chat interno chama as funções direto (sem rede). Gere o token com `openssl rand -hex 32`.
+
+### Depuração e avaliação
+
+- `POST /conversa/api/diagnostico {"texto": "..."}`: roda planejamento + consulta sem gerar resposta e devolve modo, consultas, fontes, tempos e evidência.
+- `npm test`: testes das partes puras (crise, modos, planejador, busca, evidência, MCP).
+- `npm run avaliar`: roda o pipeline real contra `data/avaliacao-conversa.json` (copie o `.exemplo.json`) e confere modo, ferramentas e evidência esperados.
+- SQL necessário: `supabase/conversa-v2.sql` (idempotente). Sem ele o chat funciona em modo reduzido (só busca por significado, sem memórias).
+
+### Integração com Música
+
+- A IA sabe que possui o módulo de música e, ao ser solicitada para tocar músicas ("toca um forró", "música pra treinar"), inclui a tag:
+  `[TOCAR_MUSICA: termo ou artista]`
+- O frontend (`conversa.js`) intercepta a tag, consulta `/conversa/api/musica/busca?q=...` e renderiza um **card interativo de música**.
 
 ### Como Conectar um Novo Módulo ao Conversa
 
-Se você criar um novo módulo (ex: `sono`, `financeiro`, `leitura`):
-1. No seu módulo, crie uma função exportada em `servidor/banco.mjs` que retorne um resumo do dia ou da semana (ex: `resumoDoDia()`).
-2. Em `modulos/conversa/servidor/ecossistema.mjs`, adicione a chamada a essa função dentro de um bloco `try/catch` seguro.
-3. Formate as informações em poucas linhas de texto claro e anexe-as ao `obterContextoEcossistema()`.
-4. Assim, o assistente responderá automaticamente com base nos dados do seu novo módulo!
+1. No seu módulo, exporte em `servidor/banco.mjs` uma função que retorne um resumo (ex: `resumoDoDia()`).
+2. Em `modulos/conversa/servidor/ferramentas-spec.mjs`, adicione a entrada em `ESPEC` (nome, descrição para o planejador, argumentos).
+3. Em `modulos/conversa/servidor/ferramentas.mjs`, implemente a função e registre em `FERRAMENTAS`. Ela passa a valer no chat **e** no MCP.
+4. Descreva bem o "quando usar" na `descricao`: é com ela que o planejador decide quando consultar.
 
 ---
 
@@ -150,7 +174,7 @@ Se você criar um novo módulo (ex: `sono`, `financeiro`, `leitura`):
    ```
 3. **Registrar no Catálogo (`public/navegacao.js`)**:
    Adicione seu módulo ao array `MODULOS` com id, nome, rota, descrição e ícone SVG.
-4. **Adicionar ao Conector da IA (`modulos/conversa/servidor/ecossistema.mjs`)** se o módulo contiver informações relevantes para o assistente.
+4. **Adicionar como ferramenta da IA** (`ferramentas-spec.mjs` + `ferramentas.mjs` em `modulos/conversa/servidor/`) se o módulo contiver informações relevantes para o assistente.
 
 
 ---

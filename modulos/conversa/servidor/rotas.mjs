@@ -1,118 +1,49 @@
 /**
- * Rotas do modulo CONVERSA. Tres camadas, duas requisicoes.
+ * Rotas do modulo CONVERSA. Tres camadas, duas requisicoes (o contrato com a
+ * tela nao mudou):
  *
  *   camada 0  no front, instantanea, zero rede
- *   camada 1  POST /api/contexto    embedding + pgvector. Sem LLM.
- *   camada 2  POST /api/responder   o modelo, com alma + notas + historico
+ *   camada 1  POST /api/contexto    PLANEJA (modo, perguntas, fontes), CONSULTA as
+ *                                   fontes em paralelo e grava a evidencia no turno.
+ *   camada 1b POST /api/rapida      o modelo leve segura a conversa na espera
+ *   camada 2  POST /api/responder   o modelo forte, com a evidencia ja pronta
+ *   depois    POST /api/memorizar   extrai fatos duraveis (a tela chama depois)
  *
- * A camada 1 grava o turno da pessoa com os ids que achou. A camada 2 le
- * aquele turno pelo (conversa_id, ordem): o cliente nao carrega contexto entre
- * as duas chamadas, entao nao tem como mandar outra coisa na segunda.
+ * A camada 1 grava o turno da pessoa COM a evidencia (meta.evidencia). A camada
+ * 2 le dali: o cliente nao carrega contexto entre as chamadas, entao nao tem
+ * como mandar outra coisa na segunda, e a resposta sai do que a camada 1 achou.
  */
-import { recuperar, blocoDeNotas, blocoDoPanorama, blocoDoPeriodo } from "./recuperacao.mjs";
-import { lerAlma, salvarAlma, blocoDaAlma, destilar, precisaDestilar, TURNOS_ENTRE_DESTILACOES } from "./alma.mjs";
+import { salvarAlma, lerAlma, destilar, precisaDestilar, TURNOS_ENTRE_DESTILACOES } from "./alma.mjs";
 import * as banco from "./banco.mjs";
-import { checarBanco as banco_checar } from "./banco.mjs";
-import { ErroHttp } from "./banco.mjs";
+import { checarBanco as banco_checar, ErroHttp } from "./banco.mjs";
 import { chatJSONDetalhado } from "../../../src/groqClient.js";
-import { escolherTom, instrucaoDoTom, tokensDoTom } from "./tom.mjs";
-import { gerarJSONDetalhado, temGemini } from "../../../src/geminiClient.js";
-import { obterContextoEcossistema } from "./ecossistema.mjs";
-import * as db from "../../../src/db.js";
+import { gerarEmbeddings } from "../../../src/embeddings.js";
+import { prepararTurno, planoCompacto } from "./turno.mjs";
+import { ehSensivel } from "./modos.mjs";
+import { memorizar, invalidarCache, memoriaDisponivel } from "./memoria.mjs";
+import { montarPromptTurno, historicoParaMensagens, gerarResposta } from "./resposta.mjs";
+import { ESPEC } from "./ferramentas-spec.mjs";
 
-const SISTEMA = `Voce e o segundo cerebro dessa pessoa. Voce nao e assistente, nao e atendente e nao e terapeuta: voce e a parte da cabeca dela que guardou tudo e lembra.
+const SISTEMA_RAPIDA = `Você é o segundo cérebro da pessoa e acabou de receber uma mensagem dela. A resposta de verdade ainda está sendo pensada e chega daqui a alguns segundos. Seu trabalho é segurar a conversa nesse meio tempo, como gente faz.
 
-Como falar:
-- Portugues do Brasil, conversa de verdade, inteligente e parceira. Frase direta. Sem travessao.
-- Sem "posso ajudar", sem "que interessante", sem resumir o que ela acabou de dizer.
-- Se ela perguntar sobre mais de um assunto na mesma mensagem (ex: treino e notas), responda aos dois tópicos com clareza, dividindo em parágrafos separados.
-
-O que voce sabe:
-- Alem das notas guardadas na memoria, voce esta CONECTADO ao ecossistema: voce tem acesso direto as REFEICOES dela (calorias consumidas hoje, macros, itens do cafe/almoco/jantar), aos TREINOS dela (se treinou hoje, exercicios da ficha, series, status concluido, calorias, progresso do ciclo de 14 dias) e ao modulo de MUSICA.
-- Use essas informacoes com total naturalidade:
-  * Treino: se ela treinou hoje e concluiu, fale com entusiasmo dos exercicios que ela fez e das calorias gastas. Se estiver na reta final do ciclo de treinos (ultimos dias), mencione o progresso do ciclo para motivar! NUNCA despeje peso ou altura do nada, a menos que ela pergunte diretamente sobre peso.
-  * Notas / Memória: cite o que ela guardou com base nas notas fornecidas no bloco de notas, usando o conteudo real e a idade (ontem, ha 3 dias, etc.). Se hoje nao houver nota nova, diga claramente mas comente as notas recentes que ela tem. NUNCA diga que a base esta vazia se houver notas listadas no bloco.
-  * Musica: se ela pedir pra tocar musica, botar um som ou pedir algo pra ouvir no treino ou foco, reaja como parceiro e inclua OBRIGATORIAMENTE no final a tag [TOCAR_MUSICA: artista ou estilo ou musica].
-- Nunca invente uma nota, uma data, uma caloria ou um exercicio que nao conste nos dados reais.
-
-Formato: UMA mensagem so, inteira. Quem conversa em blocos curtos e a mensagem rapida que ja chegou antes de voce; voce e a resposta que ela estava cobrindo. Pode ter varios paragrafos bem estruturados. Nao repita o que a mensagem rapida disse, continue dali.
-
-Responda SOMENTE com JSON:
-{"mensagem": "texto inteiro aqui"}`;
-
-/** Historico do banco no formato da API. Puro. */
-export function historicoParaMensagens(turnos) {
-  return (Array.isArray(turnos) ? turnos : [])
-    .filter((t) => t && t.texto && String(t.texto).trim())
-    .map((t) => ({
-      role: t.papel === "pessoa" ? "user" : "assistant",
-      content: String(t.texto),
-    }));
-}
-
-/** Monta o prompt do turno. Puro, pra dar pra testar sem rede. */
-export function montarPrompt({ tracos, panorama, bloco, blocoEcossistema, texto, hojeISO, tom }) {
-  return `Hoje e ${hojeISO}.
-
-${blocoDaAlma(tracos)}
-
-${blocoDoPanorama(panorama)}
-
-${blocoEcossistema || ""}
-
-${bloco}
-
-Ela acabou de dizer:
-"""
-${String(texto || "").slice(0, 2000)}
-"""
-
-${tom ? instrucaoDoTom(tom) : ""}`;
-}
-
-const SISTEMA_RAPIDA = `Voce e o segundo cerebro dessa pessoa, e acabou de receber uma mensagem dela. A resposta de verdade ainda esta sendo pensada e chega daqui a alguns segundos. Seu trabalho e segurar a conversa nesse meio tempo, como gente faz.
-
-Voce PODE:
-- reagir ao que ela disse AGORA
-- dizer o que voce encontrou nas notas, pelo conteudo ("tem uma sua de junho falando de X")
+Você PODE:
+- reagir ao que a pessoa disse AGORA
+- dizer o que encontrou nas notas, pelo conteúdo ("tem uma sua de junho falando de X")
 - pensar em voz alta ("deixa eu juntar isso com aquilo")
 - fazer uma pergunta curta sobre o assunto de agora
 
-REGRA MAIS IMPORTANTE: fique NO ASSUNTO desta mensagem e do que veio antes na
-conversa. Nota que nao tem a ver com o que ela esta falando agora, voce IGNORA.
-Ela veio falar de uma coisa; puxar outra porque apareceu na lista e pior do que
-ficar calado.
+REGRA MAIS IMPORTANTE: fique NO ASSUNTO desta mensagem e do que veio antes na conversa. Nota que não tem a ver com o que a pessoa está falando agora, você IGNORA. Puxar outro assunto porque apareceu na lista é pior do que ficar calado.
 
-Voce NAO PODE, de jeito nenhum:
-- concluir, opinar, aconselhar ou responder a pergunta dela
-- dizer o que aquilo significa ou o que ela deveria fazer
-Quem responde e a mensagem que vem depois. Se voce concluir agora, vai se contradizer daqui a pouco.
+Você NÃO PODE, de jeito nenhum:
+- concluir, opinar, aconselhar ou responder a pergunta
+- dizer o que aquilo significa ou o que a pessoa deveria fazer
+Quem responde é a mensagem que vem depois. Se você concluir agora, vai se contradizer daqui a pouco.
 
-Tom: portugues do Brasil falado, informal, sem travessao. Nada de "posso ajudar" nem de repetir o que ela disse.
+Tom: português do Brasil falado, informal, sem travessão. Nada de "posso ajudar" nem de repetir o que a pessoa disse.
 Formato: 2 ou 3 mensagens BEM curtas, de uma linha cada, como quem manda no chat enquanto pensa.
 
 Responda SOMENTE com JSON:
 {"mensagens": ["...", "..."]}`;
-
-/* Mensagem grande vira duas, cortando no fim de frase. Prompt sozinho nao
-   segura tamanho: o Gemini com thinking manda paragrafo mesmo pedindo duas
-   linhas. Cortar no meio da palavra seria pior que o problema. */
-export function quebrarMensagens(msgs, max = 340) {
-  const fora = [];
-  for (const m of Array.isArray(msgs) ? msgs : []) {
-    let resto = String(m || "").trim();
-    while (resto.length > max && fora.length < 5) {
-      const janela = resto.slice(0, max);
-      let corte = Math.max(janela.lastIndexOf(". "), janela.lastIndexOf("? "), janela.lastIndexOf("! "));
-      if (corte < max * 0.4) corte = janela.lastIndexOf(" ");
-      if (corte <= 0) break;
-      fora.push(resto.slice(0, corte + 1).trim());
-      resto = resto.slice(corte + 1).trim();
-    }
-    if (resto) fora.push(resto);
-  }
-  return fora.slice(0, 5);
-}
 
 function exigir(cond, status, msg, dica = "") {
   if (!cond) throw new ErroHttp(status, msg, dica);
@@ -126,22 +57,33 @@ function pegarId(rota, prefixo) {
   return resto && !resto.includes("/") ? decodeURIComponent(resto) : null;
 }
 
+/** A tabela de memorias pode nao existir ainda: vira 503 com a instrucao. */
+async function comMemorias(fn) {
+  try { return await fn(); } catch (e) {
+    if (e.faltaTabela) throw new ErroHttp(503, "A tabela de memórias não existe.", "Rode supabase/conversa-v2.sql no Supabase.");
+    throw e;
+  }
+}
+
+async function vetorDe(texto) {
+  try { const [v] = await gerarEmbeddings([texto]); return v; } catch { return null; }
+}
+
 export async function rotear(req, url) {
   const rota = url.pathname.replace(/^\/api/, "") || "/";
   const corpo = req.body && typeof req.body === "object" ? req.body : {};
 
-  /* Health que ENCOSTA no banco. O anterior respondia ok sempre, entao a tela
-     subia achando que estava tudo certo e so descobria na primeira mensagem.
-     Responde 200 mesmo com o banco fora: o corpo e o diagnostico, e 500 aqui
-     faria a tela mostrar "erro interno" em vez do motivo real. */
+  /* Health que ENCOSTA no banco. Responde 200 mesmo com o banco fora: o corpo
+     e o diagnostico, e 500 aqui faria a tela mostrar "erro interno" em vez do
+     motivo real. */
   if (req.method === "GET" && rota === "/health") {
-    const banco = await banco_checar();
-    return { status: banco.ok ? "ok" : "degradado", modulo: "conversa", banco };
+    const b = await banco_checar();
+    return { status: b.ok ? "ok" : "degradado", modulo: "conversa", banco: b, memorias: memoriaDisponivel() };
   }
 
-  // ---- ecossistema: resumo de refeicoes, treinos e musica ----
-  if (req.method === "GET" && rota === "/ecossistema") {
-    return await obterContextoEcossistema();
+  // ---- as ferramentas que o cerebro pode consultar (mesma lista do MCP) ----
+  if (req.method === "GET" && rota === "/ferramentas") {
+    return { ferramentas: Object.entries(ESPEC).map(([nome, e]) => ({ nome, fonte: e.fonte, descricao: e.descricao, args: e.args })) };
   }
 
   // ---- busca musical para o player integrado da conversa ----
@@ -150,8 +92,7 @@ export async function rotear(req, url) {
     const workerUrl = "https://teste-sm.pedro-sarmento-455.workers.dev/api/busca?q=" + encodeURIComponent(q);
     try {
       const resp = await fetch(workerUrl);
-      const d = await resp.json().catch(() => ({}));
-      return d;
+      return await resp.json().catch(() => ({}));
     } catch (e) {
       return { ok: false, erro: e.message, musicas: [], artistas: [], cds: [] };
     }
@@ -165,58 +106,53 @@ export async function rotear(req, url) {
   if (req.method === "GET" && rota === "/historico") {
     const id = url.searchParams.get("conversa_id");
     exigir(id, 400, "Informe conversa_id.");
-    /* 404 em historico de conversa que nao existe.
-       Sem esta linha, ultimosTurnos devolvia lista vazia e 200 para um id morto,
-       e a tela adotava o id achando que era valido. So o /contexto e que conferia,
-       na primeira mensagem, e ai voltava "Conversa nao encontrada" sem saida. */
+    /* 404 em historico de conversa que nao existe: sem isto a tela adotava o id
+       de uma conversa morta e so descobria na primeira mensagem. */
     exigir(await banco.conversaExiste(id), 404, "Conversa nao encontrada.", "Abra uma conversa nova.");
     return { turnos: await banco.ultimosTurnos(id, Number(url.searchParams.get("n")) || 20) };
   }
 
-  // ---- camada 1: recupera e grava o turno da pessoa ----
+  // ---- camada 1: planeja, consulta e grava o turno da pessoa COM a evidencia ----
   if (req.method === "POST" && rota === "/contexto") {
     const { conversa_id: conversaId, texto } = corpo;
     exigir(conversaId, 400, "Informe conversa_id.", "Chame POST /conversa/api/sessao primeiro.");
     exigir(texto && String(texto).trim(), 400, "Texto vazio.");
     exigir(await banco.conversaExiste(conversaId), 404, "Conversa nao encontrada.");
 
-    const achado = await recuperar(texto, { buscar: 40, maxFortes: 20, maxFracas: 4 });
+    const anteriores = await banco.ultimosTurnos(conversaId, 8);
+    const t = await prepararTurno({ texto, historico: anteriores, conversaId });
     const ordem = await banco.proximaOrdem(conversaId);
     const { turno } = await banco.inserirTurno({
-      conversaId,
-      ordem,
-      papel: "pessoa",
-      texto,
-      // fortes primeiro, tangentes depois: e essa ordem que o /rapida usa
-      notasUsadas: achado.notas.map((n) => n.id),
-      /* A janela vai gravada: o /responder remonta o bloco do zero e, sem
-         isto, nao saberia que o pedido era por data. Perderia a instrucao de
-         nao trocar por nota de outra data, e periodo vazio voltaria a virar
-         "a base nao tem nota sobre isso", que e outra coisa. */
+      conversaId, ordem, papel: "pessoa", texto,
+      notasUsadas: t.pacote.ids,
       meta: {
-        fortes: achado.fortes.length,
-        janela: achado.janela || null,
-        totalPeriodo: (achado.resumo && achado.resumo.totalPeriodo) || null,
+        modo: t.plano.modo,
+        plano: planoCompacto(t.plano),
+        memoravel: t.plano.memoravel,
+        evidencia: t.pacote.texto,
+        memorias: t.memorias,
+        fontes: t.pacote.fontes,
+        sem_resultado: t.pacote.semResultado.map((s) => s.ferramenta),
+        achado: t.pacote.achado,
+        rapida: t.pacote.resumosRapida,
+        ms: t.ms,
       },
     });
 
-    // primeira mensagem nomeia a conversa. Sem LLM: e so a frase dela.
+    // primeira mensagem nomeia a conversa. Sem LLM: e so a frase da pessoa.
     const tituloNovo = turno.ordem === 1 ? await banco.nomearSeVazia(conversaId, texto) : null;
+    const sensivel = ehSensivel(t.plano.modo);
 
     return {
       ordem: turno.ordem,
       titulo: tituloNovo,
-      frase: achado.frase,
-      achado: {
-        total: achado.resumo.total,
-        fortes: achado.resumo.fortes,
-        areas: achado.resumo.areas,
-      },
+      frase: t.frase,
+      modo: t.plano.modo,
+      sensivel,
+      achado: sensivel ? { total: 0, fortes: 0, areas: [] } : t.pacote.achado,
       // criado_em vai junto: e o que deixa a tela dizer "aquela de junho" na espera
-      notas: achado.fortes.map((n) => ({
-        id: n.id, resumo: n.resumo, area: n.area, score: n.score,
-        criado_em: String(n.criado_em || "").slice(0, 10),
-      })),
+      notas: sensivel ? [] : t.pacote.resumosRapida,
+      fontes: t.pacote.fontes.map((f) => f.ferramenta),
     };
   }
 
@@ -231,31 +167,23 @@ export async function rotear(req, url) {
 
     const turnoPessoa = await banco.buscarTurno(conversaId, Number(ordem));
     exigir(turnoPessoa, 404, "Turno nao encontrado.");
+    const meta = turnoPessoa.meta || {};
 
-    const ids = Array.isArray(turnoPessoa.notas_usadas) ? turnoPessoa.notas_usadas : [];
-    /* SO as fortes. A lista vem fortes primeiro e tangentes depois; o /responder
-       recebe as duas separadas e rotuladas, mas aqui entrava tudo achatado, e o
-       modelo leve agarrava a tangente mais chamativa e saia do assunto. */
-    const qtdFortes = Number(turnoPessoa.meta && turnoPessoa.meta.fortes) || 0;
-    const soFortes = ids.slice(0, Math.min(6, qtdFortes));
-    const brutas = await Promise.all(soFortes.map((id) => db.buscarPorId(id).catch(() => null)));
-    const resumos = brutas.filter(Boolean)
-      .map((n, i) => `${i + 1}. [${n.area || "sem area"}] ${n.resumo || "(sem resumo)"} (de ${String(n.criado_em).slice(0, 10)})`)
-      .join("\n");
+    /* Em desabafo e em crise enchimento de espera soa errado: "tem uma nota
+       sua de junho" em cima de uma dor e relatorio, nao presenca. */
+    if (ehSensivel(meta.modo)) return { mensagens: [], meta: { pulada: true, motivo: "modo sensivel" } };
 
-    /* Historico: sem ele, no quinto turno o modelo leve nao sabe do que voces
-       estavam falando e comeca do zero a cada mensagem. Poucos turnos de
-       proposito, isto precisa voltar em menos de um segundo. */
+    const resumos = (Array.isArray(meta.rapida) ? meta.rapida : [])
+      .map((n, i) => `${i + 1}. [${n.area || "sem area"}] ${n.resumo || "(sem resumo)"} (de ${n.criado_em})`).join("\n");
+
     const antes = await banco.ultimosTurnos(conversaId, 6);
-    const historicoRapida = historicoParaMensagens(antes.filter((t) => t.ordem < Number(ordem)));
+    const historicoRapida = historicoParaMensagens(antes.filter((t) => t.ordem < Number(ordem)), { max: 6 });
 
-    const prompt = `Ela acabou de dizer:\n"""\n${String(turnoPessoa.texto).slice(0, 800)}\n"""\n\n` +
+    const prompt = `A pessoa acabou de dizer:\n"""\n${String(turnoPessoa.texto).slice(0, 800)}\n"""\n\n` +
       (resumos
         ? `Notas dela que se ligam a ISSO:\n${resumos}`
-        : "Voce nao achou nota nenhuma sobre isso. Diga que nao achou, nao invente outro assunto.");
+        : "Você não achou nota nenhuma sobre isso. Diga que não achou, não invente outro assunto.");
 
-    /* Groq de proposito, e o menor deles. O ponto aqui e chegar rapido; o
-       modelo forte esta rodando em paralelo pra mensagem que importa. */
     const r = await chatJSONDetalhado(SISTEMA_RAPIDA, prompt, {
       modelo: process.env.GROQ_MODEL_RAPIDA || process.env.GROQ_MODEL_RELINK || process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b",
       temperatura: 0.85, mensagens: historicoRapida, tentativas: 1,
@@ -280,115 +208,99 @@ export async function rotear(req, url) {
     // Retry ou toque duplo: a resposta ja existe, devolve ela em vez de gerar de novo.
     const jaRespondido = await banco.buscarTurno(conversaId, Number(ordem) + 1);
     if (jaRespondido) {
-      return { mensagens: jaRespondido.mensagens || [jaRespondido.texto], meta: jaRespondido.meta || {}, reaproveitado: true };
+      return { mensagens: jaRespondido.mensagens && jaRespondido.mensagens.length ? jaRespondido.mensagens : [jaRespondido.texto], meta: jaRespondido.meta || {}, reaproveitado: true };
     }
 
-    const ids = Array.isArray(turnoPessoa.notas_usadas) ? turnoPessoa.notas_usadas : [];
-    const brutas = await Promise.all(ids.slice(0, 24).map((id) => db.buscarPorId(id).catch(() => null)));
-
-    /* score: 1 em TUDO era o defeito. A recuperacao separa forte de tangente
-       pelo limiar 0.42 e grava as fortes primeiro, com a contagem em
-       meta.fortes; o /rapida ja usava isso. Aqui a distincao era jogada fora, e
-       o blocoDeNotas entregava ao modelo "Notas dele que falam disso (20)"
-       mesmo quando so 3 falavam. Dai ele citar tangente com a mesma confianca.
-
-       map ANTES do filter de proposito: nota que falhou ao carregar desloca as
-       posicoes seguintes, e o corte de fortes passaria a marcar a nota errada.
-
-       Turno antigo nao tem meta.fortes. Ali mantemos o comportamento de antes
-       (tudo forte) em vez de rebaixar tudo a tangente, que seria pior. */
-    const janelaDoTurno = (turnoPessoa.meta && turnoPessoa.meta.janela) || null;
-    const temContagem = turnoPessoa.meta && turnoPessoa.meta.fortes != null;
-    const qtdFortes = temContagem ? Number(turnoPessoa.meta.fortes) || 0 : ids.length;
-    const notas = brutas
-      .map((n, i) => (n ? { ...n, embedding: undefined, score: i < qtdFortes ? 1 : 0 } : null))
-      .filter(Boolean);
-
-    const [alma, tracos, anteriores, panorama, tom, ecossistema] = await Promise.all([
-      lerAlma(),
+    const [tracos, anteriores, panorama] = await Promise.all([
       banco.listarTracos({}),
       banco.ultimosTurnos(conversaId, 20),
-      // falha do panorama nao pode derrubar a resposta: ele e contexto, nao insumo
+      // o panorama e contexto, nao insumo: falha dele nao pode derrubar a resposta
       banco.panoramaBase().catch(() => null),
-      /* Camada de tom. Vai no MESMO Promise.all de proposito: em serie ela viraria
-         mais um segundo de espera antes de o modelo forte nem comecar. Nunca lanca,
-         entao nao precisa de catch: erro vira heuristica la dentro. */
-      escolherTom({ texto: turnoPessoa.texto, notas }),
-      // Visão conectada do ecossistema: refeições, treinos e música
-      obterContextoEcossistema().catch(() => null),
     ]);
     // o turno atual vai no prompt, entao sai do historico pra nao aparecer duas vezes
-    const historico = historicoParaMensagens(anteriores.filter((t) => t.ordem < Number(ordem)));
+    const passados = anteriores.filter((t) => t.ordem < Number(ordem));
 
-    const prompt = montarPrompt({
-      tracos,
-      panorama,
-      blocoEcossistema: ecossistema && ecossistema.blocoTexto,
-      bloco: janelaDoTurno
-        ? blocoDoPeriodo(janelaDoTurno, notas, Number(turnoPessoa.meta.totalPeriodo) || notas.length)
-        : blocoDeNotas(notas),
-      texto: turnoPessoa.texto,
-      hojeISO: new Date().toISOString().slice(0, 10),
-      tom,
+    /* A evidencia vem do turno, gravada pela camada 1. Turno sem ela (anterior a
+       esta versao, ou /contexto que falhou no meio) e re-planejado aqui, em vez
+       de responder as cegas. */
+    let meta = turnoPessoa.meta || {};
+    let plano = meta.plano;
+    if (!plano || meta.evidencia == null) {
+      const t = await prepararTurno({ texto: turnoPessoa.texto, historico: passados, conversaId });
+      plano = planoCompacto(t.plano);
+      meta = { ...meta, plano, evidencia: t.pacote.texto, memorias: t.memorias, fontes: t.pacote.fontes };
+    }
+
+    const prompt = montarPromptTurno({
+      tracos, panorama,
+      memoriasBase: Array.isArray(meta.memorias) ? meta.memorias : [],
+      evidencia: meta.evidencia || "",
+      plano, texto: turnoPessoa.texto,
     });
-    // O teto sai do tom. O 4096 fixo de antes cortava resposta longa no meio.
-    const tetoTokens = tokensDoTom(tom);
-
-    /* Gemini com thinking primeiro, Groq de reserva. E a MESMA ordem que o
-       insight usa (ideasService.js): antes a conversa rodava direto no Groq,
-       ou seja, no plano B do insight, permanentemente. E por isso que a
-       resposta saia rasa. Fica mais lento, e as camadas 0 e 1 cobrem isso. */
-    let r = null;
-    let metaLLM = null;
-    if (temGemini()) {
-      try {
-        const g = await gerarJSONDetalhado(SISTEMA, prompt, {
-          /* 4096 e nao 1200: com thinkingConfig o raciocinio gasta do MESMO
-             teto, entao teto curto cortava a resposta no meio e o JSON.parse
-             quebrava. Era o erro "devolveu JSON invalido". */
-          temperatura: 0.75, mensagens: historico, maxTokens: tetoTokens,
-        });
-        r = g.dados; metaLLM = g.meta;
-      } catch (e) {
-        console.warn("[conversa] gemini falhou, caindo pro groq: " + e.message);
-      }
-    }
-    if (!r) {
-      /* tentativas: 1 de proposito. O padrao e 3, e cada rodada pode dormir
-         ate 60s quando as chaves estao em descanso: a tela ficava minutos
-         parada sem nada. Aqui e melhor falhar rapido e avisar. */
-      const q = await chatJSONDetalhado(SISTEMA, prompt, {
-        temperatura: 0.75, mensagens: historico, tentativas: 1,
-      });
-      r = q.dados; metaLLM = q.meta;
-    }
-    /* Aceita as duas formas: "mensagem" e o formato novo, "mensagens" cobre o
-       Groq de reserva, que as vezes devolve array mesmo com o prompt novo. */
-    const cru = r && typeof r.mensagem === "string"
-      ? [r.mensagem]
-      : (Array.isArray(r && r.mensagens) ? r.mensagens : []);
-    const mensagens = cru.map((m) => String(m || "").trim()).filter(Boolean);
-    exigir(mensagens.length, 502, "O modelo nao devolveu mensagem.");
-    // uma mensagem so: nao quebra mais. Quem conversa em blocos e o modelo leve.
-    const partidas = [mensagens.join("\n\n")];
+    const r = await gerarResposta({ prompt, historico: historicoParaMensagens(passados), plano });
 
     const { turno } = await banco.inserirTurno({
       conversaId,
       ordem: Number(ordem) + 1,
       papel: "cerebro",
-      texto: mensagens.join("\n"),
-      mensagens: partidas,
-      notasUsadas: ids,
+      texto: r.texto,
+      mensagens: [r.texto],
+      notasUsadas: turnoPessoa.notas_usadas || [],
       meta: {
-        notas: notas.length, alma_versao: alma.versao || 0, tracos: tracos.length,
-        // invisivel na tela; serve pra voce conferir depois por que saiu daquele jeito
-        tom: tom.registro, tom_tamanho: tom.tamanho, tom_fonte: tom.fonte, tom_motivo: tom.motivo,
+        // o modo e a carga ficam no turno do CEREBRO: o planejador do proximo turno le daqui
+        modo: plano.modo, modo_secundario: plano.modo_secundario, tamanho: plano.tamanho,
+        carga_emocional: plano.carga_emocional,
+        planejador: plano.fonte, motivo: plano.motivo,
+        fontes: (meta.fontes || []).map((f) => f.ferramenta),
+        tracos: tracos.length,
         // qual modelo respondeu: e a unica forma de saber se caiu pra reserva
-        provedor: metaLLM && metaLLM.provedor, modelo: metaLLM && metaLLM.modelo,
+        provedor: r.meta && r.meta.provedor, modelo: r.meta && r.meta.modelo, pensando: r.meta && r.meta.pensando,
       },
     });
 
     return { mensagens: turno.mensagens, meta: turno.meta, reaproveitado: false };
+  }
+
+  // ---- depois da resposta: memoriza fatos duraveis ----
+  /* Separada do /responder de proposito: em serverless, trabalho depois do
+     response e descartado. A tela chama esta rota quando a resposta ja chegou
+     e a pessoa ja esta lendo, entao o custo nao aparece como espera. */
+  if (req.method === "POST" && rota === "/memorizar") {
+    const { conversa_id: conversaId, ordem } = corpo;
+    exigir(conversaId, 400, "Informe conversa_id.");
+    exigir(Number.isFinite(Number(ordem)), 400, "Informe a ordem do turno da pessoa.");
+    const turno = await banco.buscarTurno(conversaId, Number(ordem));
+    exigir(turno && turno.papel === "pessoa", 404, "Turno da pessoa nao encontrado.");
+    const meta = turno.meta || {};
+    // o planejador decide se a mensagem tem fato duravel: pergunta e papo nao gastam chamada
+    if (meta.memoravel !== true) return { pulado: true, motivo: "nada duravel nesta mensagem" };
+    if (meta.memorizado) return { pulado: true, motivo: "ja memorizado" };
+
+    const antes = (await banco.ultimosTurnos(conversaId, 6))
+      .filter((t) => t.papel === "pessoa" && t.ordem < Number(ordem)).slice(-2).map((t) => t.texto);
+    const r = await memorizar({ textoPessoa: turno.texto, contexto: antes, conversaId, ordem: Number(ordem) });
+    await banco.mesclarMetaTurno(conversaId, Number(ordem), { memorizado: true, memoria_ops: r }).catch(() => {});
+    return r;
+  }
+
+  // ---- diagnostico: por que ele respondeu daquele jeito ----
+  /* Roda planejamento + consulta SEM gerar resposta e devolve tudo: o modo, as
+     perguntas reescritas, o que cada fonte trouxe e em quantos ms. E a rota pra
+     abrir quando a resposta sair estranha. */
+  if (req.method === "POST" && rota === "/diagnostico") {
+    exigir(corpo.texto && String(corpo.texto).trim(), 400, "Informe texto.");
+    const historico = corpo.conversa_id ? await banco.ultimosTurnos(corpo.conversa_id, 8).catch(() => []) : [];
+    const t = await prepararTurno({ texto: corpo.texto, historico, conversaId: corpo.conversa_id || null });
+    return {
+      plano: planoCompacto(t.plano),
+      planejador: t.plano.planejador || null,
+      frase: t.frase,
+      fontes: t.pacote.fontes,
+      sem_resultado: t.pacote.semResultado,
+      memorias: t.memorias,
+      evidencia: t.pacote.texto,
+      ms: t.ms,
+    };
   }
 
   // ---- conversas: lista, renomear, favoritar, arquivar, excluir ----
@@ -413,6 +325,38 @@ export async function rotear(req, url) {
   const idTraco = pegarId(rota, "/tracos");
   if (idTraco && req.method === "PATCH") return await banco.atualizarTraco(idTraco, corpo);
   if (idTraco && req.method === "DELETE") return await banco.excluirTraco(idTraco);
+
+  // ---- memorias: o que ele sabe sobre voce, editavel por voce ----
+  if (req.method === "GET" && rota === "/memorias") {
+    return await comMemorias(async () => ({
+      memorias: await banco.listarMemorias({ incluirInativas: url.searchParams.get("todas") === "1" }),
+    }));
+  }
+  if (req.method === "POST" && rota === "/memorias") {
+    exigir(corpo.fato && String(corpo.fato).trim().length >= 3, 400, "Informe o fato.");
+    return await comMemorias(async () => {
+      // escrita por voce nasce FIXADA: o sistema nunca reescreve nem desativa
+      const m = await banco.inserirMemoria({
+        fato: corpo.fato, categoria: corpo.categoria || "outro", importancia: corpo.importancia || 4,
+        fixado: corpo.fixado !== false, embedding: await vetorDe(String(corpo.fato)),
+      });
+      invalidarCache();
+      return m;
+    });
+  }
+  const idMemoria = pegarId(rota, "/memorias");
+  if (idMemoria && req.method === "PATCH") {
+    return await comMemorias(async () => {
+      const campos = { ...corpo };
+      if (typeof corpo.fato === "string" && corpo.fato.trim()) campos.embedding = await vetorDe(corpo.fato);
+      const m = await banco.atualizarMemoria(idMemoria, campos);
+      invalidarCache();
+      return m;
+    });
+  }
+  if (idMemoria && req.method === "DELETE") {
+    return await comMemorias(async () => { const r = await banco.excluirMemoria(idMemoria); invalidarCache(); return r; });
+  }
 
   // ---- alma ----
   if (req.method === "GET" && rota === "/alma") {
