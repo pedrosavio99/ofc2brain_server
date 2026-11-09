@@ -954,3 +954,63 @@
     padding: 0 !important;
   }
 }
+
+/* ==========================================================================
+   HOJE NO RADAR (radar-hoje.js): a parte viva
+   ========================================================================== */
+.tr-hoje { margin: 4px 0 18px; }
+.tr-hoje-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.tr-hoje-titulo { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.tr-hoje-meta { font-size: 12.5px; color: var(--texto-3); }
+.tr-hoje-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.tr-hoje-chip { font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--superficie-2); color: var(--texto-2); }
+.tr-hoje-chip.novo { background: color-mix(in srgb, var(--acento) 16%, transparent); color: var(--acento); }
+.tr-hoje-chip.sobe { background: rgba(52,199,89,.16); color: #1f9d47; }
+.tr-hoje-chip.desce { background: rgba(255,149,0,.16); color: #c26a00; }
+.tr-hoje-aviso, .tr-hoje-vazio { font-size: 13.5px; color: var(--texto-2); margin: 10px 0; }
+.tr-hoje-aviso { padding: 8px 12px; border-radius: 10px; background: rgba(255,149,0,.12); }
+.tr-hoje-sub { margin: 18px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-3); }
+
+.tr-sinais { display: grid; gap: 12px; margin-top: 12px; }
+@media (min-width: 760px) { .tr-sinais { grid-template-columns: repeat(2, 1fr); } }
+.tr-sinal {
+  display: grid; gap: 7px; padding: 14px 15px; border-radius: 16px;
+  background: var(--superficie); border: 1px solid var(--separador); box-shadow: var(--sombra);
+  border-left: 3px solid var(--acento); animation: tr-entra .3s ease-out both;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.tr-sinal.saindo { opacity: 0; transform: translateX(14px); }
+@keyframes tr-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.tr-sinal-topo { display: flex; align-items: center; gap: 8px; }
+.tr-sinal-frente { font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--texto-3); }
+.tr-sinal-novo { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--acento); color: #fff; }
+.tr-sinal-titulo { margin: 0; font-size: 16.5px; line-height: 1.3; }
+.tr-sinal-agora { margin: 0; font-size: 14px; line-height: 1.5; }
+.tr-sinal-dor { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--texto-2); }
+.tr-sinal-fontes { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.tr-sinal-fontes a { color: var(--texto); text-decoration: underline; text-decoration-color: var(--separador); text-underline-offset: 2px; }
+.tr-sinal-fonte { display: block; font-size: 12px; color: var(--texto-3); }
+.tr-sinal-afin { margin: 0; padding: 8px 10px; border-radius: 10px; font-size: 13px; line-height: 1.45; background: color-mix(in srgb, var(--acento) 10%, transparent); }
+.tr-sinal-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.tr-btn-discreto { opacity: .7; }
+
+.tr-movs { display: grid; gap: 8px; }
+.tr-mov {
+  display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; cursor: pointer;
+  border-radius: 12px; background: var(--superficie); border: 1px solid var(--separador);
+}
+.tr-mov:active { background: var(--superficie-2); }
+.tr-mov-pct { font-weight: 700; font-size: 14px; min-width: 70px; }
+.tr-mov.sobe .tr-mov-pct { color: #1f9d47; }
+.tr-mov.desce .tr-mov-pct { color: #c26a00; }
+.tr-mov-corpo { display: grid; gap: 2px; font-size: 14px; }
+.tr-mov-sub { font-size: 12.5px; color: var(--texto-3); }
+.tr-mov-manchete { font-size: 12.5px; color: var(--texto-2); }
+.tr-mov-manchete a { color: inherit; text-decoration: underline; text-decoration-color: var(--separador); text-underline-offset: 2px; }
+.tr-mov-manchete em { font-style: normal; color: var(--texto-3); }
+
+/* selos nos cartoes da lista */
+.tr-pulso { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--superficie-2); color: var(--texto-2); }
+.tr-pulso-subindo { background: rgba(52,199,89,.16); color: #1f9d47; }
+.tr-pulso-esfriando { background: rgba(255,149,0,.16); color: #c26a00; }
+.tr-tag-tese { font-size: 11px; padding: 2px 7px; border-radius: 999px; border: 1px dashed var(--separador); color: var(--texto-3); }

@@ -519,3 +519,22 @@ test("decidirSeparacao: reranker que zera tudo cai no corte relativo em vez de d
   assert.equal(normal.usouRerank, true);
   assert.deepEqual(normal.sep.fortes.map((n) => n.id), ["1"]);
 });
+
+test("cartaoDoRadar: prefere a descoberta que combina com uma nota e nao vaza o conteudo dela", async () => {
+  const { cartaoDoRadar, comCartaoDoRadar } = await import("../servidor/sugestoes.mjs");
+  const a = { titulo: "Gestor de ofícios digitais", porque_agora: "Cartórios passam a exigir assinatura digital em ofícios.", afinidade: null };
+  const b = { titulo: "Compliance CBS em notas", porque_agora: "Prazo da CBS apertou para as contabilidades.", afinidade: { nota_id: "n1", data: "2026-10-12", resumo: "SEGREDO DA NOTA" } };
+  const c = cartaoDoRadar([a, b]);
+  assert.equal(c.tipo, "radar");
+  assert.match(c.titulo, /CBS/);
+  assert.match(c.gancho, /nota sua de 12\/10/);
+  assert.ok(!JSON.stringify(c).includes("SEGREDO"));
+  assert.equal(cartaoDoRadar([]), null);
+  assert.equal(cartaoDoRadar([{ titulo: "x", porque_agora: "curto" }]), null);
+  // nao estoura o maximo: o radar toma o lugar do ultimo
+  const cinco = Array.from({ length: 5 }, (_, i) => ({ tipo: "retomar", titulo: "Cartao " + i, gancho: "gancho longo o bastante", abrir: "abrir aqui" }));
+  const r = comCartaoDoRadar(cinco, [b]);
+  assert.equal(r.length, 5);
+  assert.equal(r[4].tipo, "radar");
+  assert.deepEqual(comCartaoDoRadar(cinco, []), cinco);
+});

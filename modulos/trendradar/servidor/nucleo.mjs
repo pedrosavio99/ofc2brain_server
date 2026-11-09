@@ -7,6 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sintetizarInteligencia, heuristica, gerarDossiePesquisaIA, MODELOS_DISPONIVEIS } from "./ia.mjs";
+import { buscarNoticias, contarJanelas, filtrarRelevantes, estadoDoPulso, pontuacaoViva, enriquecerComPulso } from "./vivo.mjs";
+import { gravarItem, listarItensSalvos, pulsosRecentes, gravarPulso, listarDescobertas } from "./radar-banco.mjs";
 
 let modeloIaEmMemoria = "";
 
@@ -1516,10 +1518,21 @@ function salvarHistoricoLocal(lista) {
 }
 
 let memoriaRuntime = null;
+let memoriaEm = 0;
+const REVALIDAR_ITENS_MS = 60000;
 
+/* A lista = semente curada + arquivo local + o que esta no Supabase. O banco
+   manda: na Vercel o arquivo local some a cada cold start, e antes disso uma
+   pesquisa sua evaporava. Revalida a cada minuto porque outra instancia pode
+   ter salvo algo. */
 export async function carregarOportunidadesPersistidas() {
-  if (!memoriaRuntime) {
-    memoriaRuntime = lerHistoricoLocal();
+  const velho = Date.now() - memoriaEm > REVALIDAR_ITENS_MS;
+  if (!memoriaRuntime || velho) {
+    const local = memoriaRuntime || lerHistoricoLocal();
+    let salvos = [];
+    try { salvos = await listarItensSalvos(); } catch (_e) { /* banco fora: segue com o que ha */ }
+    memoriaRuntime = salvos.length ? mesclarComSemente([...local, ...salvos]) : local;
+    memoriaEm = Date.now();
   }
   return memoriaRuntime;
 }
@@ -1537,7 +1550,9 @@ export async function salvarOportunidadePersistida(item) {
     atual.unshift(item);
   }
   memoriaRuntime = atual;
+  memoriaEm = Date.now();
   salvarHistoricoLocal(atual);
+  await gravarItem(item);
   limparCacheModulo();
   return item;
 }
@@ -1766,6 +1781,15 @@ export async function importarCsvGoogleTrends(payload = {}) {
 /* ==========================================================================
    10. PESQUISA E INVESTIGACAO POR ASSUNTO, EMPRESA, PESSOA OU PROBLEMA
    ========================================================================== */
+/** Evidencias que tem fonte: manchetes reais (veiculo + data) e a contagem. Pura. */
+export function evidenciasDaImprensa(j) {
+  if (!j) return ["Google Notícias não respondeu nesta pesquisa: sem evidência de imprensa coletada."];
+  if (!j.sete && !j.anteriores) return ["Nenhuma matéria encontrada nos últimos 14 dias: sinal fraco na imprensa."];
+  const linhas = [`Imprensa: ${j.sete} matéria(s) distintas nos últimos 7 dias contra ${j.anteriores} nos 7 dias anteriores (Google Notícias).`];
+  for (const m of j.manchetes) linhas.push(`"${m.titulo}" (${m.fonte}, ${m.data})`);
+  return linhas;
+}
+
 export async function investigarTermoMultiFonte(payload = {}) {
   const termo = String(payload.termo || payload.nome || "").trim();
   if (!termo) {
@@ -1865,18 +1889,25 @@ export async function investigarTermoMultiFonte(payload = {}) {
     }
   }
 
-  if (serieColetada.length < 2) {
-    serieColetada = [
-      { data: "2026-05", valor: 38 },
-      { data: "2026-06", valor: 47 },
-      { data: "2026-07", valor: 56 },
-      { data: "2026-08", valor: 66 },
-      { data: "2026-09", valor: 75 },
-      { data: "2026-10", valor: 84 }
-    ];
-    fontesUsadas.push("Curva Analitica Multi-Fonte");
+  // 3b. Google Noticias (RSS, sem chave): o pulso REAL do assunto na imprensa
+  let janelasImprensa = null;
+  try {
+    const noticias = await buscarNoticias(termo, { dias: 14 });
+    janelasImprensa = contarJanelas(filtrarRelevantes(noticias, termo), new Date(), termo);
+    if (janelasImprensa.manchetes.length) {
+      fontesUsadas.push("Google Notícias");
+      for (const m of janelasImprensa.manchetes) {
+        sinaisExternos.manchetes.push(m.titulo + " (" + m.fonte + ", " + m.data + ")");
+      }
+    }
+  } catch (_err) {
+    // sem imprensa nesta rodada: o dossie diz que nao ha dado, nao inventa
   }
 
+  /* SEM curva inventada. Antes, quando o Google Trends nao respondia, entrava uma
+     serie fixa 38 a 84 e a pontuacao era forcada pra no minimo 76: qualquer termo
+     pesquisado virava "otima oportunidade". Agora sem serie e "Dados Insuficientes". */
+  const serieReal = serieColetada.length >= 2;
   const metricas = analisarSerieTemporal(serieColetada);
 
   // 4. Sintese profunda via Gemini / Groq (ou fallback especialista local)
@@ -1894,7 +1925,10 @@ export async function investigarTermoMultiFonte(payload = {}) {
     fontesUsadas.unshift("IA (" + dossieIa.geradoPorIa + ")");
   }
 
-  const pontuacaoFinal = Math.max(76, metricas.pontuacao);
+  const pulsoImprensa = janelasImprensa
+    ? estadoDoPulso({ sete: janelasImprensa.sete, anteriores: janelasImprensa.anteriores })
+    : null;
+  const pontuacaoFinal = serieReal ? metricas.pontuacao : pontuacaoViva(50, pulsoImprensa);
 
   const id =
     "tr-pesq-" +
@@ -1924,11 +1958,13 @@ export async function investigarTermoMultiFonte(payload = {}) {
     objetivoPrincipal: String(payload.objetivoPrincipal || "saas").trim(),
     corHex: metricas.crescimentoPct >= 0 ? "#34c759" : "#5856d6",
     pontuacao: pontuacaoFinal,
-    crescimentoPct: metricas.crescimentoPct,
-    consistenciaScore: Math.max(75, metricas.consistenciaScore),
-    classificacaoCurva:
-      metricas.crescimentoPct < 0 ? "Demanda Perene / Consolidada" : metricas.classificacaoCurva,
-    statusValidacao: "pronto_para_piloto",
+    crescimentoPct: serieReal ? metricas.crescimentoPct : (pulsoImprensa && pulsoImprensa.variacaoPct) || 0,
+    consistenciaScore: metricas.consistenciaScore,
+    classificacaoCurva: !serieReal
+      ? "Dados Insuficientes"
+      : metricas.crescimentoPct < 0 ? "Demanda Perene / Consolidada" : metricas.classificacaoCurva,
+    statusValidacao: "em_investigacao",
+    origem: "pesquisa",
     fontesCruzadas: fontesUsadas,
     serieHistorica: serieColetada,
     regioes: regioes27,
@@ -1936,12 +1972,28 @@ export async function investigarTermoMultiFonte(payload = {}) {
     concorrentes: dossieIa.concorrentes,
     icpPagador: dossieIa.icpPagador,
     testeComercial: dossieIa.testeComercial,
-    evidenciasConfirmadas: dossieIa.evidenciasConfirmadas,
-    evidenciasFaltantes: dossieIa.evidenciasFaltantes,
+    /* "Confirmada" so o que tem fonte: manchete real com veiculo e data. O que o
+       modelo afirmou sem fonte vai pra "a validar", com esse nome. */
+    evidenciasConfirmadas: evidenciasDaImprensa(janelasImprensa),
+    evidenciasFaltantes: [
+      ...(dossieIa.evidenciasConfirmadas || []).map((x) => "Hipótese a validar: " + x),
+      ...(dossieIa.evidenciasFaltantes || [])
+    ],
     objetivos: dossieIa.objetivos
   };
 
   await salvarOportunidadePersistida(nova);
+  if (janelasImprensa) {
+    // ja entra no radar com o pulso de hoje, sem esperar a proxima coleta
+    await gravarPulso([{
+      item_id: nova.id,
+      dia: new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10),
+      mencoes_7d: janelasImprensa.sete,
+      mencoes_prev_7d: janelasImprensa.anteriores,
+      manchetes: janelasImprensa.manchetes,
+      coletado_em: new Date().toISOString()
+    }]).catch(() => {});
+  }
   return nova;
 }
 
@@ -2157,7 +2209,13 @@ export async function listarPanoramaRadar(opcoes = {}) {
     const itens = await carregarOportunidadesPersistidas();
     const ordemHeuristica = heuristica(itens);
     const mapa = new Map(itens.map((x) => [x.id, x]));
-    const ordenados = ordemHeuristica.map((id) => mapa.get(id)).filter(Boolean);
+    const ordenadosBase = ordemHeuristica.map((id) => mapa.get(id)).filter(Boolean);
+    /* Pulso real (imprensa) por cima da tese editorial: o ranking passa a se
+       mexer com dado medido, e o historico vem das coletas diarias. */
+    let porItem = new Map();
+    try { porItem = await pulsosRecentes(30); } catch (_e) { /* sem pulso: fica a tese */ }
+    const ordenados = enriquecerComPulso(ordenadosBase, porItem)
+      .sort((a, b) => b.pontuacaoViva - a.pontuacaoViva);
 
     registrarUsoCota("gemini", 1);
     const sintese = await comCacheTtl("ia:" + objetivo + ":" + ordenados.length, Math.max(cfg.cacheMs, 180000), async () => {
@@ -2239,7 +2297,19 @@ export async function sincronizarRegioesOportunidade(id) {
 }
 
 export async function resumoDoRadar() {
-  const itens = await carregarOportunidadesPersistidas();
+  const base = await carregarOportunidadesPersistidas();
+  let porItem = new Map();
+  try { porItem = await pulsosRecentes(30); } catch (_e) { /* sem pulso */ }
+  const itens = enriquecerComPulso(base, porItem);
+  const movendo = itens.filter((i) => i.pulso && (i.pulso.estado === "subindo" || i.pulso.estado === "esfriando"))
+    .sort((a, b) => Math.abs(b.pulso.variacaoPct) - Math.abs(a.pulso.variacaoPct)).slice(0, 4);
+  let novas = [];
+  try { novas = await listarDescobertas({ status: "nova", limite: 4 }); } catch (_e) { /* sem descobertas */ }
+  const vivo =
+    (movendo.length
+      ? `\n- Movimento na imprensa (7d vs 7d anteriores): ${movendo.map((x) => `${x.nome} ${x.pulso.estado === "subindo" ? "subindo" : "esfriando"} (${x.pulso.variacaoPct > 0 ? "+" : ""}${x.pulso.variacaoPct}%)`).join("; ")}`
+      : "") +
+    (novas.length ? `\n- Sinais novos que o radar achou sozinho: ${novas.map((d) => d.titulo).join("; ")}` : "");
   const consistentes = itens.filter((i) => i.consistenciaScore >= 75 && i.crescimentoPct >= 30);
   const pilotos = itens.filter(
     (i) => i.statusValidacao === "pronto_para_piloto" || i.statusValidacao === "validado_com_cliente"
@@ -2248,6 +2318,7 @@ export async function resumoDoRadar() {
   return (
     "### TrendRadar (Inteligência de Mercado B2B)\n" +
     `- Total mapeado: ${itens.length} oportunidades (${consistentes.length} de crescimento consistente, ${pilotos.length} prontas/validadas para piloto)\n` +
-    `- Top 3 por score: ${top3.map((x) => `${x.nome} (${x.pontuacao}/100, +${x.crescimentoPct}%)`).join("; ")}`
+    `- Top 3 por score: ${top3.map((x) => `${x.nome} (${x.pontuacao}/100, +${x.crescimentoPct}%)`).join("; ")}` +
+    vivo
   );
 }

@@ -12,7 +12,7 @@
     "dev": "node --watch src/server.js",
     "seed": "node scripts/seed-supabase.mjs",
     "relink": "node scripts/relink.mjs",
-    "test": "node --test modulos/conversa/testes",
+    "test": "node --test modulos/conversa/testes modulos/trendradar/testes",
     "avaliar": "node scripts/avaliar-conversa.mjs"
   },
   "dependencies": {

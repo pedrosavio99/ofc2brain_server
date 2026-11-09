@@ -161,7 +161,7 @@
      busca nem espera o modelo. Se o servidor falhar, volta pros atalhos fixos
      em vez de uma tela vazia. Tudo entra por textContent (nada vira HTML). */
   var CHAVE_FEED = "cv_feed_v1";
-  var ROTULO_TIPO = { retomar: "Fio solto", conexao: "Ligação", lembrar: "Redescoberta", agora: "Agora", curiosidade: "Curiosidade" };
+  var ROTULO_TIPO = { retomar: "Fio solto", conexao: "Ligação", lembrar: "Redescoberta", agora: "Agora", curiosidade: "Curiosidade", radar: "Radar" };
   var FIXOS = ["O que comi hoje?", "Qual meu treino de hoje?", "O que anotei essa semana?", "Toca um forró pra animar"];
 
   function diaDoFeed() { return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10); }
@@ -897,6 +897,20 @@
     inacessivel: "O Supabase nao respondeu. Pode estar pausado ou fora do ar.",
   };
 
+  /* /conversa?abrir=<texto>: o TrendRadar manda pra ca ("Conversar" num sinal).
+     Tira o parametro da URL antes de enviar, senao recarregar a pagina repetiria
+     a mensagem. Limite de tamanho: o link nao pode virar um jeito de colar textao. */
+  function abrirDoLink() {
+    var texto = "";
+    try { texto = String(new URLSearchParams(window.location.search).get("abrir") || "").trim().slice(0, 400); } catch (e) {}
+    if (!texto) return;
+    try { history.replaceState(null, "", window.location.pathname + window.location.hash); } catch (e) {}
+    var caixa = document.querySelector(".cv-sugestoes");
+    if (caixa) caixa.remove();
+    campo.value = texto;
+    enviar();
+  }
+
   async function abrirComHealth() {
     travar(true);
     carregando("Conectando...");
@@ -922,6 +936,7 @@
       await garantirSessao();
       fimDoCarregando(); travar(false);
       campo.focus();
+      abrirDoLink();
     } catch (e) {
       fimDoCarregando(); travar(false);
       erro("Nao consegui abrir a conversa: " + e.message);

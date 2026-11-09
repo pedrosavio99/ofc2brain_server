@@ -19,9 +19,16 @@ import {
   definirModeloIaPreferido,
   limparCacheModulo
 } from "./nucleo.mjs";
+import { coletarTudo, coletaDefasada, montarHoje, cronAutorizado } from "./coleta.mjs";
+import { atualizarDescoberta, buscarDescoberta } from "./radar-banco.mjs";
 
 const ROTAS_VALIDAS = [
   "GET /api/health",
+  "GET /api/hoje",
+  "POST /api/coletar",
+  "GET /api/cron/coletar",
+  "PATCH /api/descobertas",
+  "POST /api/descobertas/investigar",
   "GET /api/oportunidades",
   "GET /api/insights",
   "POST /api/ia/modelo",
@@ -48,6 +55,56 @@ export async function rotear(req, url) {
       status: "ok",
       carregadoEm: Date.now()
     };
+  }
+
+  // 1b. Cron diario da Vercel. Sem PIN (nao ha navegador), mas so com CRON_SECRET.
+  if (metodo === "GET" && caminho === "/api/cron/coletar") {
+    const segredo = process.env.CRON_SECRET;
+    if (!segredo) throw new ErroHttp(503, "Coleta agendada desativada.", "Defina CRON_SECRET no ambiente (openssl rand -hex 32) e faca deploy.");
+    if (!cronAutorizado(req.headers && req.headers.authorization, segredo)) {
+      throw new ErroHttp(401, "Segredo do cron invalido ou ausente.");
+    }
+    return { ok: true, ...(await coletarTudo()) };
+  }
+
+  // 1c. "Hoje no radar": o que mudou, o que e novo, e se os dados estao velhos
+  if (metodo === "GET" && caminho === "/api/hoje") {
+    exigirToken(req);
+    return await montarHoje();
+  }
+
+  // 1d. Coleta sob demanda (o painel chama quando percebe dados velhos)
+  if (metodo === "POST" && caminho === "/api/coletar") {
+    exigirToken(req);
+    guardaDeEscrita(req);
+    const corpo = await lerCorpo(req);
+    const def = await coletaDefasada();
+    if (!def.defasada && !corpo.forcar) return { ok: true, pulada: true, motivo: "dados recentes", ultima: def.ultima };
+    limparCacheModulo();
+    return { ok: true, ...(await coletarTudo()) };
+  }
+
+  // 1e. Triagem das descobertas: salvar, descartar ou voltar pra "nova"
+  if (metodo === "PATCH" && caminho === "/api/descobertas") {
+    exigirToken(req);
+    guardaDeEscrita(req);
+    const corpo = await lerCorpo(req);
+    if (!["nova", "salva", "descartada"].includes(corpo.status)) throw new ErroHttp(400, "Status invalido.", "Use nova, salva ou descartada.");
+    if (!corpo.id) throw new ErroHttp(400, "Informe o id da descoberta.");
+    await atualizarDescoberta(String(corpo.id), { status: corpo.status });
+    return { ok: true };
+  }
+
+  // 1f. Promove uma descoberta a oportunidade investigada (dossie completo)
+  if (metodo === "POST" && caminho === "/api/descobertas/investigar") {
+    exigirToken(req);
+    guardaDeEscrita(req);
+    const corpo = await lerCorpo(req);
+    const d = await buscarDescoberta(String(corpo.id || ""));
+    if (!d) throw new ErroHttp(404, "Descoberta nao encontrada.", "Atualize a tela e tente de novo.");
+    const item = await investigarTermoMultiFonte({ termo: d.termo, tipoEntidade: "problema", dor: d.dor || "", objetivoPrincipal: "saas" });
+    await atualizarDescoberta(d.id, { status: "investigada" });
+    return { ok: true, item, cotas: obterResumoCotas(), cache: false, carregadoEm: Date.now() };
   }
 
   // 2. Listagem principal de oportunidades + sintese multi-objetivo + status de cotas

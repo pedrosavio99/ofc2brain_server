@@ -56,6 +56,9 @@ export function ehPublico(caminho) {
      pra digitar. Isto NAO e "aberto": o proprio endpoint exige Bearer MCP_TOKEN
      e responde 503 se a variavel nao existir. Ver modulos/conversa/servidor/mcp.mjs. */
   if (p === "/mcp" || p === "/mcp/") return true;
+  /* Cron da Vercel: nao tem PIN, mas a rota exige Bearer CRON_SECRET e responde
+     503 se a variavel nao existir. Ver modulos/trendradar/servidor/rotas.mjs. */
+  if (p === "/trendradar/api/cron/coletar") return true;
   if (CASCA.includes(p) || CASCA.includes(p.replace(/\/$/, ""))) return true;
   return ESTATICO.test(p);
 }

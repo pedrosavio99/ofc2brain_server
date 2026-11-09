@@ -501,7 +501,7 @@ export async function gerarDossiePesquisaIA(termo, tipoEntidade, metricas, sinai
     "  ],\n" +
     "  \"icpPagador\": \"Quem exatamente tem dinheiro e urgencia para pagar por essa solucao no Brasil\",\n" +
     "  \"testeComercial\": \"Passo a passo pratico para validar e vender um piloto em 7 dias sem gastar dinheiro\",\n" +
-    "  \"evidenciasConfirmadas\": [\"2 evidencias reais de mercado que sustentam a oportunidade\"],\n" +
+    "  \"evidenciasConfirmadas\": [\"2 HIPOTESES de mercado que sustentariam a oportunidade (nao afirme como fato comprovado; nunca invente estatistica, percentual ou numero)\"],\n" +
     "  \"evidenciasFaltantes\": [\"2 pontos que precisam ser validados antes de escalar\"],\n" +
     "  \"objetivos\": {\n" +
     "    \"carreira\": \"O que construir tecnicamente para impressionar recrutadores e demonstrar engenharia de ponta\",\n" +
@@ -516,7 +516,9 @@ export async function gerarDossiePesquisaIA(termo, tipoEntidade, metricas, sinai
     "Tipo de entidade: " + tipoEntidade + "\n" +
     "ICP sugerido pelo usuario: " + (payload.icpPagador || "Nao informado") + "\n" +
     "Dor sugerida pelo usuario: " + (payload.dor || "Nao informada") + "\n" +
-    "Metricas Google Trends obtidas: crescimento=" + metricas.crescimentoPct + "%, consistencia=" + metricas.consistenciaScore + "% (" + metricas.classificacaoCurva + ")\n" +
+    (metricas.classificacaoCurva === "Dados Insuficientes"
+      ? "Metricas Google Trends: sem serie temporal confiavel (nao cite crescimento nem consistencia).\n"
+      : "Metricas Google Trends obtidas: crescimento=" + metricas.crescimentoPct + "%, consistencia=" + metricas.consistenciaScore + "% (" + metricas.classificacaoCurva + ")\n") +
     "Sinais coletados nas APIs (use apenas se fizerem sentido para o negocio, descarte ruido): " + JSON.stringify(sinaisExternos);
 
   if (preferencia !== "groq" && cfg.geminiKey) {

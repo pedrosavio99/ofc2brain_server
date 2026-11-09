@@ -8,6 +8,7 @@
  *   lembrar     nota antiga que ganha sentido hoje ("ha 8 meses voce escreveu...")
  *   agora       prazo, lembrete ou tarefa chegando
  *   curiosidade um padrao ou pergunta que as notas sugerem
+ *   radar       sinal novo do TrendRadar (montado dos dados, nunca pelo modelo)
  *
  * Como e feito (sem inventar):
  *   1. GARIMPO, sem modelo: notas recentes, notas antigas amostradas (semente do
@@ -32,6 +33,7 @@ import * as banco from "./banco.mjs";
 import { memoriasBase } from "./memoria.mjs";
 import { corta, rotuloDaNota } from "./recuperacao.mjs";
 import { agoraPorExtenso } from "./planejador.mjs";
+import { listarDescobertas } from "../../trendradar/servidor/radar-banco.mjs";
 
 const DIA_MS = 86400000;
 const TTL_MS = 40 * 60000;
@@ -96,6 +98,38 @@ export function sanearCartoes(bruto) {
   return out;
 }
 
+const DIA_BR = (iso) => { const m = String(iso || "").match(/^\d{4}-(\d{2})-(\d{2})/); return m ? `${m[2]}/${m[1]}` : ""; };
+
+/**
+ * Um cartao do radar a partir de uma descoberta REAL (nao passa pelo modelo, entao
+ * nao tem como inventar). Prefere a que combina com uma nota da pessoa. Puro.
+ * Nunca revela o conteudo da nota: so a data.
+ */
+export function cartaoDoRadar(descobertas = []) {
+  const validas = (Array.isArray(descobertas) ? descobertas : [])
+    .filter((d) => d && String(d.titulo || "").trim().length >= 4 && String(d.porque_agora || "").trim().length >= 10);
+  if (!validas.length) return null;
+  const d = validas.find((x) => x.afinidade && x.afinidade.nota_id) || validas[0];
+  const titulo = corta(String(d.titulo).replace(/\s+/g, " ").trim(), 56);
+  const porque = corta(String(d.porque_agora).replace(/\s+/g, " ").trim(), 130);
+  const quando = d.afinidade && DIA_BR(d.afinidade.data);
+  const gancho = d.afinidade && d.afinidade.nota_id
+    ? `${porque} Lembra uma nota sua${quando ? " de " + quando : ""}.`
+    : porque;
+  return {
+    tipo: "radar", titulo, gancho,
+    abrir: `Vi no radar: ${corta(d.titulo, 90)}. Vale a pena pra mim?`,
+  };
+}
+
+/** Anexa o cartao do radar sem passar do maximo (ele toma o lugar do ultimo). Puro. */
+export function comCartaoDoRadar(cartoes, descobertas) {
+  const extra = cartaoDoRadar(descobertas);
+  if (!extra) return cartoes;
+  const base = cartoes.filter((c) => c.tipo !== "radar");
+  return [...base.slice(0, MAX_CARTOES - 1), extra];
+}
+
 /** Plano B sem modelo: o que ja e fato (evento, prazo, nota recente). Puro. */
 export function cartoesPorHeuristica({ eventos = [], tarefas = [], recentes = [] }) {
   const out = [];
@@ -141,13 +175,14 @@ async function garimpar(agora) {
   const iso = (ms) => new Date(ms).toISOString();
   const seguro = (p, vazio) => p.catch((e) => { console.warn("[sugestoes] " + e.message); return vazio; });
 
-  const [recentesBrutas, antigasBrutas, eventosBrutos, tarefasBrutas, memorias, conversasBrutas] = await Promise.all([
+  const [recentesBrutas, antigasBrutas, eventosBrutos, tarefasBrutas, memorias, conversasBrutas, radar] = await Promise.all([
     seguro(db.listarPorPeriodo(iso(agora.getTime() - 10 * DIA_MS), iso(agora.getTime() + DIA_MS)), []),
     seguro(db.listarPorPeriodo(iso(agora.getTime() - 420 * DIA_MS), iso(agora.getTime() - 25 * DIA_MS)), []),
     seguro(db.listarEventos(), []),
     seguro(clickup.buscarTasks({ fechadas: false }), []),
     seguro(memoriasBase(), []),
     seguro(banco.listarConversas({ limite: 8 }), []),
+    seguro(listarDescobertas({ status: "nova", limite: 8 }), []),
   ]);
 
   const utilidade = (n) => String(n.resumo || n.texto_original || "").trim().length >= 25;
@@ -167,7 +202,7 @@ async function garimpar(agora) {
     .filter((t) => t.prazo === "vencida" || t.prazo === "hoje").slice(0, 5);
 
   const conversas = conversasBrutas.map((c) => c.titulo).filter(Boolean).slice(0, 6);
-  return { recentes, antigas, eventos, tarefas, memorias: (memorias || []).slice(0, 8), conversas };
+  return { recentes, antigas, eventos, tarefas, memorias: (memorias || []).slice(0, 8), conversas, radar };
 }
 
 /* ----------------------------------------------------------- orquestra */
@@ -185,7 +220,7 @@ export async function gerarSugestoes({ agora = new Date(), forcar = false } = {}
 
   emVoo = (async () => {
     const material = await garimpar(agora);
-    const temAlgo = material.recentes.length || material.antigas.length || material.eventos.length || material.tarefas.length;
+    const temAlgo = material.recentes.length || material.antigas.length || material.eventos.length || material.tarefas.length || material.radar.length;
     let dados;
     if (!temAlgo) {
       dados = { cartoes: [], fonte: "vazio", gerado_em: agora.toISOString() };
@@ -206,8 +241,8 @@ export async function gerarSugestoes({ agora = new Date(), forcar = false } = {}
         console.warn("[sugestoes] modelo falhou, usando heuristica: " + e.message);
       }
       dados = cartoes.length
-        ? { cartoes, fonte: "modelo", gerado_em: agora.toISOString() }
-        : { cartoes: cartoesPorHeuristica(material), fonte: "heuristica", gerado_em: agora.toISOString() };
+        ? { cartoes: comCartaoDoRadar(cartoes, material.radar), fonte: "modelo", gerado_em: agora.toISOString() }
+        : { cartoes: comCartaoDoRadar(cartoesPorHeuristica(material), material.radar), fonte: "heuristica", gerado_em: agora.toISOString() };
     }
     cache = { em: Date.now(), chave, dados };
     return dados;

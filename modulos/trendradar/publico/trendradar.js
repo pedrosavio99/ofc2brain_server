@@ -536,6 +536,18 @@ function renderizarCartaoOportunidade(item) {
     : [];
   const corBarra = item.corHex || "var(--acento)";
 
+  /* Pulso medido na imprensa (coleta diaria) e rotulo honesto: a semente curada
+     nao e dado coletado, e uma tese. So quem foi pesquisado tem numero proprio. */
+  const pulso = item.pulso && item.pulso.estado !== "sem_dado" ? item.pulso : null;
+  const pulsoHtml = pulso
+    ? `<span class="tr-pulso tr-pulso-${esc(pulso.estado)}" title="Matérias distintas na imprensa: ${Number(pulso.sete)} nos últimos 7 dias contra ${Number(pulso.anteriores)} nos 7 anteriores (Google Notícias)">${pulso.estado === "subindo" ? "▲" : pulso.estado === "esfriando" ? "▼" : "●"} ${pulso.variacaoPct > 0 ? "+" : ""}${Number(pulso.variacaoPct)}% imprensa</span>`
+    : "";
+  const ehTese = !String(item.id).startsWith("tr-pesq-");
+  const teseHtml = ehTese
+    ? '<span class="tr-tag-tese" title="Os números desta oportunidade (score, crescimento, regiões) são uma estimativa editorial, não uma coleta. O selo de imprensa ao lado é medido de verdade.">tese editorial</span>'
+    : "";
+  const scoreMostrado = Number(item.pontuacaoViva != null ? item.pontuacaoViva : item.pontuacao || 0);
+
   return `
     <article
       class="nota tr-cartao ${selecionado ? "selecionado" : ""}"
@@ -549,9 +561,11 @@ function renderizarCartaoOportunidade(item) {
           <span class="tr-badge-curva ${classeCurva}">
             ${esc(item.classificacaoCurva)}
           </span>
+          ${pulsoHtml}
+          ${teseHtml}
         </div>
-        <span class="tr-badge-score" title="Score de Oportunidade">
-          ${Number(item.pontuacao || 0)}/100
+        <span class="tr-badge-score" title="Score vivo: tese editorial (65%) combinada com o pulso medido na imprensa (35%)">
+          ${scoreMostrado}/100
         </span>
       </div>
 

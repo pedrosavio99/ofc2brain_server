@@ -16,7 +16,7 @@ O Segundo Cérebro é um ecossistema integrado composto por módulos especializa
 | **fdsFlix** | `/fdsflix` | Filmes e séries (busca TMDB, player próprio sem anúncios, legendas, continuar assistindo). A API roda em `https://fdsflix.onrender.com` (Render gratuito: cold start de até ~40 s). |
 | **Trabalho** | `/trabalho` | Integração com ClickUp, planejamento diário (daily) e prazos. |
 | **Música** | `/musica` | Player Sua Música, streaming de áudio e rádio infinita. |
-| **TrendRadar** | `/trendradar` | Radar estratégico de tendências e oportunidades B2B nas 6 frentes de mercado. |
+| **TrendRadar** | `/trendradar` | Radar estratégico de oportunidades B2B nas 6 frentes, com coleta diária real (pulso de imprensa, sinais novos, afinidade com suas notas). Veja `modulos/trendradar/README.md`. |
 
 ---
 

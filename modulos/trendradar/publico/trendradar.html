@@ -99,6 +99,8 @@
       <h1 class="titulao">TrendRadar</h1>
       <p class="subtitulao" id="resumoTopo">Carregando panorama das 6 frentes de mercado…</p>
 
+      <!-- Hoje no radar: sinais novos e movimento na imprensa (radar-hoje.js) -->
+      <section id="radarHoje" class="tr-hoje" aria-live="polite" hidden></section>
       <!-- Banner discreto de alerta de cota (visivel apenas se houver alerta critico/esgotado) -->
       <section id="bannerAlertaCota" class="tr-alerta-cota" hidden></section>
 
@@ -228,5 +230,6 @@
     <script src="/pin.js"></script>
     <script src="/navegacao.js"></script>
     <script src="/trendradar/trendradar.js"></script>
+    <script src="/trendradar/radar-hoje.js"></script>
   </body>
 </html>

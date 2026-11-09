@@ -1,12 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api" }
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
   ],
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
       "includeFiles": "modulos/**"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/trendradar/api/cron/coletar",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
