@@ -127,6 +127,18 @@ export function separarComRerank(cands, notas, { maxFortes = 10, maxFracas = 3 }
 }
 
 /**
+ * Rerank manda; mas reranker que da nota baixa pra TODAS as candidatas quase
+ * sempre errou (pergunta vaga tipo "onde eu parei?"), nao ha ausencia de nota:
+ * a busca hibrida ja trouxe candidatas com palavra E significado. Melhor o
+ * corte relativo do que responder "nao achei" com a nota na mao. Pura.
+ */
+export function decidirSeparacao(cands, notas) {
+  const comRerank = separarComRerank(cands, notas);
+  if (comRerank.fortes.length) return { sep: comRerank, usouRerank: true };
+  return { sep: separarSemRerank(cands), usouRerank: false };
+}
+
+/**
  * Le a saida do reranker. Devolve Map(indice 1-based -> 0..3) ou null se a
  * saida nao e confiavel (cobriu menos da metade dos candidatos). Pura.
  */
@@ -246,7 +258,11 @@ export async function buscarNotas({ consultas = [], pergunta = "", embed, k = K_
   if (rerank && cands.length >= 5) {
     try {
       const notas = await rerankear(pergunta || textos[0], cands);
-      if (notas) { sep = separarComRerank(cands, notas); usouRerank = true; }
+      if (notas) {
+        const d = decidirSeparacao(cands, notas);
+        sep = d.sep; usouRerank = d.usouRerank;
+        if (!usouRerank) console.warn("[conversa] rerank descartou todas as candidatas; usando corte relativo");
+      }
     } catch (e) {
       console.warn("[conversa] rerank falhou, corte relativo: " + e.message);
     }

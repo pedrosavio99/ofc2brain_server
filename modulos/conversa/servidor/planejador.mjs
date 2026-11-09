@@ -63,14 +63,14 @@ export function planoPorHeuristica(texto) {
   let modo = MODO_PADRAO;
   let tamanho = null;
   if (RE_EMOCAO.test(b) && RE_REFLEXAO.test(b)) modo = "reflexao";
-  else if (RE_EMOCAO.test(b)) { modo = "escuta"; tamanho = "curta"; }
+  else if (RE_EMOCAO.test(b)) { modo = "escuta"; tamanho = "media"; }
   else if (RE_REFLEXAO.test(b)) modo = "reflexao";
   else if (RE_EXECUCAO.test(b)) modo = "execucao";
   else if (RE_RESGATE.test(b)) modo = "resgate";
   else if (RE_ANALISE.test(b)) modo = "analise";
   else if (RE_ORGANIZAR.test(b)) modo = "organizar";
   else if (RE_TECNICO.test(b)) modo = "tecnico";
-  else if (RE_PAPO.test(b) && palavras <= 14) { modo = "parceiro"; tamanho = "curta"; }
+  else if (RE_PAPO.test(b) && palavras <= 14) { modo = "parceiro"; tamanho = "media"; }
   else if (RE_DECISAO.test(b) && palavras >= 8) modo = "pensar_junto";
   else if (palavras <= 12 && /\?$/.test(t)) { modo = "direto"; tamanho = "curta"; }
   else if (palavras >= 80) tamanho = "longa";
@@ -204,7 +204,7 @@ Como escolher o modo:
 - "modo_secundario" (opcional) é um toque de outro papel, ex.: escuta com um toque de parceiro. Só quando ajuda de verdade.
 - Dúvida entre dois modos: escolha o menos opinativo.
 
-Tamanho: minima, curta, media, longa. Acompanhe o esforço da pessoa. Desabafo nunca é "longa". Pergunta de uma linha nunca vira ensaio.
+Tamanho: minima, curta, media, longa. Escolha pelo que o ASSUNTO merece, NÃO pelo tamanho da mensagem da pessoa: ela costuma escrever pouco, e uma frase dela sobre projeto, relação, decisão ou algo que ela guardou muito merece resposta "media" ou "longa". "minima"/"curta" só pra cumprimento, confirmação ou fato pontual. Papo: "media". Desabafo: "curta" ou "media" conforme o peso. Assunto técnico ou análise: "longa".
 carga_emocional: 0 (neutro), 1 (há emoção), 2 (pesado).
 
 FERRAMENTAS que o sistema pode consultar (escolha só as que MUDAM a resposta):

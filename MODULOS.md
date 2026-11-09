@@ -132,6 +132,15 @@ Cada mensagem passa por camadas, nesta ordem (`modulos/conversa/servidor/turno.m
 para Claude, ChatGPT, Cursor etc. Exige `Authorization: Bearer <MCP_TOKEN>`; sem `MCP_TOKEN` no ambiente responde 503.
 O chat interno chama as funções direto (sem rede). Gere o token com `openssl rand -hex 32`.
 
+### Feed e atalhos (engajamento útil)
+
+- **Feed da tela inicial** (`sugestoes.mjs`, `GET /conversa/api/sugestoes`): ao abrir uma conversa vazia, cartões de assuntos do dia tirados das suas notas
+  (fio solto, ligação entre notas, redescoberta, prazo chegando, curiosidade). Garimpo sem modelo (notas recentes, antigas amostradas por semente do dia,
+  eventos, tarefas, memórias, títulos de conversas recentes) + uma chamada ao modelo só com esse material + saneamento. Sem modelo, cai numa heurística.
+  Cache de 40 min no servidor e do dia no aparelho; o botão ↻ força novos. `?forcar=1` ignora o cache.
+- **Atalhos depois da resposta**: o modelo escreve linhas `[SEGUIR: ...]` no fim; o servidor as tira do texto e devolve em `seguir`; a tela mostra como botões.
+  Nunca em modo sensível (escuta, reflexão, crise).
+
 ### Depuração e avaliação
 
 - `POST /conversa/api/diagnostico {"texto": "..."}`: roda planejamento + consulta sem gerar resposta e devolve modo, consultas, fontes, tempos e evidência.

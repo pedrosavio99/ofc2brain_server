@@ -131,9 +131,13 @@ export function fraseDoPlano(plano, pacote, memorias = 0) {
   if (memorias > 0 && !partes.length) partes.push("o que eu sei de você");
 
   if (!partes.length) {
-    return ["direto", "parceiro", "execucao", "tecnico"].includes(plano.modo)
-      ? "Já te respondo."
-      : "Não achei nada guardado sobre isso. Deixa eu pensar com o que eu sei de você.";
+    /* "Nao achei nada" so quando ele PROCUROU nas notas e voltou vazio. Sem busca
+       (papo, cumprimento) a frase negativa soava estranha: "ola" -> "nao encontrei nada". */
+    const procurou = (plano.ferramentas || []).some((f) => ["buscar_notas", "notas_por_periodo"].includes(f.nome || f))
+      && (pacote.fontes || []).length > 0;
+    return procurou && ["resgate", "analise"].includes(plano.modo)
+      ? "Procurei nas suas notas e não achei. Vou pensar com o que eu sei de você."
+      : "Já te respondo.";
   }
   const lista = partes.length === 1 ? partes[0] : partes.slice(0, -1).join(", ") + " e " + partes[partes.length - 1];
   return `Peguei ${lista}. Deixa eu ler.`;

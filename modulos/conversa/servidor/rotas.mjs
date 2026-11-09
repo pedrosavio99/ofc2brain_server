@@ -21,7 +21,8 @@ import { gerarEmbeddings } from "../../../src/embeddings.js";
 import { prepararTurno, planoCompacto } from "./turno.mjs";
 import { ehSensivel } from "./modos.mjs";
 import { memorizar, invalidarCache, memoriaDisponivel } from "./memoria.mjs";
-import { montarPromptTurno, historicoParaMensagens, gerarResposta } from "./resposta.mjs";
+import { gerarSugestoes } from "./sugestoes.mjs";
+import { montarPromptTurno, historicoParaMensagens, gerarResposta, perguntasSeguidas } from "./resposta.mjs";
 import { ESPEC } from "./ferramentas-spec.mjs";
 
 const SISTEMA_RAPIDA = `Você é o segundo cérebro da pessoa e acabou de receber uma mensagem dela. A resposta de verdade ainda está sendo pensada e chega daqui a alguns segundos. Seu trabalho é segurar a conversa nesse meio tempo, como gente faz.
@@ -208,7 +209,7 @@ export async function rotear(req, url) {
     // Retry ou toque duplo: a resposta ja existe, devolve ela em vez de gerar de novo.
     const jaRespondido = await banco.buscarTurno(conversaId, Number(ordem) + 1);
     if (jaRespondido) {
-      return { mensagens: jaRespondido.mensagens && jaRespondido.mensagens.length ? jaRespondido.mensagens : [jaRespondido.texto], meta: jaRespondido.meta || {}, reaproveitado: true };
+      return { mensagens: jaRespondido.mensagens && jaRespondido.mensagens.length ? jaRespondido.mensagens : [jaRespondido.texto], seguir: (jaRespondido.meta && jaRespondido.meta.seguir) || [], meta: jaRespondido.meta || {}, reaproveitado: true };
     }
 
     const [tracos, anteriores, panorama] = await Promise.all([
@@ -236,6 +237,7 @@ export async function rotear(req, url) {
       memoriasBase: Array.isArray(meta.memorias) ? meta.memorias : [],
       evidencia: meta.evidencia || "",
       plano, texto: turnoPessoa.texto,
+      perguntasSeguidas: perguntasSeguidas(passados),
     });
     const r = await gerarResposta({ prompt, historico: historicoParaMensagens(passados), plano });
 
@@ -253,12 +255,13 @@ export async function rotear(req, url) {
         planejador: plano.fonte, motivo: plano.motivo,
         fontes: (meta.fontes || []).map((f) => f.ferramenta),
         tracos: tracos.length,
+        seguir: r.seguir || [],
         // qual modelo respondeu: e a unica forma de saber se caiu pra reserva
         provedor: r.meta && r.meta.provedor, modelo: r.meta && r.meta.modelo, pensando: r.meta && r.meta.pensando,
       },
     });
 
-    return { mensagens: turno.mensagens, meta: turno.meta, reaproveitado: false };
+    return { mensagens: turno.mensagens, seguir: r.seguir || [], meta: turno.meta, reaproveitado: false };
   }
 
   // ---- depois da resposta: memoriza fatos duraveis ----
@@ -281,6 +284,11 @@ export async function rotear(req, url) {
     const r = await memorizar({ textoPessoa: turno.texto, contexto: antes, conversaId, ordem: Number(ordem) });
     await banco.mesclarMetaTurno(conversaId, Number(ordem), { memorizado: true, memoria_ops: r }).catch(() => {});
     return r;
+  }
+
+  // ---- sugestoes: o "feed" de assuntos do dia, tirado das suas notas ----
+  if (req.method === "GET" && rota === "/sugestoes") {
+    return await gerarSugestoes({ forcar: url.searchParams.get("forcar") === "1" });
   }
 
   // ---- diagnostico: por que ele respondeu daquele jeito ----

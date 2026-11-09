@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { detectarCrise, transicao, instrucaoDoModo, resolverModo, ehSensivel, tokensDoTurno, MODOS } from "../servidor/modos.mjs";
 import { planoPorHeuristica, sanearPlano, aplicarRegrasFixas, ultimoModo, resumirHistorico } from "../servidor/planejador.mjs";
 import { sanearArgs, descreverParaPlanejador, NOMES_FERRAMENTAS } from "../servidor/ferramentas-spec.mjs";
-import { montarTsQuery, fundirConsultas, separarSemRerank, separarComRerank, lerRerank } from "../servidor/busca.mjs";
+import { montarTsQuery, fundirConsultas, separarSemRerank, separarComRerank, lerRerank, decidirSeparacao } from "../servidor/busca.mjs";
 import { cortarEmLinhas, montarEvidencia, fraseDoPlano } from "../servidor/evidencia.mjs";
 import { sanearCandidatos, sanearDecisoes } from "../servidor/memoria.mjs";
 import { limparResposta, historicoParaMensagens, montarPromptTurno, blocoDeMemorias } from "../servidor/resposta.mjs";
@@ -277,7 +277,9 @@ test("frase da camada 1: sensível não fala de nota; sem fonte não finge que a
   const vazio = { fontes: [], achado: { fortes: 0 }, semResultado: [] };
   assert.equal(fraseDoPlano({ modo: "crise" }, vazio), "Tô aqui com você.");
   assert.equal(fraseDoPlano({ modo: "escuta" }, { fontes: [{ ferramenta: "buscar_notas", itens: 3 }], achado: { fortes: 3 } }), "Tô te ouvindo.");
-  assert.match(fraseDoPlano({ modo: "pensar_junto" }, vazio), /Não achei nada guardado/);
+  assert.equal(fraseDoPlano({ modo: "pensar_junto" }, vazio), "Já te respondo.");
+  assert.equal(fraseDoPlano({ modo: "parceiro", ferramentas: [{ nome: "buscar_notas" }] }, { fontes: [{ ferramenta: "buscar_notas", itens: 0 }], achado: { fortes: 0 } }), "Já te respondo.");
+  assert.match(fraseDoPlano({ modo: "resgate", ferramentas: [{ nome: "buscar_notas" }] }, { fontes: [{ ferramenta: "buscar_notas", itens: 0 }], achado: { fortes: 0 } }), /não achei/);
   assert.equal(fraseDoPlano({ modo: "tecnico" }, vazio), "Já te respondo.");
   const f = fraseDoPlano({ modo: "analise" }, { fontes: [{ ferramenta: "buscar_notas", itens: 2 }, { ferramenta: "ver_treinos", itens: 5 }], achado: { fortes: 2 } });
   assert.equal(f, "Peguei 2 notas suas sobre isso e seus treinos. Deixa eu ler.");
@@ -408,4 +410,112 @@ test("acesso: /mcp passa do PIN (tem token proprio), mas dados continuam protegi
   assert.equal(ehPublico("/mcp"), true);
   assert.equal(ehPublico("/conversa/api/memorias"), false);
   assert.equal(ehPublico("/ideias"), false);
+});
+
+/* ------------------------------------------------------- naturalidade da fala */
+
+test("perguntasSeguidas: conta falas do cérebro que terminam em pergunta, só as últimas em sequência", async () => {
+  const { perguntasSeguidas, terminouEmPergunta, montarPromptTurno } = await import("../servidor/resposta.mjs");
+  assert.equal(terminouEmPergunta("faz sentido pra você?"), true);
+  assert.equal(terminouEmPergunta("faz sentido pra você? Tô aqui."), false);
+  const c = (texto) => ({ papel: "cerebro", texto });
+  const p = (texto) => ({ papel: "pessoa", texto });
+  assert.equal(perguntasSeguidas([c("oi."), p("x"), c("e aí?"), p("y"), c("e agora?")]), 2);
+  assert.equal(perguntasSeguidas([c("e aí?"), p("y"), c("fechado.")]), 0);
+  assert.equal(perguntasSeguidas([]), 0);
+  const plano = { modo: "parceiro", tamanho: "media", pergunta: "", modo_anterior: null };
+  assert.match(montarPromptTurno({ plano, texto: "oi", perguntasSeguidas: 1 }), /NÃO termina com pergunta/);
+  assert.doesNotMatch(montarPromptTurno({ plano, texto: "oi", perguntasSeguidas: 0 }), /NÃO termina com pergunta/);
+  assert.doesNotMatch(montarPromptTurno({ plano: { ...plano, modo: "crise" }, texto: "x", perguntasSeguidas: 3 }), /NÃO termina com pergunta/);
+});
+
+test("alma: o bloco manda acompanhar o tom, mas escrever com ortografia correta", async () => {
+  const { blocoDaAlma } = await import("../servidor/alma.mjs");
+  const b = blocoDaAlma([{ traco: "escreve tudo minúsculo e sem acento", categoria: "ritmo", ativo: true }]);
+  assert.match(b, /ortografia correta/);
+  assert.match(b, /escreve tudo minúsculo/);
+});
+
+test("modos: papo não é mais 'curta' por padrão", async () => {
+  const { MODOS, ORCAMENTO } = await import("../servidor/modos.mjs");
+  assert.equal(MODOS.parceiro.tamanho, "media");
+  assert.equal(MODOS.escuta.tamanho, "curta", "escuta fica perto do que a pessoa disse, sem ensaio");
+  assert.match(ORCAMENTO.media.instrucao, /Três a cinco parágrafos/);
+});
+
+/* ----------------------------------------------------- feed e atalhos (seguir) */
+
+test("extrairSeguir: tira as linhas [SEGUIR] do texto, limita a 3, deduplica e respeita o modo sensível", async () => {
+  const { extrairSeguir } = await import("../servidor/resposta.mjs");
+  const bruto = "Resposta com substância.\n\nMais um parágrafo.\n\n[SEGUIR: Me mostra o que anotei em outubro]\n[SEGUIR: me mostra o que anotei em outubro]\n[SEGUIR: Vira um plano de ação]\n[SEGUIR: Liga isso com o treino]\n[SEGUIR: Quarto atalho extra]";
+  const r = extrairSeguir(bruto);
+  assert.equal(r.seguir.length, 3);
+  assert.equal(r.seguir[1], "Vira um plano de ação");
+  assert.doesNotMatch(r.texto, /SEGUIR/);
+  assert.match(r.texto, /Mais um parágrafo\.$/);
+  const sens = extrairSeguir(bruto, { manter: false });
+  assert.deepEqual(sens.seguir, []);
+  assert.doesNotMatch(sens.texto, /SEGUIR/, "em modo sensível a tag some mesmo assim");
+  assert.equal(extrairSeguir("sem atalhos").seguir.length, 0);
+  assert.equal(extrairSeguir("no meio [SEGUIR: x y z w] da frase").texto, "no meio [SEGUIR: x y z w] da frase", "só vale em linha própria");
+});
+
+test("prompt do turno: pede atalhos só fora dos modos sensíveis", async () => {
+  const { montarPromptTurno } = await import("../servidor/resposta.mjs");
+  const base = { texto: "oi", perguntasSeguidas: 0 };
+  assert.match(montarPromptTurno({ ...base, plano: { modo: "tecnico", tamanho: "longa" } }), /\[SEGUIR:/);
+  assert.doesNotMatch(montarPromptTurno({ ...base, plano: { modo: "escuta", tamanho: "curta" } }), /\[SEGUIR:/);
+  assert.doesNotMatch(montarPromptTurno({ ...base, plano: { modo: "crise", tamanho: "curta" } }), /\[SEGUIR:/);
+});
+
+test("sugestões: amostra do dia é estável por semente e muda no dia seguinte", async () => {
+  const { amostraDoDia } = await import("../servidor/sugestoes.mjs");
+  const l = Array.from({ length: 40 }, (_, i) => i);
+  assert.deepEqual(amostraDoDia(l, 8, "2026-11-09"), amostraDoDia(l, 8, "2026-11-09"));
+  assert.notDeepEqual(amostraDoDia(l, 8, "2026-11-09"), amostraDoDia(l, 8, "2026-11-10"));
+  assert.equal(amostraDoDia(l, 8, "x").length, 8);
+  assert.equal(new Set(amostraDoDia(l, 40, "x")).size, 40, "sem repetir item");
+});
+
+test("sugestões: sanearCartoes valida tipo, tamanho, duplicata e limita 2 por tipo", async () => {
+  const { sanearCartoes } = await import("../servidor/sugestoes.mjs");
+  const c = (tipo, titulo) => ({ tipo, titulo, gancho: "Há 3 semanas você anotou isso e parou.", abrir: "Quero retomar isso agora." });
+  const r = sanearCartoes({ cartoes: [
+    c("retomar", "Projeto A"), c("retomar", "Projeto B"), c("retomar", "Projeto C"),
+    c("retomar", "Projeto A"), c("invalido", "Outro"), c("agora", "x"),
+    { tipo: "lembrar", titulo: "Sem gancho", gancho: "", abrir: "abrir isso aqui" },
+    c("conexao", "Duas notas — ligadas"),
+  ] });
+  assert.deepEqual(r.map((x) => x.titulo), ["Projeto A", "Projeto B", "Duas notas, ligadas"]);
+  assert.deepEqual(sanearCartoes(null), []);
+  assert.deepEqual(sanearCartoes({ cartoes: "x" }), []);
+});
+
+test("sugestões: digest etiqueta as notas e cartoesPorHeuristica nunca inventa", async () => {
+  const { montarDigest, cartoesPorHeuristica } = await import("../servidor/sugestoes.mjs");
+  const agora = new Date("2026-11-09T12:00:00Z");
+  const nota = (id, resumo, criado) => ({ id, resumo, area: "trabalho", texto_original: resumo, criado_em: criado });
+  const d = montarDigest({ agora, recentes: [nota("a", "Detalhei o MVP de telefonia", "2026-11-06T12:00:00Z")], antigas: [nota("b", "Ideia do jogo cooperativo", "2026-03-01T12:00:00Z")], eventos: [{ resumo: "Reunião com cliente", quando: "amanhã" }], tarefas: [{ prazo: "vencida", name: "Fundação NR01" }], memorias: [{ fato: "Treina em casa" }], conversas: ["Papo sobre archi2"] });
+  assert.match(d.texto, /N1 · há 3 dias/);
+  assert.match(d.texto, /N2 ·/);
+  assert.equal(d.notas.get("N1").id, "a");
+  assert.match(d.texto, /Fundação NR01/);
+  const h = cartoesPorHeuristica({ eventos: [{ resumo: "Reunião com cliente", quando: "amanhã" }], tarefas: [{ prazo: "vencida", name: "Fundação NR01" }], recentes: [nota("a", "Detalhei o MVP de telefonia", "2026-11-06T12:00:00Z")] });
+  assert.equal(h.length, 3);
+  assert.ok(h.every((x) => x.titulo && x.gancho && x.abrir));
+  assert.deepEqual(cartoesPorHeuristica({}), []);
+});
+
+test("decidirSeparacao: reranker que zera tudo cai no corte relativo em vez de devolver nada", () => {
+  const cands = [
+    { id: "1", sim: 0.82, pontos: 0.03, lex_rank: 1 },
+    { id: "2", sim: 0.78, pontos: 0.025, lex_rank: 2 },
+    { id: "3", sim: 0.2, pontos: 0.001 },
+  ];
+  const zerou = decidirSeparacao(cands, new Map([[1, 0], [2, 0], [3, 0]]));
+  assert.equal(zerou.usouRerank, false);
+  assert.ok(zerou.sep.fortes.length >= 1, "a nota forte da busca não pode sumir");
+  const normal = decidirSeparacao(cands, new Map([[1, 3], [2, 1], [3, 0]]));
+  assert.equal(normal.usouRerank, true);
+  assert.deepEqual(normal.sep.fortes.map((n) => n.id), ["1"]);
 });

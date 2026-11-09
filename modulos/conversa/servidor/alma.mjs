@@ -96,8 +96,10 @@ export function blocoDaAlma(tracos) {
     partes.push(`${ROTULO[cat]}:\n${linhas.join("\n")}`);
   }
   return (
-    "COMO A PESSOA FALA. Responda no mesmo registro, sem imitar de forma caricata e\n" +
-    "sem comentar que voce esta fazendo isso:\n\n" + partes.join("\n\n")
+    "COMO A PESSOA FALA (tom, vocabulario, ritmo). Acompanhe o TOM: informal, girias leves, jeito de conversar.\n" +
+    "Mas escreva com ortografia correta: acentos, maiusculas, pontuacao normal, palavras por extenso (nada de\n" +
+    "'vc', 'oq', 'agr', 'msm', e nada de tudo em minusculo sem acento). Os tracos abaixo descrevem como a pessoa\n" +
+    "digita; copiar o jeito de DIGITAR soa robotico e caricato. Nao comente que esta fazendo isso:\n\n" + partes.join("\n\n")
   );
 }
 

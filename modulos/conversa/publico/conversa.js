@@ -156,30 +156,95 @@
     }
   }
 
+  /* O "feed": assuntos do dia tirados das suas notas (GET /sugestoes). Aparece
+     so na conversa vazia. O do dia fica no aparelho: abrir o app nao refaz a
+     busca nem espera o modelo. Se o servidor falhar, volta pros atalhos fixos
+     em vez de uma tela vazia. Tudo entra por textContent (nada vira HTML). */
+  var CHAVE_FEED = "cv_feed_v1";
+  var ROTULO_TIPO = { retomar: "Fio solto", conexao: "Ligação", lembrar: "Redescoberta", agora: "Agora", curiosidade: "Curiosidade" };
+  var FIXOS = ["O que comi hoje?", "Qual meu treino de hoje?", "O que anotei essa semana?", "Toca um forró pra animar"];
+
+  function diaDoFeed() { return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10); }
+  function feedLocal() {
+    try {
+      var j = JSON.parse(localStorage.getItem(CHAVE_FEED) || "null");
+      if (j && j.dia === diaDoFeed() && Array.isArray(j.cartoes) && j.cartoes.length) return j.cartoes;
+    } catch (e) {}
+    return null;
+  }
+  function guardarFeed(cartoes) {
+    try { localStorage.setItem(CHAVE_FEED, JSON.stringify({ dia: diaDoFeed(), cartoes: cartoes })); } catch (e) {}
+  }
+
+  function desenharFeed(caixa, cartoes) {
+    var lista = caixa.querySelector(".cv-feed");
+    lista.innerHTML = "";
+    cartoes.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "cv-cartao t-" + (ROTULO_TIPO[c.tipo] ? c.tipo : "curiosidade");
+      var t = document.createElement("span"); t.className = "cv-cartao-tipo"; t.textContent = ROTULO_TIPO[c.tipo] || "Pra pensar";
+      var h = document.createElement("span"); h.className = "cv-cartao-titulo"; h.textContent = c.titulo;
+      var g = document.createElement("span"); g.className = "cv-cartao-gancho"; g.textContent = c.gancho;
+      b.appendChild(t); b.appendChild(h); b.appendChild(g);
+      b.addEventListener("click", function () { campo.value = c.abrir; caixa.remove(); enviar(); });
+      lista.appendChild(b);
+    });
+  }
+
+  function desenharFixos(caixa) {
+    var lista = caixa.querySelector(".cv-feed");
+    lista.innerHTML = "";
+    FIXOS.forEach(function (txt) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "cv-cartao curto"; b.textContent = txt;
+      b.addEventListener("click", function () { campo.value = txt; caixa.remove(); enviar(); });
+      lista.appendChild(b);
+    });
+  }
+
+  function carregarFeed(caixa, forcar) {
+    var lista = caixa.querySelector(".cv-feed");
+    lista.innerHTML = '<div class="cv-cartao esqueleto"></div><div class="cv-cartao esqueleto"></div><div class="cv-cartao esqueleto"></div>';
+    pedir("/sugestoes" + (forcar ? "?forcar=1" : ""), {}, 30000).then(function (r) {
+      var cs = r && Array.isArray(r.cartoes) ? r.cartoes : [];
+      if (!cs.length) { desenharFixos(caixa); return; }
+      guardarFeed(cs); desenharFeed(caixa, cs);
+    }).catch(function () { desenharFixos(caixa); });
+  }
+
   function verificarSugestoesIniciais() {
-    var existentes = fluxo.querySelectorAll(".cv-bolha");
-    if (existentes.length === 0 && !fluxo.querySelector(".cv-sugestoes")) {
-      var caixa = document.createElement("div");
-      caixa.className = "cv-sugestoes";
-      caixa.innerHTML =
-        '<p class="cv-sugestoes-rotulo">Pergunte ao seu Segundo Cérebro:</p>' +
-        '<div class="cv-sugestoes-chips">' +
-          '<button type="button" class="cv-chip">🥗 O que comi hoje?</button>' +
-          '<button type="button" class="cv-chip">🏋️ Qual meu treino de hoje?</button>' +
-          '<button type="button" class="cv-chip">🔥 Quantas calorias consumi?</button>' +
-          '<button type="button" class="cv-chip">🎵 Toca um forró pra animar</button>' +
-        '</div>';
-      caixa.querySelectorAll(".cv-chip").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          var textoLimpo = btn.textContent.replace(/^[^\w\s]+/, "").trim();
-          campo.value = textoLimpo;
-          caixa.remove();
-          enviar();
-        });
-      });
-      fluxo.appendChild(caixa);
-      paraBaixo();
-    }
+    if (fluxo.querySelectorAll(".cv-bolha").length || fluxo.querySelector(".cv-sugestoes")) return;
+    var caixa = document.createElement("div");
+    caixa.className = "cv-sugestoes";
+    var topo = document.createElement("div"); topo.className = "cv-sugestoes-topo";
+    var rot = document.createElement("p"); rot.className = "cv-sugestoes-rotulo"; rot.textContent = "Pra conversar hoje";
+    var atualizar = document.createElement("button");
+    atualizar.type = "button"; atualizar.className = "cv-sugestoes-atualizar"; atualizar.title = "Outras ideias"; atualizar.setAttribute("aria-label", "Outras ideias");
+    atualizar.textContent = "↻";
+    atualizar.addEventListener("click", function () { carregarFeed(caixa, true); });
+    topo.appendChild(rot); topo.appendChild(atualizar);
+    var lista = document.createElement("div"); lista.className = "cv-feed";
+    caixa.appendChild(topo); caixa.appendChild(lista);
+    fluxo.appendChild(caixa);
+
+    var local = feedLocal();
+    if (local) desenharFeed(caixa, local); else carregarFeed(caixa, false);
+    paraBaixo();
+  }
+
+  /* Atalhos "o que falar a seguir", vindos da propria resposta. Somem quando
+     voce manda qualquer mensagem. Em modo sensivel o servidor nem manda. */
+  function mostrarSeguir(lista) {
+    var velho = fluxo.querySelector(".cv-seguir"); if (velho) velho.remove();
+    if (!lista || !lista.length) return;
+    var d = document.createElement("div"); d.className = "cv-seguir";
+    lista.slice(0, 3).forEach(function (txt) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "cv-seguir-btn"; b.textContent = txt;
+      b.addEventListener("click", function () { if (ocupado) return; campo.value = txt; enviar(); });
+      d.appendChild(b);
+    });
+    fluxo.appendChild(d); paraBaixo();
   }
 
   /* Markdown minimo e SEGURO. A fala do cerebro agora vem em texto livre, com
@@ -227,6 +292,8 @@
   function bolha(texto, quem) {
     var s = fluxo.querySelector(".cv-sugestoes");
     if (s) s.remove();
+    var sg = fluxo.querySelector(".cv-seguir");
+    if (sg) sg.remove();
 
     var d = document.createElement("div");
     d.className = "cv-bolha " + quem;
@@ -387,27 +454,19 @@
       var corpoReq = JSON.stringify({ conversa_id: conversaId, ordem: ctx.ordem });
       var cab = { method: "POST", headers: { "Content-Type": "application/json" }, body: corpoReq };
 
-      /* Os dois saem JUNTOS. Esperar a rapida pra so entao pedir a boa faria a
-         rapida virar atraso, que e o oposto do que ela existe pra fazer.
-         O catch na rapida e proposital: se o Groq estourar cota, a conversa
-         continua com o status da camada 1 e a resposta do Gemini. */
-      var pRapida = pedir("/rapida", cab, 12000).catch(function () { return null; });
+      /* Sem a camada "rapida": ela era um segundo modelo escrevendo mensagens
+         soltas antes da resposta ("nao achei nada", "so pra confirmar...") e
+         fazia a conversa parecer duas pessoas falando. A espera agora e so um
+         indicador de que ele esta pensando, nunca uma fala. */
       var pReal = pedir("/responder", cab);
 
       var chegouReal = false;
       pReal.then(function () { chegouReal = true; }, function () { chegouReal = true; });
 
-      var rap = await pRapida;
-      if (rap && rap.mensagens && rap.mensagens.length && !chegouReal) {
-        sumir(sinal);
-        await derramar(rap.mensagens, function () { return chegouReal; });
-      }
-
-      /* acabou a rapida e o forte ainda nao voltou: narra em vez de ficar mudo.
-         Em modo sensivel (desabafo, crise) NAO narra: "relendo aquela nota
+      /* Em modo sensivel (desabafo, crise) NAO narra: "relendo aquela nota
          sobre..." em cima de uma dor soa como relatorio. Fica o "to te ouvindo". */
       var encerrarNarracao = null;
-      if (!chegouReal && !ctx.sensivel) {
+      if (!ctx.sensivel) {
         sumir(sinal);
         encerrarNarracao = narrarEspera(ctx.notas || [], function () { return chegouReal; });
       }
@@ -417,15 +476,14 @@
       finally { if (encerrarNarracao) encerrarNarracao(); }
       sumir(sinal);
 
-      /* Respiro antes do conteudo: sem ele a resposta densa cola na ultima
-         mensagem rapida e as duas viram um bloco so. */
-      if (rap && rap.mensagens && rap.mensagens.length) await esperar(500);
-
       await derramar(resp.mensagens || [], null);
 
       if (!ctx.sensivel && ctx.achado && ctx.achado.fortes > 0) {
         rodape(ctx.achado.fortes + (ctx.achado.fortes === 1 ? " nota usada" : " notas usadas"));
       }
+
+      // por ultimo: os atalhos ficam colados no fim, abaixo de tudo
+      if (!ctx.sensivel && resp.seguir && resp.seguir.length) mostrarSeguir(resp.seguir);
 
       /* Memoriza DEPOIS da resposta, sem esperar e sem travar a tela: em
          serverless o servidor nao pode fazer isso depois de responder, e aqui
