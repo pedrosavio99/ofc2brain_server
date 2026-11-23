@@ -10,6 +10,7 @@
  * existirem dois lugares discordando sobre o que e "as ultimas duas semanas".
  */
 import { createClient } from "@supabase/supabase-js";
+import { seriesPorGrupo, somarGrupos } from "./grupos.mjs";
 
 if (typeof globalThis.WebSocket === "undefined") {
   const { default: WS } = await import("ws");
@@ -204,6 +205,9 @@ export async function criarSessao(campos, agora = new Date()) {
     origem: campos.origem || "ficha",
     regerada_de: campos.regerada_de || null,
   };
+  // so quando ha meta: a coluna vem do treino-objetivos.sql, e sem ela um
+  // insert comum (sem meta) continua funcionando como antes
+  if (campos.objetivo_id) linha.objetivo_id = campos.objetivo_id;
   const { data, error } = await sb.from("treino_sessoes").insert(linha).select("*").single();
   if (error) throw new ErroHttp(500, `criarSessao: ${error.message}`);
   return data;
@@ -310,6 +314,21 @@ export async function obterCicloAtual(agora = new Date()) {
 }
 
 /**
+ * Grava a linha do ciclo. A coluna "grupos" veio depois das outras: se o SQL
+ * treino-objetivos.sql ainda nao rodou, regrava SEM ela em vez de travar o
+ * fechamento (e a poda) dos ciclos por causa de um dado extra.
+ * Devolve o erro, ou null.
+ */
+async function gravarCiclo(linha) {
+  let { error } = await sb.from("treino_ciclos").upsert(linha, { onConflict: "inicio" });
+  if (error && "grupos" in linha && /grupos/i.test(error.message || "")) {
+    const { grupos, ...semGrupos } = linha;
+    ({ error } = await sb.from("treino_ciclos").upsert(semGrupos, { onConflict: "inicio" }));
+  }
+  return error || null;
+}
+
+/**
  * Analisa os intervalos de 14 em 14 dias e finaliza automaticamente os ciclos cujo
  * periodo ja expirou (fim < hoje).
  * Consolida o resumo em treino_ciclos e poda as sessoes antigas finalizadas.
@@ -365,10 +384,11 @@ export async function fecharCiclosVencidos(arg1, arg2) {
           calorias: caloriasCalc,
           esforco_medio: esforcoMedio,
           peso_kg: cicloExistente && cicloExistente.peso_kg ? cicloExistente.peso_kg : perfil.peso_kg,
+          // volume por grupo da quinzena: sobrevive a poda das sessoes
+          grupos: somarGrupos(cicloExistente && cicloExistente.grupos, seriesPorGrupo(concluidas)),
         };
 
-        const { error: errUpsert } = await sb.from("treino_ciclos")
-          .upsert(linha, { onConflict: "inicio" });
+        const errUpsert = await gravarCiclo(linha);
         if (errUpsert) throw new ErroHttp(500, `fecharCiclosVencidos: ${errUpsert.message}`);
 
         ciclosFechados++;
@@ -403,6 +423,10 @@ export async function forcarFecharCicloAtual(agora = new Date()) {
   const cicloAtual = await obterCicloAtual(agora);
   const perfil = await lerPerfil();
 
+  // as sessoes sao apagadas logo abaixo: o volume por grupo precisa ser lido antes
+  const { data: doPeriodo } = await sb.from("treino_sessoes")
+    .select("*").gte("data", cicloAtual.inicio).lte("data", hoje);
+
   const linha = {
     inicio: cicloAtual.inicio,
     fim: hoje,
@@ -411,15 +435,100 @@ export async function forcarFecharCicloAtual(agora = new Date()) {
     calorias: cicloAtual.calorias,
     esforco_medio: cicloAtual.esforco_medio,
     peso_kg: perfil.peso_kg,
+    grupos: seriesPorGrupo((doPeriodo || []).filter((x) => x.concluida)),
   };
 
-  const { error: errUpsert } = await sb.from("treino_ciclos")
-    .upsert(linha, { onConflict: "inicio" });
+  const errUpsert = await gravarCiclo(linha);
   if (errUpsert) throw new ErroHttp(500, `forcarFecharCiclo: ${errUpsert.message}`);
 
   await sb.from("treino_sessoes").delete().gte("data", cicloAtual.inicio).lte("data", hoje);
 
   return { ok: true, ciclo_fechado: linha };
+}
+
+/* ------------------------------------------------------------ objetivos */
+
+/* Tabela inexistente nao e erro do usuario: e o SQL novo que ainda nao rodou.
+   A tela precisa de um aviso, nao de um 500 que derrube o /hoje inteiro. */
+function semTabela(error) {
+  return !!error && (error.code === "42P01" || /does not exist|schema cache/i.test(error.message || ""));
+}
+
+/**
+ * As metas. Por padrao so as abertas.
+ * `disponivel: false` quando as tabelas ainda nao existem.
+ */
+export async function listarObjetivos({ status = "ativo" } = {}) {
+  let q = sb.from("treino_objetivos").select("*").order("criado_em", { ascending: true });
+  if (status) q = q.eq("status", status);
+  const { data, error } = await q;
+  if (semTabela(error)) return { disponivel: false, objetivos: [] };
+  if (error) throw new ErroHttp(500, `listarObjetivos: ${error.message}`);
+  return { disponivel: true, objetivos: data || [] };
+}
+
+export async function buscarObjetivo(id) {
+  const { data, error } = await sb.from("treino_objetivos").select("*").eq("id", id).maybeSingle();
+  if (semTabela(error)) return null;
+  if (error) throw new ErroHttp(500, `buscarObjetivo: ${error.message}`);
+  return data;
+}
+
+/** Cria quando nao vem id, atualiza quando vem. `campos` ja vem normalizado. */
+export async function salvarObjetivo(campos) {
+  const linha = {
+    titulo: campos.titulo,
+    tipo: campos.tipo,
+    grupos: Array.isArray(campos.grupos) ? campos.grupos : [],
+    meta_valor: campos.meta_valor,
+    unidade: campos.unidade || "",
+    valor_inicial: campos.valor_inicial,
+    prazo: campos.prazo || null,
+    atualizado_em: new Date().toISOString(),
+  };
+  const q = campos.id
+    ? sb.from("treino_objetivos").update(linha).eq("id", campos.id)
+    : sb.from("treino_objetivos").insert(linha);
+  const { data, error } = await q.select("*").single();
+  if (error) throw new ErroHttp(500, `salvarObjetivo: ${error.message}`);
+  return data;
+}
+
+/** ativo, concluido ou arquivado. Concluir marca a data. */
+export async function mudarStatusObjetivo(id, status) {
+  const { data, error } = await sb.from("treino_objetivos").update({
+    status,
+    concluido_em: status === "concluido" ? new Date().toISOString() : null,
+    atualizado_em: new Date().toISOString(),
+  }).eq("id", id).select("*").maybeSingle();
+  if (error) throw new ErroHttp(500, `mudarStatusObjetivo: ${error.message}`);
+  return data;
+}
+
+/** Apaga de vez. Os marcos vao junto (on delete cascade); fichas ficam, sem a ligacao. */
+export async function excluirObjetivo(id) {
+  const { error } = await sb.from("treino_objetivos").delete().eq("id", id);
+  if (error) throw new ErroHttp(500, `excluirObjetivo: ${error.message}`);
+  return { ok: true };
+}
+
+/** Os marcos das metas dadas, do mais antigo ao mais novo. */
+export async function listarMarcos(objetivoIds) {
+  const ids = (objetivoIds || []).filter(Boolean);
+  if (!ids.length) return [];
+  const { data, error } = await sb.from("treino_objetivo_marcos")
+    .select("*").in("objetivo_id", ids).order("criado_em", { ascending: true });
+  if (semTabela(error)) return [];
+  if (error) throw new ErroHttp(500, `listarMarcos: ${error.message}`);
+  return data || [];
+}
+
+export async function registrarMarco(objetivoId, valor, nota = "") {
+  const { data, error } = await sb.from("treino_objetivo_marcos")
+    .insert({ objetivo_id: objetivoId, valor: Number(valor), nota: String(nota || "").slice(0, 200) })
+    .select("*").single();
+  if (error) throw new ErroHttp(500, `registrarMarco: ${error.message}`);
+  return data;
 }
 
 /* --------------------------------------------------------- equipamentos */

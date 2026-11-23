@@ -21,6 +21,11 @@ import { analisarAtividade } from "./atividade.mjs";
 import { listarCiclos, fecharCiclosVencidos, obterCicloAtual, forcarFecharCicloAtual } from "./banco.mjs";
 import { agruparEmCiclos, resumoDoCiclo } from "./calorias.mjs";
 import { caloriasDoBloco, metValido } from "./calorias.mjs";
+import { listarObjetivos, buscarObjetivo, salvarObjetivo, mudarStatusObjetivo,
+  excluirObjetivo, listarMarcos, registrarMarco } from "./banco.mjs";
+import { normalizarObjetivo, montarObjetivos, pedidoDaMeta, MAX_ATIVOS, TIPOS_OBJETIVO,
+  SERIES_ALVO_POR_GRUPO } from "./objetivos.mjs";
+import { PRINCIPAIS } from "./grupos.mjs";
 
 function exigir(condicao, status, mensagem, dica = "") {
   if (!condicao) throw new ErroHttp(status, mensagem, dica);
@@ -35,6 +40,33 @@ function numeroEntre(valor, min, max, nome) {
   exigir(Number.isFinite(n), 400, `${nome} precisa ser um numero.`);
   exigir(n >= min && n <= max, 400, `${nome} fora da faixa (${min} a ${max}).`);
   return n;
+}
+
+/* Metas abertas, cada uma com o progresso calculado. Os dados que a rota ja
+   buscou entram em `pre`, pra nao repetir consulta (o /hoje ja tem sessoes,
+   ciclo atual e a lista de metas). Sem as tabelas novas devolve disponivel:
+   false e lista vazia, e a tela explica; nunca derruba a rota que chamou. */
+async function objetivosComProgresso(pre = {}) {
+  const lista = pre.lista || await listarObjetivos();
+  if (!lista.disponivel) return { disponivel: false, objetivos: [] };
+  const [marcos, sessoes, cicloAtual, ciclos] = await Promise.all([
+    listarMarcos(lista.objetivos.map((o) => o.id)),
+    pre.sessoes || listarSessoes(60),
+    pre.cicloAtual || obterCicloAtual(),
+    pre.ciclos || listarCiclos(3),
+  ]);
+  const doCiclo = sessoes.filter((x) => x.data >= cicloAtual.inicio);
+  return {
+    disponivel: true,
+    objetivos: montarObjetivos({
+      objetivos: lista.objetivos,
+      marcos,
+      seriesCiclo: seriesPorGrupo(doCiclo),
+      // o ultimo ciclo JA FECHADO antes do atual: e contra ele que o volume se compara
+      cicloAnterior: ciclos.find((c) => c.inicio < cicloAtual.inicio) || null,
+      hoje: hojeLocal(),
+    }),
+  };
 }
 
 export async function rotear(req, res, rota, url) {
@@ -160,9 +192,18 @@ export async function rotear(req, res, rota, url) {
       return null;
     });
 
-    const [perfil, equipamentos, doDia, sessoes, cicloAtual] = await Promise.all([
+    const [perfil, equipamentos, doDia, sessoes, cicloAtual, listaMetas, ciclosFechados] = await Promise.all([
       lerPerfil(), listarEquipamentos(), sessoesDeHoje(), listarSessoes(60), obterCicloAtual(),
+      listarObjetivos().catch(() => ({ disponivel: false, objetivos: [] })),
+      listarCiclos(3).catch(() => []),
     ]);
+    // meta com defeito nao pode derrubar a tela do treino: cai pra lista vazia
+    const metas = await objetivosComProgresso({
+      lista: listaMetas, sessoes, cicloAtual, ciclos: ciclosFechados,
+    }).catch((e) => {
+      console.error("[treino] metas falharam: " + e.message);
+      return { disponivel: listaMetas.disponivel, objetivos: [] };
+    });
     // a ficha governa a tela de treino; as avulsas entram no total do dia
     const sessao = doDia.find((x) => x.origem === "ficha") || null;
     // a ficha extra aberta, se houver. So uma por vez: gerar outra substitui
@@ -211,8 +252,14 @@ export async function rotear(req, res, rota, url) {
       duracao_extra: extra ? duracaoEstimada(extra.ficha, extra.feitos) : 0,
       // series por grupo nos 14 dias, pro mapa do corpo no cartao do gasto
       musculos: seriesPorGrupo(sessoes),
-      // so da pra pedir extra sem ficha do dia aberta: duas abertas confundem
-      pode_extra: !(sessao && !sessao.concluida),
+      /* Ficha especifica a qualquer momento: antes de gerar a do dia, no meio
+         dela ou depois de fechar. Antes isto travava com a do dia aberta, e a
+         unica saida era concluir um treino que voce talvez nem quisesse. */
+      pode_extra: true,
+      // as metas abertas, ja com progresso; a tela so desenha
+      objetivos: metas.objetivos,
+      objetivos_disponivel: metas.disponivel,
+      max_metas: MAX_ATIVOS,
       /* O dia INTEIRO, somando ficha e avulsas. Antes a tela mostrava so a
           ultima sessao criada, entao uma corrida lancada depois do treino
           escondia a ficha e o numero do dia ficava so o dela. */
@@ -240,16 +287,25 @@ export async function rotear(req, res, rota, url) {
     return { dias, sessoes: await listarSessoes(dias) };
   }
 
-  /* POST /ficha/extra { pedido, local, local_texto }
-     Ficha a mais no dia, a partir do que voce disse que quer. Grava com
-     origem 'extra', entao a ficha do dia (origem 'ficha') nao e tocada:
-     gerar, gerar outra, marcar e fechar dela seguem iguais.
+  /* POST /ficha/extra { pedido, objetivo_id, local, local_texto }
+     Ficha ESPECIFICA, fora da ficha do dia. Grava com origem 'extra', entao a
+     ficha do dia (origem 'ficha') nao e tocada: gerar, gerar outra, marcar e
+     fechar dela seguem iguais, e pode ser pedida antes dela, durante ou depois.
+     Com objetivo_id a ficha serve aquela meta e o pedido vira opcional.
      Se ja houver extra aberta, a nova substitui (regerada_de), igual ao
      "gerar outra" da ficha do dia. */
   if (req.method === "POST" && rota === "/ficha/extra") {
     const corpo = req.body || {};
-    const pedido = String(corpo.pedido || "").trim().slice(0, 400);
-    exigir(pedido, 400, "Escreva o que voce quer treinar agora.");
+    let pedido = String(corpo.pedido || "").trim().slice(0, 400);
+
+    let objetivo = null;
+    if (corpo.objetivo_id) {
+      const { objetivos } = await objetivosComProgresso();
+      objetivo = objetivos.find((o) => String(o.id) === String(corpo.objetivo_id)) || null;
+      exigir(objetivo, 404, "Meta nao encontrada ou ja encerrada.");
+    }
+    exigir(pedido || objetivo, 400, "Escreva o que voce quer treinar agora.");
+    if (!pedido) pedido = pedidoDaMeta(objetivo);
     const local = localValido(corpo.local);
     const localTexto = String(corpo.local_texto || "").trim().slice(0, 300);
 
@@ -259,9 +315,6 @@ export async function rotear(req, res, rota, url) {
     exigir(local !== "casa" || equipamentos.length, 400, "Sem equipamento de casa cadastrado.",
       "Escolha outro local ou cadastre um equipamento.");
 
-    const doDiaFicha = doDia.find((x) => x.origem === "ficha");
-    exigir(!(doDiaFicha && !doDiaFicha.concluida), 409, "Feche a ficha do dia antes de pedir uma extra.",
-      "Duas fichas abertas ao mesmo tempo confundem o treino.");
     const extraAberta = doDia.find((x) => x.origem === "extra" && !x.concluida) || null;
 
     // o que ja foi feito hoje, exercicio por exercicio, pra extra complementar
@@ -275,7 +328,7 @@ export async function rotear(req, res, rota, url) {
 
     const gerada = await gerarFicha({
       perfil, equipamentos, sessoes, local, localTexto, pedido,
-      modo: "extra", feitosHoje,
+      modo: "extra", feitosHoje, objetivo,
       rejeitada: extraAberta ? extraAberta.ficha : null,
     });
     exigir(gerada.ficha.length, 502, "Nao consegui montar a ficha extra.",
@@ -286,6 +339,7 @@ export async function rotear(req, res, rota, url) {
       ficha: gerada.ficha,
       motivo: gerada.motivo,
       regerada_de: extraAberta ? extraAberta.id : null,
+      objetivo_id: objetivo ? objetivo.id : null,
     });
     return { ok: true, sessao, regerou: !!extraAberta, local: gerada.local, fonte: gerada.meta };
   }
@@ -313,8 +367,12 @@ export async function rotear(req, res, rota, url) {
       "Lance uma atividade manual se quiser registrar outro.");
 
     const sessoes = await listarSessoes();
+    // as metas pesam na ficha do dia; se falharem, a ficha sai sem elas
+    const { objetivos: metasAbertas } = await objetivosComProgresso({ sessoes })
+      .catch(() => ({ objetivos: [] }));
     const gerada = await gerarFicha({
       perfil, equipamentos, sessoes, local, localTexto,
+      objetivos: metasAbertas,
       pedido: corpo.pedido || "",
       /* A ficha que esta sendo trocada vai pro modelo como recusada. Sem isso
          o "gerar outra" devolvia quase a mesma. */
@@ -484,6 +542,79 @@ export async function rotear(req, res, rota, url) {
     if (!extraAberta) return { ok: true, mensagem: "Nenhuma ficha extra aberta." };
     await excluirSessao(extraAberta.id);
     return { ok: true, id: extraAberta.id };
+  }
+
+  /* ------------------------------------------------------------ metas */
+
+  /* GET /objetivos - as metas abertas com progresso.
+     disponivel false = as tabelas novas ainda nao existem (SQL nao rodou). */
+  if (req.method === "GET" && rota === "/objetivos") {
+    const r = await objetivosComProgresso();
+    return {
+      disponivel: r.disponivel,
+      objetivos: r.objetivos,
+      max_ativos: MAX_ATIVOS,
+      grupos: PRINCIPAIS,
+      tipos: TIPOS_OBJETIVO,
+      serie_alvo: SERIES_ALVO_POR_GRUPO,
+    };
+  }
+
+  /* POST /objetivos { tipo, titulo, grupos, meta_valor, unidade, valor_inicial, prazo } */
+  if (req.method === "POST" && rota === "/objetivos") {
+    const abertas = await listarObjetivos();
+    exigir(abertas.disponivel, 503, "As tabelas de metas ainda nao existem.",
+      "Rode supabase/treino-objetivos.sql no SQL Editor do Supabase.");
+    exigir(abertas.objetivos.length < MAX_ATIVOS, 409, `Voce ja tem ${MAX_ATIVOS} metas abertas.`,
+      "Conclua ou arquive uma antes de criar outra.");
+    const n = normalizarObjetivo(req.body);
+    exigir(n.ok, 400, n.erro);
+    return { ok: true, objetivo: await salvarObjetivo(n.valor) };
+  }
+
+  /* PUT /objetivos/:id     edita campos, ou muda o status { status: "concluido" | "arquivado" | "ativo" }
+     DELETE /objetivos/:id  apaga de vez, com os marcos
+     POST /objetivos/:id/marcos { valor, nota }  registra uma medida */
+  const idMeta = /^\/objetivos\/([0-9a-f-]{36})(\/marcos)?$/i.exec(rota);
+  if (idMeta) {
+    const id = idMeta[1];
+    const atual = await buscarObjetivo(id);
+    exigir(atual, 404, "Meta nao encontrada.");
+
+    if (idMeta[2]) {
+      exigir(req.method === "POST", 405, "Use POST para registrar uma medida.");
+      exigir(atual.status === "ativo", 409, "Esta meta ja foi encerrada.", "Reative a meta para registrar medidas.");
+      exigir(atual.meta_valor != null, 400, "Esta meta nao tem uma medida para registrar.");
+      // "7,5" e como se digita no Brasil; Number("7,5") daria NaN
+      const bruto = (req.body || {}).valor;
+      const valor = numeroEntre(typeof bruto === "string" ? bruto.replace(",", ".") : bruto, -100000, 100000, "O valor");
+      exigir(valor !== null, 400, "Informe o valor medido.");
+      exigir(atual.tipo !== "corrida" || valor >= 0, 400, "A distancia nao pode ser negativa.");
+      await registrarMarco(id, valor, (req.body || {}).nota);
+      const { objetivos } = await objetivosComProgresso();
+      return { ok: true, objetivo: objetivos.find((o) => String(o.id).toLowerCase() === id.toLowerCase()) || null };
+    }
+
+    if (req.method === "DELETE") {
+      await excluirObjetivo(id);
+      return { ok: true, id };
+    }
+
+    if (req.method === "PUT") {
+      const c = req.body || {};
+      if (c.status !== undefined) {
+        exigir(["ativo", "concluido", "arquivado"].includes(c.status), 400, "Status invalido.");
+        if (c.status === "ativo" && atual.status !== "ativo") {
+          const abertas = await listarObjetivos();
+          exigir(abertas.objetivos.length < MAX_ATIVOS, 409, `Voce ja tem ${MAX_ATIVOS} metas abertas.`,
+            "Conclua ou arquive uma antes de reativar esta.");
+        }
+        return { ok: true, objetivo: await mudarStatusObjetivo(id, c.status) };
+      }
+      const n = normalizarObjetivo(c, atual);
+      exigir(n.ok, 400, n.erro);
+      return { ok: true, objetivo: await salvarObjetivo({ ...n.valor, id }) };
+    }
   }
 
   /* ------------------------------------------------ atividade manual */

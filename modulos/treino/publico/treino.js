@@ -19,7 +19,7 @@
   var veu = document.getElementById("veu");
   var elAviso = document.getElementById("aviso");
 
-  var S = { dia: null, equipamentos: [], carregando: true, primeira: true, nutricao: null };
+  var S = { dia: null, equipamentos: [], carregando: true, primeira: true, nutricao: null, posNode: null, posHtml: null };
 
   /* Modal automatico e coisa de PRIMEIRA carga, nao de toda recarga.
      Todo salvar chama carregar(), e o carregar() decidia abrir perfil ou
@@ -430,7 +430,7 @@
   function seletorModo(atual) {
     return '<div class="tr-escolha tr-modos" id="mModo">' +
       '<button type="button" data-modo="fiz" aria-pressed="' + (atual === "fiz") + '">Já fiz</button>' +
-      '<button type="button" data-modo="mais" aria-pressed="' + (atual === "mais") + '">Quero treinar mais</button>' +
+      '<button type="button" data-modo="mais" aria-pressed="' + (atual === "mais") + '">Pedir uma ficha</button>' +
       "</div>";
   }
   function ligarModo() {
@@ -442,25 +442,51 @@
     });
   }
 
+  /* Gera a ficha extra, seja por pedido livre ou por meta. Fecha a folha, mostra
+     a espera e, ao terminar, rola ate a ficha nova: quem pede la embaixo, no
+     bloco "sob medida", nao pode ter que procurar o resultado. */
+  async function gerarExtra(dados, titulo) {
+    S.ultimoLocal = dados.local;
+    fechar();
+    var parar = painelProgresso(titulo || "Montando sua ficha extra…");
+    try {
+      var rx = await pedir("/ficha/extra", json("POST", dados));
+      avisar(dados.objetivo_id ? "Ficha da meta pronta." : "Ficha pronta.");
+      avisarOrigem(rx);
+    } catch (err) {
+      avisar(err.message);
+    } finally { parar(); }
+    await carregar();
+    var alvo = tela.querySelector('[data-sessao="extra"]');
+    if (alvo && alvo.scrollIntoView) alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  /* Ficha ESPECIFICA, a qualquer momento: antes da ficha do dia, no meio dela
+     ou depois de fechar. Nao substitui a do dia. */
   function modalExtra(pedidoInicial) {
     var d = S.dia || {};
-    if (d.pode_extra === false) {
-      abrir("Treinar mais", seletorModo("mais") +
-        '<div class="vazio" style="padding:26px 10px"><h3>Feche a ficha do dia antes</h3>' +
-        "<p>Com duas fichas abertas ao mesmo tempo o treino se confunde. Fecha a de hoje e volta aqui.</p></div>");
-      ligarModo();
-      return;
-    }
-    abrir("Treinar mais", seletorModo("mais") +
-      '<p class="tr-sub" style="margin-top:0">Diga como você está e o que quer. A ficha extra complementa o que você já fez hoje' +
-        (d.extra ? ", e substitui a extra que está aberta" : "") + ".</p>" +
+    var sessao = d.sessao;
+    var nota = !sessao
+      ? "Ela não substitui a ficha do dia: a de hoje continua livre pra gerar depois."
+      : sessao.concluida
+        ? "Ela complementa o que você já fez hoje."
+        : "Ela vem além da ficha do dia, que segue aberta do jeito que está.";
+    var metas = d.objetivos || [];
+    abrir("Ficha específica", seletorModo("mais") +
+      '<p class="tr-sub" style="margin-top:0">Diga o que você quer treinar. ' + nota +
+        (d.extra ? " Substitui a ficha extra que está aberta." : "") + "</p>" +
       '<div class="tr-campo"><label>O que você quer agora</label>' +
         '<textarea class="campo" id="xPedido" rows="3" placeholder="Ex: tô com energia, quero mais ombro"></textarea></div>' +
+      (metas.length
+        ? '<div class="tr-sugestoes tr-sugestoes-metas" aria-label="Treinar uma meta">' + metas.map(function (o) {
+            return '<button type="button" data-sugestao-meta="' + esc(o.id) + '">Meta: ' + esc(o.titulo) + "</button>";
+          }).join("") + "</div>"
+        : "") +
       '<div class="tr-sugestoes">' + SUGESTOES_EXTRA.map(function (t) {
         return '<button type="button" data-sugestao="' + esc(t) + '">' + esc(t) + "</button>";
       }).join("") + "</div>" +
       camposGeracao("x", !d.pode_gerar, true) +
-      '<button class="btn btn-largo" id="xGerar" style="margin-top:6px">Gerar ficha extra</button>');
+      '<button class="btn btn-largo" id="xGerar" style="margin-top:6px">Gerar ficha</button>');
     ligarModo();
 
     var campo = document.getElementById("xPedido");
@@ -468,23 +494,16 @@
     folhaCorpo.querySelectorAll("[data-sugestao]").forEach(function (b) {
       b.addEventListener("click", function () { campo.value = b.dataset.sugestao; campo.focus(); });
     });
+    folhaCorpo.querySelectorAll("[data-sugestao-meta]").forEach(function (b) {
+      b.addEventListener("click", function () { modalTreinoMeta(objetivoPorId(b.dataset.sugestaoMeta)); });
+    });
     var ler = ligarGeracao(folhaCorpo, "x");
-    document.getElementById("xGerar").addEventListener("click", async function () {
+    document.getElementById("xGerar").addEventListener("click", function () {
       var pedido = campo.value.trim();
       if (!pedido) { avisar("Escreva o que você quer treinar agora."); campo.focus(); return; }
       var dados = ler();
       dados.pedido = pedido;
-      S.ultimoLocal = dados.local;
-      fechar();
-      var pararX = painelProgresso("Montando sua ficha extra…");
-      try {
-        var rx = await pedir("/ficha/extra", json("POST", dados));
-        avisar("Ficha extra pronta.");
-        avisarOrigem(rx);
-      } catch (err) {
-        avisar(err.message);
-      } finally { pararX(); }
-      carregar();
+      gerarExtra(dados);
     });
   }
 
@@ -1339,11 +1358,14 @@
   /* Os mesmos campos no "Gerar treino" e no "Gerar outra ficha". pre e o
      prefixo dos ids, pra os dois poderem existir sem colidir. semCasa some
      com o botao Em casa quando nao ha equipamento cadastrado. */
-  function camposGeracao(pre, semCasa, semPedido) {
+  function camposGeracao(pre, semCasa, semPedido, localPadrao) {
     var locais = ((S.dia && S.dia.locais) || LOCAIS_PADRAO).filter(function (l) {
       return !(semCasa && l.id === "casa");
     });
-    var marcado = S.ultimoLocal && locais.some(function (l) { return l.id === S.ultimoLocal; })
+    // localPadrao: meta de corrida abre em "Ao ar livre", que e onde se corre
+    var marcado = localPadrao && locais.some(function (l) { return l.id === localPadrao; })
+      ? localPadrao
+      : S.ultimoLocal && locais.some(function (l) { return l.id === S.ultimoLocal; })
       ? S.ultimoLocal
       // sem equipamento de casa, o chute mais seguro e peso do corpo
       : (semCasa ? "sem_equipamento" : locais[0].id);
@@ -1437,9 +1459,21 @@
     }
 
     var s = d.sessao;
+    var contexto = cartaoBasal(d) + painelResumo(d.resumo);
+    /* Cartoes da coluna principal (ficha, gerador, extra) num bloco so. No PC
+       eles dividem a coluna da esquerda sem se sobrepor: antes, ficha do dia e
+       extra abertas juntas pediam a mesma linha do grid e se cobriam. */
+    var col = function (html) { return '<div class="tr-col-principal">' + html + "</div>"; };
 
+    /* O bloco "sob medida" (ficha especifica, metas e evolucao) aparece em
+       TODOS os estados. Quando ha um cartao grande na coluna principal (ficha
+       aberta, gerador ou extra), ele desce pra baixo dele (abaixo = true);
+       so na ficha fechada e sem extra ele ocupa o lugar e leva a nutricao junto. */
     if (s && s.concluida) {
-      tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoDoDia(d.hoje_total) + (cartaoExtra(d) ? (cartaoNutricao(d) + cartaoExtra(d)) : posTreino(d));
+      var comExtra = !!cartaoExtra(d);
+      var pos0 = posTreino(d, comExtra);
+      montarTela(contexto + cartaoDoDia(d.hoje_total) +
+        (comExtra ? cartaoNutricao(d) + col(cartaoExtra(d)) : "") + pos0, pos0, comExtra);
       ligarSessoes();
       ligarManual();
       ligarPosTreino();
@@ -1447,38 +1481,60 @@
       return;
     }
 
+    var pos = posTreino(d, true);
+
     if (!s) {
       var jaFez = d.hoje_total && d.hoje_total.itens && d.hoje_total.itens.length;
-      var contexto = cartaoBasal(d) + painelResumo(d.resumo);
       if (d.extra) {
-        tela.innerHTML = contexto + cartaoDoDia(d.hoje_total) + cartaoNutricao(d) + cartaoExtra(d);
+        montarTela(contexto + cartaoDoDia(d.hoje_total) + cartaoNutricao(d) + col(cartaoExtra(d)) + pos, pos, true);
         ligarSessoes();
         ligarManual();
+        ligarPosTreino();
         ligarNutricao();
         return;
       }
-      tela.innerHTML = contexto + cartaoDoDia(d.hoje_total) + '<section class="tr-cartao">' +
+      montarTela(contexto + cartaoDoDia(d.hoje_total) + col('<section class="tr-cartao">' +
         "<h2>" + (jaFez ? "Quer um treino também?" : "Montar o treino de hoje") + "</h2>" +
         '<p class="tr-sub">A ficha olha o que você treinou nos últimos 14 dias e puxa o que está parado há mais tempo.</p>' +
         camposGeracao("t", !d.pode_gerar) +
         (d.pode_gerar ? "" : '<p class="tr-sub">Sem equipamento de casa cadastrado. <button class="tr-mini" id="tEquip">cadastrar</button></p>') +
         '<div class="tr-acoes"><button class="btn btn-largo" id="tGerar">Gerar treino de hoje</button>' +
         (jaFez ? "" : '<button class="tr-link" data-manual>Lançar atividade que já fiz</button>') + "</div>" +
-        "</section>" + cartaoNutricao(d);
+        "</section>") + cartaoNutricao(d) + pos, pos, true);
       var lerGeracao = ligarGeracao(tela, "t");
       document.getElementById("tGerar").addEventListener("click", function () { gerarFicha(lerGeracao()); });
       var tEquip = document.getElementById("tEquip");
       if (tEquip) tEquip.addEventListener("click", modalEquipamento);
       ligarManual();
+      ligarPosTreino();
       ligarNutricao();
       return;
     }
 
     // ficha do dia aberta (e a extra, se por acaso tambem houver)
-    tela.innerHTML = cartaoBasal(d) + painelResumo(d.resumo) + cartaoSessao(s, false) + cartaoExtra(d) + cartaoNutricao(d);
+    montarTela(contexto + col(cartaoSessao(s, false) + cartaoExtra(d)) + cartaoNutricao(d) + pos, pos, true);
     ligarSessoes();
     ligarManual();
+    ligarPosTreino();
     ligarNutricao();
+  }
+
+  /* Poe o html na tela. Com o bloco "sob medida" EMBAIXO de uma ficha, cada
+     toque de exercicio repinta a tela inteira (o check e otimista), e isso
+     recriaria o grafico de evolucao a cada marcacao, reanimando-o no meio do
+     treino. Quando o html do bloco nao mudou, o no antigo volta no lugar do
+     novo. So vale quando o bloco nao carrega a nutricao (abaixo), cujos botoes
+     sao religados a cada pintura. */
+  function montarTela(html, pos, abaixo) {
+    tela.innerHTML = html;
+    var novo = document.getElementById("trPos");
+    if (!novo) return;
+    if (abaixo && S.posNode && S.posHtml === pos) {
+      novo.parentNode.replaceChild(S.posNode, novo);
+    } else {
+      S.posNode = abaixo ? novo : null;
+      S.posHtml = abaixo ? pos : null;
+    }
   }
 
   /* ------------------------------------------- depois do treino (so no PC) */
@@ -1513,12 +1569,20 @@
     return algum ? melhor : null;
   }
 
+  /* O cartao "sob medida", sempre na tela: antes da ficha do dia, durante e
+     depois. Reune o que antes so aparecia depois de fechar o treino: pedir
+     uma ficha especifica e ver a evolucao. Mais as metas. */
   function cartaoMais(d) {
-    if (d.pode_extra === false) return "";
+    var s = d.sessao;
     var t = d.hoje_total || {};
-    var feito = t.itens && t.itens.length
-      ? "Já fez " + kcal(t.calorias) + " kcal (" + (t.minutos || 0) + " min). "
-      : "Ficha concluída. ";
+    var concluida = !!(s && s.concluida);
+    var titulo = concluida ? "Quer treinar mais hoje?" : "Treino sob medida";
+    var sub = concluida
+      ? (t.itens && t.itens.length ? "Já fez " + kcal(t.calorias) + " kcal (" + (t.minutos || 0) + " min). " : "Ficha concluída. ") +
+        "Escolha uma sugestão ou peça uma ficha extra."
+      : s
+        ? "Quer algo específico além da ficha do dia? Peça aqui, sem precisar fechar a de hoje."
+        : "Peça uma ficha específica agora, sem esperar a do dia. A ficha do dia continua livre pra gerar depois.";
     var ideias = [];
     var g = grupoMenosTreinado(d.musculos);
     if (g) {
@@ -1530,13 +1594,344 @@
     SUGESTOES_EXTRA.forEach(function (t2) { ideias.push({ rotulo: t2, pedido: t2 }); });
     var ideiasCompactas = ideias.slice(0, 3);
     return '<section class="tr-cartao tr-mais">' +
-      '<div class="tr-treino-cab"><h2>Quer treinar mais hoje?</h2></div>' +
-      '<p class="tr-sub" style="margin:0 0 10px">' + esc(feito) + "Escolha uma sugestão ou peça uma ficha extra.</p>" +
+      '<div class="tr-treino-cab"><h2>' + titulo + "</h2></div>" +
+      '<p class="tr-sub" style="margin:0 0 10px">' + esc(sub) + "</p>" +
       '<div class="tr-mais-chips" style="margin:0 0 12px">' + ideiasCompactas.map(function (i) {
         return '<button type="button" data-pos-pedido="' + esc(i.pedido) + '">' + esc(i.rotulo) + "</button>";
       }).join("") + "</div>" +
-      '<div class="tr-acoes" style="margin-top:auto"><button type="button" class="btn btn-suave btn-largo" data-pos-livre>Escrever meu pedido</button></div>' +
+      '<div class="tr-acoes" style="margin-top:4px">' +
+        '<button type="button" class="btn btn-suave btn-largo" data-pos-livre>Escrever meu pedido</button>' +
+        '<button type="button" class="tr-link" data-pos-evo>Ver minha evolução</button></div>' +
+      blocoMetas(d) +
       "</section>";
+  }
+
+  /* ------------------------------------------------------------- metas */
+
+  /* Metas pessoais: correr 10 km, mais ombro e peito. Quem calcula o
+     progresso e o servidor (vem pronto em d.objetivos[].progresso); aqui so
+     se desenha. Nada de numero estimado: sem medida, a tela diz "sem medida". */
+
+  var TIPO_META = { corrida: "Correr", musculo: "Ganhar músculo", outro: "Outra meta" };
+  var GRUPOS_META = ["peito", "costas", "ombro", "biceps", "triceps", "perna", "gluteo", "panturrilha", "abdomen", "lombar"];
+
+  function objetivoPorId(id) {
+    var lista = (S.dia && S.dia.objetivos) || [];
+    for (var i = 0; i < lista.length; i++) if (String(lista[i].id) === String(id)) return lista[i];
+    return null;
+  }
+
+  function textoPrazo(p) {
+    if (!p || p.prazo_dias == null) return "";
+    var n = p.prazo_dias;
+    if (n > 1) return "faltam " + n + " dias";
+    if (n === 1) return "falta 1 dia";
+    if (n === 0) return "o prazo é hoje";
+    return "prazo venceu há " + Math.abs(n) + (Math.abs(n) === 1 ? " dia" : " dias");
+  }
+
+  /* O que a linha da meta diz, em pedacos curtos. */
+  function infoMeta(o) {
+    var p = o.progresso || {}, partes = [];
+    if (p.tipo === "volume") {
+      partes.push(nfmt(p.series, 1) + " de " + p.alvo + " séries neste ciclo");
+      if (p.anterior != null) partes.push("ciclo anterior: " + nfmt(p.anterior, 1));
+    } else if (p.tipo === "medida") {
+      if (p.sem_marco) partes.push("sem medida ainda");
+      else partes.push((p.atingido ? "meta batida: " : "") + nfmt(p.atual, 2) + " de " + nfmt(p.meta, 2) + " " + p.unidade);
+    }
+    var prazo = textoPrazo(p);
+    if (prazo) partes.push(prazo);
+    return partes;
+  }
+
+  function barraMeta(p) {
+    if (!p || (p.tipo !== "volume" && p.tipo !== "medida")) return "";
+    return '<div class="tr-ciclo-barra tr-meta-barra' + (p.atingido ? " batida" : "") + '" role="img" aria-label="' +
+      p.pct + '% da meta"><i style="width:' + p.pct + '%"></i></div>';
+  }
+
+  function linhaMeta(o) {
+    var p = o.progresso || {};
+    var info = infoMeta(o);
+    var batida = p.tipo === "medida" && p.atingido;
+    var id = esc(o.id);
+    return '<div class="tr-meta' + (batida ? " batida" : "") + '">' +
+      '<button type="button" class="tr-meta-nome" data-meta-abrir="' + id + '">' + esc(o.titulo) + "</button>" +
+      (info.length ? '<p class="tr-meta-info">' + esc(info.join(" · ")) + "</p>" : "") +
+      barraMeta(p) +
+      '<div class="tr-meta-acoes">' +
+        '<button type="button" class="tr-mini destaque" data-meta-treino="' + id + '">Treinar essa meta</button>' +
+        (p.tipo === "medida" && !batida ? '<button type="button" class="tr-mini" data-meta-medir="' + id + '">Registrar medida</button>' : "") +
+        (batida ? '<button type="button" class="tr-mini" data-meta-concluir="' + id + '">Concluir meta</button>' : "") +
+      "</div></div>";
+  }
+
+  /* A secao de metas dentro do cartao "sob medida". Tres jeitos: sem as
+     tabelas (aviso com o arquivo a rodar), sem meta (convite) e com metas. */
+  function blocoMetas(d) {
+    var lista = d.objetivos || [];
+    var max = d.max_metas || 3;
+    if (d.objetivos_disponivel === false) {
+      return '<div class="tr-metas"><div class="tr-metas-topo"><h3>Suas metas</h3></div>' +
+        '<p class="tr-sub tr-metas-aviso">As metas precisam de uma atualização no banco de dados. ' +
+        "Rode <b>supabase/treino-objetivos.sql</b> no Supabase e recarregue a página.</p></div>";
+    }
+    if (!lista.length) {
+      return '<div class="tr-metas"><div class="tr-metas-topo"><h3>Suas metas</h3></div>' +
+        '<p class="tr-sub">Tem um objetivo além de malhar? Correr 10 km, ganhar ombro e peito… ' +
+        "Diga a meta e as fichas passam a considerá-la.</p>" +
+        '<button type="button" class="btn btn-suave btn-largo" data-meta-nova>Definir uma meta</button></div>';
+    }
+    var ca = d.ciclo_atual;
+    // dia 1 e 2 do ciclo: o momento natural de olhar as metas de novo
+    var nudge = ca && ca.dia_atual <= 2
+      ? '<p class="tr-metas-nudge">Ciclo novo: bom momento pra revisar suas metas.</p>' : "";
+    return '<div class="tr-metas"><div class="tr-metas-topo"><h3>Suas metas</h3>' +
+      (lista.length < max ? '<button type="button" class="tr-mini" data-meta-nova>+ nova meta</button>' : "") + "</div>" +
+      nudge + lista.map(linhaMeta).join("") + "</div>";
+  }
+
+  async function mudarStatusMeta(id, status) {
+    try {
+      await pedir("/objetivos/" + id, json("PUT", { status: status }));
+      fechar();
+      avisar(status === "concluido" ? "Meta concluída. Parabéns!" : status === "arquivado" ? "Meta arquivada." : "Meta reativada.");
+      await carregar();
+    } catch (err) { avisar(err.message); }
+  }
+
+  function valorCampo(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+
+  /* Criar e editar a meta. Na edicao o tipo fica fixo: trocar corrida por
+     musculo no meio do caminho jogaria fora o historico de medidas. */
+  function modalMeta(o) {
+    var editar = !!o;
+    var tipo = o ? o.tipo : "corrida";
+    var sel = o && o.tipo === "musculo" ? (o.grupos || []).slice() : [];
+    var seletor = editar ? "" :
+      '<div class="tr-campo"><label>Que tipo de meta</label><div class="tr-escolha" id="oTipo">' +
+        [["corrida", "Correr"], ["musculo", "Músculo"], ["outro", "Outra"]].map(function (t) {
+          return '<button type="button" data-valor="' + t[0] + '" aria-pressed="' + (t[0] === tipo) + '">' + t[1] + "</button>";
+        }).join("") + "</div></div>";
+
+    abrir(editar ? "Editar meta" : "Nova meta", '' +
+      '<p class="tr-sub" style="margin-top:0">' + (editar
+        ? "Ajuste a meta. O histórico de medidas fica."
+        : "Diga o que você quer alcançar. A ficha do dia e as fichas extras passam a considerar a meta.") + "</p>" +
+      seletor +
+      '<div data-bloco="corrida">' +
+        '<div class="tr-dupla">' +
+          '<div class="tr-campo"><label>Distância da meta (km)</label><input class="campo" id="oKm" type="number" step="0.5" min="0.5" inputmode="decimal" placeholder="10" value="' + esc(o && o.tipo === "corrida" ? o.meta_valor : "") + '"></div>' +
+          '<div class="tr-campo"><label>Corro hoje (km)</label><input class="campo" id="oKmHoje" type="number" step="0.5" min="0" inputmode="decimal" placeholder="opcional" value="' + esc(o && o.tipo === "corrida" && o.valor_inicial != null ? o.valor_inicial : "") + '"></div>' +
+        "</div>" +
+        '<p class="tr-sub tr-nota">“Corro hoje” é o maior trecho que você corre de uma vez. É a base do seu progresso: sem ele, a barra começa quando você registrar a primeira medida.</p>' +
+      "</div>" +
+      '<div data-bloco="musculo" hidden>' +
+        '<div class="tr-campo"><label>Quais grupos (até 3)</label><div class="tr-grupos-chips" id="oGrupos">' +
+          GRUPOS_META.map(function (g) {
+            return '<button type="button" data-grupo="' + g + '" aria-pressed="' + (sel.indexOf(g) >= 0) + '">' + esc(rotuloGrupo(g)) + "</button>";
+          }).join("") + "</div></div>" +
+        '<p class="tr-sub tr-nota">O progresso sai das séries que você fecha nesses grupos, comparadas com o ciclo anterior. Nada é estimado.</p>' +
+      "</div>" +
+      '<div data-bloco="outro" hidden>' +
+        '<div class="tr-dupla">' +
+          '<div class="tr-campo"><label>Alvo (opcional)</label><input class="campo" id="oAlvo" type="number" step="any" inputmode="decimal" placeholder="120" value="' + esc(o && o.tipo === "outro" && o.meta_valor != null ? o.meta_valor : "") + '"></div>' +
+          '<div class="tr-campo"><label>Unidade</label><input class="campo" id="oUn" maxlength="12" placeholder="cm, kg, reps" value="' + esc(o && o.tipo === "outro" ? o.unidade : "") + '"></div>' +
+        "</div>" +
+        '<div class="tr-campo"><label>Valor de hoje (opcional)</label><input class="campo" id="oIni" type="number" step="any" inputmode="decimal" placeholder="112" value="' + esc(o && o.tipo === "outro" && o.valor_inicial != null ? o.valor_inicial : "") + '"></div>' +
+      "</div>" +
+      '<div class="tr-campo"><label id="oTituloRot">Nome da meta</label><input class="campo" id="oTitulo" maxlength="80" autocomplete="off" value="' + esc(o ? o.titulo : "") + '"></div>' +
+      '<div class="tr-campo"><label>Prazo (opcional)</label><input class="campo" id="oPrazo" type="date" value="' + esc(o && o.prazo ? String(o.prazo).slice(0, 10) : "") + '"></div>' +
+      '<button class="btn btn-largo" id="oSalvar">' + (editar ? "Salvar" : "Criar meta") + "</button>" +
+      (editar ? '<div class="tr-acoes" style="margin-top:6px">' +
+        '<button type="button" class="tr-link" id="oArquivar">Arquivar meta</button>' +
+        '<button type="button" class="tr-link tr-link-perigo" id="oExcluir">Excluir meta e medidas</button></div>' : ""));
+
+    var lerTipo = editar ? function () { return tipo; } : ligarEscolha("#oTipo");
+
+    function trocar() {
+      var t = lerTipo();
+      folhaCorpo.querySelectorAll("[data-bloco]").forEach(function (bl) { bl.hidden = bl.dataset.bloco !== t; });
+      var rot = document.getElementById("oTituloRot"), campo = document.getElementById("oTitulo");
+      if (t === "outro") {
+        rot.textContent = "Nome da meta";
+        campo.placeholder = "Ex: ombro de 120 cm";
+      } else {
+        rot.textContent = "Nome (opcional)";
+        campo.placeholder = t === "corrida" ? "Se deixar vazio: Correr N km" : "Se deixar vazio eu monto pelos grupos";
+      }
+    }
+    if (!editar) folhaCorpo.querySelectorAll("#oTipo button").forEach(function (b) { b.addEventListener("click", trocar); });
+    trocar();
+
+    folhaCorpo.querySelectorAll("#oGrupos button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var ligado = b.getAttribute("aria-pressed") === "true";
+        if (!ligado && folhaCorpo.querySelectorAll('#oGrupos button[aria-pressed="true"]').length >= 3) {
+          avisar("Escolha até 3 grupos.");
+          return;
+        }
+        b.setAttribute("aria-pressed", ligado ? "false" : "true");
+      });
+    });
+
+    document.getElementById("oSalvar").addEventListener("click", async function (e) {
+      var t = lerTipo();
+      var corpo = { tipo: t, titulo: valorCampo("oTitulo"), prazo: valorCampo("oPrazo") || null };
+      if (t === "corrida") {
+        corpo.meta_valor = valorCampo("oKm");
+        corpo.valor_inicial = valorCampo("oKmHoje");
+      } else if (t === "musculo") {
+        corpo.grupos = [].map.call(folhaCorpo.querySelectorAll('#oGrupos button[aria-pressed="true"]'), function (b) { return b.dataset.grupo; });
+      } else {
+        corpo.meta_valor = valorCampo("oAlvo");
+        corpo.unidade = valorCampo("oUn");
+        corpo.valor_inicial = valorCampo("oIni");
+      }
+      e.target.disabled = true;
+      try {
+        await pedir(editar ? "/objetivos/" + o.id : "/objetivos", json(editar ? "PUT" : "POST", corpo));
+        fechar();
+        avisar(editar ? "Meta atualizada." : "Meta criada. As próximas fichas já levam ela em conta.");
+        await carregar();
+      } catch (err) { avisar(err.message + (err.dica ? " " + err.dica : "")); e.target.disabled = false; }
+    });
+
+    if (editar) {
+      document.getElementById("oArquivar").addEventListener("click", function () { mudarStatusMeta(o.id, "arquivado"); });
+      document.getElementById("oExcluir").addEventListener("click", async function () {
+        if (!confirm("Excluir a meta e todas as medidas registradas? Isso não dá pra desfazer.")) return;
+        try {
+          await pedir("/objetivos/" + o.id, { method: "DELETE" });
+          fechar(); avisar("Meta excluída."); await carregar();
+        } catch (err) { avisar(err.message); }
+      });
+    }
+  }
+
+  /* Registrar uma medida: o unico dado de progresso que nao vem das series. */
+  function modalMarco(o) {
+    if (!o) return;
+    var p = o.progresso || {};
+    var corrida = o.tipo === "corrida";
+    abrir("Registrar medida", '' +
+      '<p class="tr-sub" style="margin-top:0"><b>' + esc(o.titulo) + "</b>. " + (corrida
+        ? "Qual a maior distância que você correu de uma vez? Só vale o que você realmente correu."
+        : "Informe a medida de hoje" + (p.unidade ? " em " + esc(p.unidade) : "") + ".") + "</p>" +
+      '<div class="tr-campo"><label>' + (corrida ? "Maior distância (km)" : "Valor" + (p.unidade ? " (" + esc(p.unidade) + ")" : "")) + "</label>" +
+        '<input class="campo" id="kVal" type="number" step="any" inputmode="decimal" autofocus' +
+        (p.atual != null ? ' placeholder="' + esc(nfmt(p.atual, 2)) + '"' : "") + "></div>" +
+      '<div class="tr-campo"><label>Observação (opcional)</label><input class="campo" id="kNota" maxlength="200" placeholder="Ex: parque, sem parar"></div>' +
+      '<button class="btn btn-largo" id="kSalvar">Salvar medida</button>');
+    document.getElementById("kSalvar").addEventListener("click", async function (e) {
+      var v = valorCampo("kVal");
+      if (v === "") { avisar("Informe o valor medido."); return; }
+      e.target.disabled = true;
+      try {
+        var r = await pedir("/objetivos/" + o.id + "/marcos", json("POST", { valor: v, nota: valorCampo("kNota") }));
+        fechar();
+        var pr = r.objetivo && r.objetivo.progresso;
+        avisar(pr && pr.atingido ? "Meta batida! Conclua a meta quando quiser." : "Medida registrada.");
+        await carregar();
+      } catch (err) { avisar(err.message); e.target.disabled = false; }
+    });
+  }
+
+  /* O que a meta mostra por inteiro: numeros, grafico das medidas e o
+     historico. E de onde se treina, mede, edita ou conclui. */
+  function modalMetaDetalhe(o) {
+    if (!o) return;
+    var p = o.progresso || {};
+    var sub = [TIPO_META[o.tipo] || "Meta"];
+    var prazo = textoPrazo(p);
+    if (prazo) sub.push(prazo);
+    var corpo = '<p class="tr-sub" style="margin-top:0">' + esc(sub.join(" · ")) + "</p>";
+
+    if (p.tipo === "medida") {
+      var un = p.unidade ? " " + p.unidade : "";
+      corpo += '<div class="tr-numeros tr-meta-numeros">' +
+        "<div><b>" + (p.inicial != null ? nfmt(p.inicial, 2) : "-") + "</b><span>partida" + esc(un) + "</span></div>" +
+        "<div><b>" + (p.atual != null ? nfmt(p.atual, 2) : "-") + "</b><span>agora" + esc(un) + "</span></div>" +
+        "<div><b>" + nfmt(p.meta, 2) + "</b><span>meta" + esc(un) + "</span></div></div>" + barraMeta(p);
+      var porDia = {};
+      (p.marcos || []).forEach(function (m) { var dia = diaLocal(m.em); if (dia) porDia[dia] = m.valor; });
+      var pontos = Object.keys(porDia).sort().map(function (dia, i, tudo) {
+        return { data: dia, valor: porDia[dia], atual: i === tudo.length - 1 };
+      });
+      // a partida entra como primeiro ponto, se nao cair no mesmo dia de uma medida
+      var diaIni = diaLocal(o.criado_em);
+      if (p.inicial != null && diaIni && porDia[diaIni] === undefined) {
+        pontos.unshift({ data: diaIni, valor: p.inicial, atual: false });
+      }
+      corpo += pontos.length >= 2
+        ? '<div class="tr-meta-grafico"><grafico-linha pontos="' + esc(JSON.stringify(pontos)) + '" meta="' + p.meta + '" unidade="' + esc(p.unidade || "") + '"></grafico-linha></div>'
+        : '<p class="tr-sub tr-nota">' + (p.sem_marco
+            ? "Registre a primeira medida e a linha do progresso aparece aqui."
+            : "A linha aparece quando houver uma segunda medida.") + "</p>";
+      if ((p.marcos || []).length) {
+        corpo += '<p class="grupo-titulo" style="margin-top:16px">Medidas registradas</p><div class="tr-linhas">' +
+          p.marcos.slice().reverse().map(function (m) {
+            return '<div class="tr-linha"><span>' + ddmm(diaLocal(m.em)) + (m.nota ? " · " + esc(m.nota) : "") + "</span><span>" + nfmt(m.valor, 2) + esc(un) + "</span></div>";
+          }).join("") + "</div>";
+      }
+    } else if (p.tipo === "volume") {
+      corpo += '<div class="tr-numeros tr-meta-numeros">' +
+        "<div><b>" + nfmt(p.series, 1) + "</b><span>séries neste ciclo</span></div>" +
+        "<div><b>" + (p.anterior != null ? nfmt(p.anterior, 1) : "-") + "</b><span>ciclo anterior</span></div>" +
+        "<div><b>" + p.alvo + "</b><span>referência</span></div></div>" + barraMeta(p);
+      corpo += '<p class="grupo-titulo" style="margin-top:16px">Por grupo, neste ciclo</p><div class="tr-linhas">' +
+        Object.keys(p.por_grupo || {}).map(function (g) {
+          return '<div class="tr-linha"><span>' + esc(rotuloGrupo(g)) + "</span><span>" + nfmt(p.por_grupo[g], 1) + " séries</span></div>";
+        }).join("") + "</div>" +
+        '<p class="tr-sub tr-nota">Conta só treino fechado: o primeiro grupo do exercício leva a série inteira e os outros, metade. ' +
+        "A referência (20 séries por grupo no ciclo, uns 10 por semana) é só uma régua de volume, não uma promessa de resultado." +
+        (p.anterior == null ? " O ciclo anterior ainda não tem esse dado guardado." : "") + "</p>";
+    } else {
+      corpo += '<p class="tr-sub">Esta meta não tem número: ela orienta a escolha dos exercícios nas suas fichas.</p>';
+    }
+
+    var batida = p.tipo === "medida" && p.atingido;
+    corpo += '<div class="tr-acoes">' +
+      (batida ? '<button class="btn btn-largo" id="mdConcluir">Concluir meta</button>' : "") +
+      '<button class="btn ' + (batida ? "btn-suave " : "") + 'btn-largo" id="mdTreinar">Treinar essa meta</button>' +
+      (p.tipo === "medida" ? '<button class="btn btn-suave btn-largo" id="mdMedir">Registrar medida</button>' : "") +
+      '<button type="button" class="tr-link" id="mdEditar">Editar meta</button></div>';
+
+    abrir(o.titulo, corpo);
+    document.getElementById("mdTreinar").addEventListener("click", function () { modalTreinoMeta(o); });
+    var med = document.getElementById("mdMedir");
+    if (med) med.addEventListener("click", function () { modalMarco(o); });
+    var con = document.getElementById("mdConcluir");
+    if (con) con.addEventListener("click", function () { mudarStatusMeta(o.id, "concluido"); });
+    document.getElementById("mdEditar").addEventListener("click", function () { modalMeta(o); });
+  }
+
+  /* Gera uma ficha extra a servico da meta. Corrida abre em "Ao ar livre":
+     e onde se corre, e em casa so da se houver esteira cadastrada. */
+  function modalTreinoMeta(o) {
+    if (!o) return;
+    var d = S.dia || {};
+    var frase = o.tipo === "corrida"
+      ? "Monto blocos de corrida e caminhada a partir do que você já consegue, mais um reforço de perna e core."
+      : o.tipo === "musculo"
+        ? "Foco em " + (o.grupos || []).map(rotuloGrupo).join(", ") + ", sem repetir o que você já fez hoje."
+        : "A ficha parte do que você escreveu na meta.";
+    abrir("Treino para a meta", '' +
+      '<p class="tr-sub" style="margin-top:0"><b>' + esc(o.titulo) + "</b>. " + esc(frase) +
+        (d.sessao && !d.sessao.concluida ? " Não mexe na ficha do dia." : "") +
+        (d.extra ? " Substitui a ficha extra que está aberta." : "") + "</p>" +
+      camposGeracao("g", !d.pode_gerar, false, o.tipo === "corrida" ? "ar_livre" : null) +
+      '<button class="btn btn-largo" id="gGerarMeta" style="margin-top:6px">Gerar treino da meta</button>');
+    var ler = ligarGeracao(folhaCorpo, "g");
+    document.getElementById("gGerarMeta").addEventListener("click", function () {
+      var dados = ler();
+      dados.objetivo_id = o.id;
+      gerarExtra(dados, "Montando o treino da meta…");
+    });
   }
 
   /* ---- evolucao: dados */
@@ -1754,27 +2149,38 @@
     }
   }
 
-  function posTreino(d) {
+  function posTreino(d, abaixo) {
+    var evo = '<section class="tr-cartao tr-evo" id="trEvo">' + evoHtml() + "</section>";
+    if (abaixo) return '<div class="tr-pos tr-pos-abaixo" id="trPos">' + cartaoMais(d) + evo + "</div>";
     return '<div class="tr-pos" id="trPos">' +
-      '<div class="tr-pos-dupla">' +
-        cartaoMais(d) +
-        cartaoNutricao(d) +
-      '</div>' +
-      '<section class="tr-cartao tr-evo" id="trEvo">' + evoHtml() + "</section></div>";
+      '<div class="tr-pos-dupla">' + cartaoMais(d) + cartaoNutricao(d) + "</div>" + evo + "</div>";
   }
 
   function ligarPosTreino() {
     var raiz = document.getElementById("trPos");
     if (!raiz) return;
-    raiz.addEventListener("click", function (e) {
-      var b = e.target && e.target.closest ? e.target.closest("button") : null;
-      if (!b) return;
-      if (b.hasAttribute("data-pos-pedido")) modalExtra(b.getAttribute("data-pos-pedido"));
-      else if (b.hasAttribute("data-pos-livre")) modalExtra();
-      else if (b.hasAttribute("data-evo")) { EVO.metrica = b.getAttribute("data-evo"); pintarEvo(); }
-      else if (b.hasAttribute("data-evo-tentar")) carregarEvo(true);
-      else if (b.hasAttribute("data-evo-ciclos")) modalCiclos();
-    });
+    // o no pode voltar na repintura (montarTela): um ouvinte so, senao cada clique dispara duas vezes
+    if (!raiz._ligado) {
+      raiz._ligado = true;
+      raiz.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest ? e.target.closest("button") : null;
+        if (!b) return;
+        if (b.hasAttribute("data-pos-pedido")) modalExtra(b.getAttribute("data-pos-pedido"));
+        else if (b.hasAttribute("data-pos-livre")) modalExtra();
+        else if (b.hasAttribute("data-pos-evo")) {
+          var evo = document.getElementById("trEvo");
+          if (evo && evo.scrollIntoView) evo.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        else if (b.hasAttribute("data-evo")) { EVO.metrica = b.getAttribute("data-evo"); pintarEvo(); }
+        else if (b.hasAttribute("data-evo-tentar")) carregarEvo(true);
+        else if (b.hasAttribute("data-evo-ciclos")) modalCiclos();
+        else if (b.hasAttribute("data-meta-nova")) modalMeta();
+        else if (b.hasAttribute("data-meta-abrir")) modalMetaDetalhe(objetivoPorId(b.getAttribute("data-meta-abrir")));
+        else if (b.hasAttribute("data-meta-treino")) modalTreinoMeta(objetivoPorId(b.getAttribute("data-meta-treino")));
+        else if (b.hasAttribute("data-meta-medir")) modalMarco(objetivoPorId(b.getAttribute("data-meta-medir")));
+        else if (b.hasAttribute("data-meta-concluir")) mudarStatusMeta(b.getAttribute("data-meta-concluir"), "concluido");
+      });
+    }
     if (!EVO.pronto) carregarEvo();
   }
   /* Janela redimensionada com o bloco ja na tela: busca se ainda nao buscou */
@@ -1807,7 +2213,11 @@
     var de = S.anelDe && S.anelDe[s.id];
     var antes = S.primeira ? 0 : (de != null ? de : agora);
     var completo = feitos.length === ficha.length && ficha.length > 0;
-    var titulo = extra ? (completo ? "Extra feita" : "Ficha extra") : (completo ? "Tudo feito" : "Treino de hoje");
+    // ficha extra pedida por uma meta leva o nome da meta, pra nao parecer pedido solto
+    var deMeta = extra && s.objetivo_id ? objetivoPorId(s.objetivo_id) : null;
+    var titulo = extra
+      ? (completo ? "Extra feita" : s.objetivo_id ? "Ficha da meta" : "Ficha extra")
+      : (completo ? "Tudo feito" : "Treino de hoje");
     var minutos = extra ? d.duracao_extra : d.duracao_estimada;
 
     return '<section class="tr-cartao tr-sessao' + (completo ? " completo" : "") + (extra ? " tr-extra" : "") + '"' +
@@ -1818,8 +2228,9 @@
             '<circle class="tr-anel-prog" cx="36" cy="36" r="' + R + '" stroke-dasharray="' + VOLTA.toFixed(2) + '"' +
             ' style="stroke-dashoffset:' + (VOLTA * (1 - antes)).toFixed(2) + '" data-alvo="' + (VOLTA * (1 - agora)).toFixed(2) + '"/></svg>' +
           '<span class="tr-num"><b>' + feitos.length + "</b>de " + ficha.length + "</span></div>" +
-        '<div class="tr-sessao-cab"><h2>' + titulo + (extra ? '<span class="tr-selo tr-selo-extra">extra</span>' : "") + "</h2>" +
-          '<p class="tr-tempo-vivo" data-tempo>' + textoTempo(feitos.length, minutos) + "</p></div>" +
+        '<div class="tr-sessao-cab"><h2>' + titulo + (extra ? '<span class="tr-selo tr-selo-extra">' + (s.objetivo_id ? "meta" : "extra") + "</span>" : "") + "</h2>" +
+          '<p class="tr-tempo-vivo" data-tempo>' + textoTempo(feitos.length, minutos) + "</p>" +
+          (deMeta ? '<p class="tr-meta-ref">Meta: ' + esc(deMeta.titulo) + "</p>" : "") + "</div>" +
         (extra ? '<button type="button" class="icone-btn tr-btn-excluir-extra" data-excluir-extra aria-label="Excluir ficha extra" title="Excluir ficha extra">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>' : "") +
       "</div>" +
@@ -1904,7 +2315,11 @@
       });
       sec.querySelector("[data-fechar]").addEventListener("click", function () { modalFechar(s); });
       sec.querySelector("[data-regerar]").addEventListener("click", function () {
-        if (extra) modalManual("mais"); else modalRegerar();
+        if (extra) {
+          // "gerar outra" de uma ficha de meta continua na meta
+          var daMeta = s.objetivo_id ? objetivoPorId(s.objetivo_id) : null;
+          if (daMeta) modalTreinoMeta(daMeta); else modalManual("mais");
+        } else modalRegerar();
       });
       // Excluir ficha extra (apenas no topo direito do cartão)
       var btnExcluir = sec.querySelector("[data-excluir-extra]");

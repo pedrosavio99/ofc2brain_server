@@ -27,6 +27,11 @@ import { fichaPorRegras } from "./ficha-regras.mjs";
 import { metValido, minutosDoItem } from "./calorias.mjs";
 import { JANELA_DIAS, hojeLocal } from "./banco.mjs";
 import { TIPOS, GRUPOS, tipoValido } from "./equipamentos.mjs";
+import { PRINCIPAIS, gruposConfiaveis, seriesPorGrupo } from "./grupos.mjs";
+import { blocoObjetivos, blocoObjetivoFoco } from "./objetivos.mjs";
+
+// segue exportado daqui: rotas.mjs e os testes antigos importam deste arquivo
+export { seriesPorGrupo };
 
 const LIMITES = {
   series: [1, 8],
@@ -56,10 +61,6 @@ export function localValido(l) {
   return LOCAIS[k] ? k : "casa";
 }
 
-/* Grupos que precisam rodar. "cardio" e "corpo inteiro" nao entram na
-   cobranca: sao complemento, nao musculo esquecido. */
-const PRINCIPAIS = GRUPOS.filter((g) => g !== "cardio" && g !== "corpo inteiro");
-
 function dentro(valor, [min, max], padrao) {
   const n = Math.round(Number(valor));
   if (!Number.isFinite(n)) return padrao;
@@ -68,47 +69,6 @@ function dentro(valor, [min, max], padrao) {
 
 function quandoFoi(d) {
   return d === 0 ? "hoje" : d === 1 ? "ontem" : `ha ${d} dias`;
-}
-
-/* Grupos do item que servem pra cobranca de rodizio.
-   Ficha antiga guardava os grupos do APARELHO: halter com 6 grupos marcava
-   tudo como treinado em qualquer exercicio, e o modelo achava que voce
-   malhava o corpo inteiro todo dia. Item novo traz grupos_fonte "exercicio".
-   Item antigo so conta se o aparelho for especifico (ate 2 grupos); o resto
-   o modelo deduz pelo NOME do exercicio, que agora vai no historico. */
-function gruposConfiaveis(item) {
-  const g = Array.isArray(item.grupos) ? item.grupos : [];
-  if (item.grupos_fonte === "exercicio") return g;
-  return g.length <= 2 ? g : [];
-}
-
-/**
- * Series feitas por grupo nos ultimos 14 dias, pro mapa do corpo. Puro.
- *
- * So treino FECHADO, igual aos numeros do painel. O grupo principal do
- * exercicio (o primeiro) leva a serie inteira; os secundarios levam metade:
- * supino pinta mais o peito que o triceps. Avulsa nao tem grupo, e cardio e
- * corpo inteiro nao tem regiao no corpo, entao ficam de fora.
- * Usa gruposConfiaveis: ficha antiga com os grupos do aparelho pintaria o
- * corpo inteiro de vermelho.
- */
-export function seriesPorGrupo(sessoes) {
-  const conta = {};
-  PRINCIPAIS.forEach((g) => { conta[g] = 0; });
-  for (const s of Array.isArray(sessoes) ? sessoes : []) {
-    if (!s || !s.concluida || s.origem === "manual") continue;
-    const feitos = new Set((s.feitos || []).map(String));
-    for (const i of s.ficha || []) {
-      if (!feitos.has(String(i.id))) continue;
-      const series = Math.max(1, Math.min(Number(i.series) || 1, 10));
-      gruposConfiaveis(i).forEach((g, n) => {
-        if (conta[g] === undefined) return;
-        conta[g] += n === 0 ? series : series / 2;
-      });
-    }
-  }
-  Object.keys(conta).forEach((g) => { conta[g] = Math.round(conta[g] * 2) / 2; });
-  return conta;
 }
 
 /**
@@ -277,7 +237,8 @@ export function normalizarFicha(cru, equipamentos, local = "casa") {
 const REGRAS_EXTRA = `
 
 FICHA EXTRA (vale mais que as regras de rodizio e volume acima):
-- Ele JA treinou hoje e quer mais. O pedido dele e o centro da ficha.
+- Esta e uma ficha ESPECIFICA, pedida por ele fora da ficha do dia. Ele pode
+  ja ter treinado hoje ou ainda nao. O pedido dele e o centro da ficha.
 - Veja "O que ele ja fez hoje". Nao repita esses exercicios.
 - Se ele pedir um grupo que ja trabalhou hoje, use outros exercicios e angulos,
   2 a 3 series cada, pra nao sobrecarregar o que ja esta cansado.
@@ -291,7 +252,29 @@ FICHA EXTRA (vale mais que as regras de rodizio e volume acima):
 - Entre 3 e 6 exercicios.
 - O motivo explica como a ficha atende o pedido dele, em duas ou tres frases.`;
 
-export function sistemaDaFicha(local, modo = "dia") {
+/* Regras da ficha de uma META. Vem DEPOIS das regras extras e manda mais que
+   elas. Nada de prometer prazo: o modelo nao sabe se ele chega la, e quem
+   promete 10 km em 4 semanas machuca gente. O avanco e gradual e dito com os
+   numeros que o app tem (o motivo cita o progresso). */
+const REGRAS_META = `
+
+FICHA PARA A META (manda mais que qualquer regra de rodizio acima):
+- A meta em foco e o centro. Se ele escreveu um pedido, ele refina a meta.
+- Meta de CORRIDA: monte corrida/caminhada em blocos de tempo (medida "tempo",
+  duracao_min por bloco) que passem so um pouco do que ele consegue hoje, no
+  maximo uns 10% a mais. Sem medida registrada, comece conservador: trote
+  curto alternado com caminhada. Use tipo "esteira" nos blocos de corrida e
+  caminhada (e o tipo cujo gasto representa corrida). Complete com 1 ou 2
+  exercicios de perna ou core que ajudam o corredor (prancha, panturrilha,
+  agachamento). Em casa, so corra se houver esteira nos equipamentos.
+- Meta de MUSCULO: de 4 a 6 exercicios nos grupos da meta, com angulos e
+  pegadas diferentes, 3 a 4 series cada. Se o grupo ja foi trabalhado hoje ou
+  ontem, mantenha o volume baixo (2 a 3 series) e varie os exercicios.
+- Meta LIVRE: use o titulo da meta e o bom senso.
+- NAO prometa prazo nem resultado. No motivo, diga em duas ou tres frases
+  como a ficha avanca a meta, citando o numero que ele tem hoje.`;
+
+export function sistemaDaFicha(local, modo = "dia", comMeta = false) {
   const onde = localValido(local);
   return `Voce e um treinador montando a ficha de HOJE. Responde SOMENTE JSON.
 
@@ -322,6 +305,11 @@ RODIZIO (o mais importante, ele reclamou de treino repetido):
 - Treinando quase todo dia, alterne focos (empurrar, puxar, pernas e core).
   Treinando pouco, corpo inteiro.
 
+METAS (so se o texto trouxer "Metas dele"):
+- Pelo menos 1 ou 2 exercicios da ficha servem a uma dessas metas.
+- O rodizio continua mandando: nunca deixe de treinar um grupo parado ha dias
+  so para favorecer a meta, e nao faca da meta o treino inteiro.
+
 VOLUME:
 - Entre 4 e 7 exercicios.
 - So corte volume se ele fez treino e nao fechou, ou achou pesado. Ficha que ele
@@ -331,12 +319,13 @@ VOLUME:
 O campo motivo e pra ELE ler: duas ou tres frases dizendo quais grupos entram hoje
 e por que, citando o historico. Sem elogio.
 
-{"motivo":"...","ficha":[{"equipamento_id":"id ou null","equipamento":"nome do aparelho ou peso do corpo","tipo":"peso_livre","nome":"...","grupos":["perna","gluteo"],"series":3,"medida":"reps","reps":"10-12","duracao_min":null,"descanso_s":60,"observacao":""}]}` + (modo === "extra" ? REGRAS_EXTRA : "");
+{"motivo":"...","ficha":[{"equipamento_id":"id ou null","equipamento":"nome do aparelho ou peso do corpo","tipo":"peso_livre","nome":"...","grupos":["perna","gluteo"],"series":3,"medida":"reps","reps":"10-12","duracao_min":null,"descanso_s":60,"observacao":""}]}` + (modo === "extra" ? REGRAS_EXTRA : "") + (modo === "extra" && comMeta ? REGRAS_META : "");
 }
 
 /** O prompt do dia. Puro. */
 export function promptDaFicha({ perfil, equipamentos, sessoes, pedido = "", local = "casa",
-  localTexto = "", rejeitada = null, hoje = new Date(), modo = "dia", feitosHoje = [] }) {
+  localTexto = "", rejeitada = null, hoje = new Date(), modo = "dia", feitosHoje = [],
+  objetivos = [], objetivo = null }) {
   const extra = modo === "extra";
   const jaFez = extra
     ? "O que ele ja fez hoje: " + (feitosHoje.length
@@ -354,6 +343,8 @@ export function promptDaFicha({ perfil, equipamentos, sessoes, pedido = "", loca
     onde === "casa" ? blocoEquipamentos(equipamentos) : `Local de hoje: ${LOCAIS[onde].rotulo}.`,
     localTexto ? `O que ele disse sobre onde esta e o que tem: "${String(localTexto).slice(0, 300)}"` : "",
     resumoDosDias(sessoes, hoje),
+    // na ficha de uma meta so a meta em foco entra: as outras so distraem
+    objetivo ? blocoObjetivoFoco(objetivo) : blocoObjetivos(objetivos),
     jaFez,
     pedido
       ? (extra ? `O que ele quer AGORA, e o centro da ficha: "${String(pedido).slice(0, 400)}"`
@@ -400,7 +391,7 @@ function encurtar(texto, limite = 5000) {
 export async function gerarFicha(opcoes) {
   const local = localValido(opcoes.local);
   const prompt = promptDaFicha({ ...opcoes, local });
-  const sistema = sistemaDaFicha(local, opcoes.modo);
+  const sistema = sistemaDaFicha(local, opcoes.modo, !!opcoes.objetivo);
   const passos = [];
 
   /* Percorre modelo x chave chamando "executar". Para no primeiro sucesso, no
@@ -473,6 +464,7 @@ export async function gerarFicha(opcoes) {
     modo: opcoes.modo,
     feitosHoje: opcoes.feitosHoje,
     hoje: opcoes.hoje,
+    objetivo: opcoes.objetivo,
   });
   const limpa = normalizarFicha(crua, opcoes.equipamentos, local);
   passos.push({ degrau: "regras", modelo: "catalogo local", ms: Date.now() - inicio,

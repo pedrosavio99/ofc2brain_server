@@ -14,7 +14,7 @@
  *
  * Tudo puro: da pra rodar sem banco e sem chave de API.
  */
-import { seriesPorGrupo } from "./ficha.mjs";
+import { seriesPorGrupo } from "./grupos.mjs";
 import { hojeLocal } from "./banco.mjs";
 
 /* Catalogo enxuto de proposito. Cada entrada diz onde serve:
@@ -77,6 +77,10 @@ const CATALOGO = [
   { nome: "Corrida leve", grupos: ["cardio"], tipos: ["esteira"], livre: true, series: 1, medida: "tempo", duracao_min: 15, reps: "15 min" },
   { nome: "Bike moderada", grupos: ["cardio"], tipos: ["bike"], livre: false, series: 1, medida: "tempo", duracao_min: 15, reps: "15 min" },
   { nome: "Pular corda", grupos: ["cardio"], tipos: ["corda"], livre: false, series: 3, medida: "tempo", duracao_min: 3, reps: "3 min" },
+  // meta de corrida: o bloco de partida, conservador. Ninguem passa de "nao
+  // corro" a "10 km" pulando etapa, e sem medida registrada nao ha base pra mais.
+  { nome: "Trote e caminhada intervalados", grupos: ["cardio"], tipos: ["esteira"], livre: true, corrida: true,
+    series: 6, medida: "tempo", duracao_min: 3, reps: "2 min trote + 1 min caminhada" },
 ];
 
 /* Restricao escrita no perfil corta exercicio pela palavra. Conservador de
@@ -175,10 +179,11 @@ function montarItem(ex, eq, onde, nivel) {
  * @returns {{ motivo: string, ficha: object[] }}
  */
 export function fichaPorRegras({ equipamentos = [], sessoes = [], perfil = {},
-  local = "casa", modo = "dia", feitosHoje = [], hoje = new Date() } = {}) {
+  local = "casa", modo = "dia", feitosHoje = [], hoje = new Date(), objetivo = null } = {}) {
   const onde = String(local || "casa");
   const emCasa = onde === "casa";
-  const alvo = modo === "extra" ? 3 : 5;
+  // ficha de meta de musculo precisa de volume pra servir; extra comum fica curta
+  const alvo = objetivo && objetivo.tipo === "musculo" ? 5 : modo === "extra" ? 3 : 5;
 
   const evitar = nomesRecentes(sessoes, 3, hoje);
   (feitosHoje || []).forEach((i) => evitar.add(semAcento(i.nome)));
@@ -231,7 +236,34 @@ export function fichaPorRegras({ equipamentos = [], sessoes = [], perfil = {},
     }
   }
 
-  const ordem = prioridadeDosGrupos(sessoes);
+  /* Meta em foco. Corrida: o bloco de corrida entra primeiro (se o local
+     permite) e o resto da ficha vira apoio de perna e core. Musculo: os grupos
+     da meta passam na frente do rodizio. Meta livre nao muda o rodizio. */
+  let ordem = prioridadeDosGrupos(sessoes);
+  let notaMeta = "";
+  if (objetivo && objetivo.tipo === "corrida") {
+    const corrida = CATALOGO.find((e) => e.corrida);
+    const eqCorrida = emCasa ? aparelhoPara(corrida, equipamentos) : null;
+    const serve = !cortadoPorRestricao(corrida.nome, perfil.restricoes) && (!emCasa || eqCorrida);
+    if (serve) {
+      usados.add(corrida.nome);
+      itens.push(montarItem(corrida, eqCorrida, onde, perfil.nivel));
+      gruposEntrando.push("cardio");
+      notaMeta = `Meta: ${objetivo.titulo}. Bloco de partida conservador, 6 trotes curtos com caminhada; suba o tempo só quando ele ficar fácil. `;
+    } else {
+      notaMeta = `Meta: ${objetivo.titulo}, mas a corrida não entrou (${emCasa ? "sem esteira cadastrada em casa" : "restrição do perfil"}). ` +
+        "Escolha Ao ar livre para treinar a corrida. ";
+    }
+    const apoio = ["perna", "abdomen", "panturrilha", "gluteo"];
+    ordem = apoio.concat(ordem.filter((g) => !apoio.includes(g)));
+  } else if (objetivo && objetivo.tipo === "musculo") {
+    const foco = (objetivo.grupos || []).filter((g) => ordem.includes(g));
+    ordem = foco.concat(ordem.filter((g) => !foco.includes(g)));
+    notaMeta = `Meta: ${objetivo.titulo}. Os grupos da meta (${foco.join(", ")}) vêm primeiro. `;
+  } else if (objetivo) {
+    notaMeta = `Meta: ${objetivo.titulo}. `;
+  }
+
   for (const g of ordem) {
     if (itens.length >= alvo) break;
     tentar(g, false);
@@ -243,7 +275,7 @@ export function fichaPorRegras({ equipamentos = [], sessoes = [], perfil = {},
   }
 
   const motivo = itens.length
-    ? "Ficha montada sem IA (nenhum modelo respondeu). Foco de hoje: " + gruposEntrando.join(", ") +
+    ? "Ficha montada sem IA (nenhum modelo respondeu). " + notaMeta + "Foco de hoje: " + gruposEntrando.join(", ") +
       ", os grupos com menos série nos últimos 14 dias. Os exercícios giram a cada dia e nenhum repete " +
       "o que você fez nos últimos 3 dias. " +
       (semAcento(perfil.nivel || "").includes("inicia") ? "Volume reduzido pelo nível iniciante do perfil. "

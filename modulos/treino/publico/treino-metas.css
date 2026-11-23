@@ -1,0 +1,110 @@
+/* Modulo TREINO - ficha sob medida e metas.
+ * O cartao "Treino sob medida" fica sempre na tela (antes, durante e depois da
+ * ficha do dia) e traz as metas pessoais. Usa so os tokens do estilos.css. */
+
+/* ----------------------------------------------- posicao no desktop
+   Os cartoes da coluna principal (ficha, gerador, extra) vem agrupados em
+   .tr-col-principal e empilham sem se sobrepor. O bloco "sob medida" entra logo
+   abaixo, a partir da 3a linha do grid, em vez de esperar a coluna da direita
+   inteira terminar. No celular nada disso vale: e tudo uma pilha so. */
+@media (min-width: 960px) {
+  .tr-corpo #tela > .tr-col-principal {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    display: grid;
+    gap: 20px;
+    align-content: start;
+    min-width: 0;
+  }
+  .tr-col-principal > .tr-cartao { margin-bottom: 0; }
+  .tr-corpo #tela > .tr-pos.tr-pos-abaixo {
+    grid-row: 3 / span 3;
+  }
+}
+
+/* -------------------------------------------------------- botoes */
+
+/* O botao de acao principal dentro de uma meta: mesmo desenho do .tr-mini,
+   mas na cor de acento (o .tr-mini puro fica vermelho no hover: e o botao de
+   "excluir" do app, nao serve pra acao positiva). */
+.tr-mini.destaque {
+  border-color: var(--acento); color: var(--acento); background: var(--acento-eco); font-weight: 600;
+}
+.tr-mini.destaque:hover { border-color: var(--acento); color: var(--acento); filter: brightness(.96); }
+.tr-mini:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.tr-link-perigo { color: var(--perigo); }
+.tr-link-perigo:active { background: rgba(255, 59, 48, .1); }
+
+/* ------------------------------------------------------------ metas */
+
+.tr-metas {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--separador);
+}
+.tr-metas-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px;
+}
+.tr-metas-topo h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+.tr-metas .tr-sub { margin-bottom: 12px; }
+.tr-metas-aviso {
+  background: var(--superficie-2); border-radius: 12px; padding: 12px 14px; font-size: 13.5px;
+}
+.tr-metas-nudge {
+  margin: 0 0 12px; padding: 9px 12px; border-radius: 12px;
+  background: var(--acento-eco); color: var(--acento);
+  font-size: 13.5px; font-weight: 500; line-height: 1.35;
+}
+
+.tr-meta { padding: 12px 0; border-top: 1px solid var(--separador); }
+.tr-metas-topo + .tr-meta,
+.tr-metas-nudge + .tr-meta { border-top: 0; padding-top: 2px; }
+
+/* O nome e um botao (abre o detalhe) com cara de titulo, nao de botao. */
+.tr-meta-nome {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  padding: 2px 0; background: none; border: 0; text-align: left; cursor: pointer;
+  font-family: var(--fonte); font-size: 16px; font-weight: 600; letter-spacing: -.01em; color: var(--texto);
+}
+.tr-meta-nome::after { content: "›"; color: var(--texto-3); font-size: 20px; line-height: 1; flex: none; }
+.tr-meta-nome:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: 6px; }
+
+.tr-meta-info { margin: 2px 0 0; font-size: 13.5px; color: var(--texto-2); line-height: 1.4; font-variant-numeric: tabular-nums; }
+.tr-meta.batida .tr-meta-info { color: var(--sucesso); font-weight: 600; }
+
+.tr-meta-barra { margin: 8px 0 10px; }
+.tr-meta-barra.batida i { background: var(--sucesso); }
+
+.tr-meta-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Ficha extra pedida por uma meta: o nome da meta embaixo do titulo. */
+.tr-meta-ref { margin: 2px 0 0; font-size: 12.5px; color: var(--texto-2); line-height: 1.3; }
+
+/* ----------------------------------------------------- modais */
+
+.tr-nota { font-size: 13px; color: var(--texto-3); margin: -4px 0 14px; line-height: 1.45; }
+
+/* Grupos musculares da meta: varios podem ficar marcados (ate 3). */
+.tr-grupos-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.tr-grupos-chips button {
+  height: 38px; padding: 0 14px; border-radius: var(--r-pill);
+  border: 1.5px solid var(--separador); background: var(--superficie); color: var(--texto-2);
+  font-size: 14.5px; font-family: var(--fonte); cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+.tr-grupos-chips button[aria-pressed="true"] {
+  border-color: var(--acento); background: var(--acento-eco); color: var(--acento); font-weight: 600;
+}
+.tr-grupos-chips button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+/* Atalho "Meta: ..." no pedido de ficha: no tom de acento, pra se ler como
+   caminho proprio e nao como mais uma frase pronta. */
+.tr-sugestoes-metas button {
+  border-color: var(--acento); color: var(--acento); background: var(--acento-eco); font-weight: 600;
+}
+
+/* Detalhe da meta */
+.tr-meta-numeros { margin-bottom: 4px; }
+.tr-meta-grafico { margin: 8px 0 0; }
+.tr-meta-grafico grafico-linha { display: block; max-width: 440px; }
