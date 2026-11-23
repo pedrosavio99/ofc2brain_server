@@ -24,6 +24,7 @@
     alias: {},   // id -> texto digitado (sobrevive ao re-render da lista)
     status: {},  // id -> { texto, manual, erro }
     ocupado: {}, // id -> true enquanto o servidor trabalha
+    sel: null,   // id do cartao selecionado (so ele mostra o QR code)
   };
 
   /* ------------------------------------------------------------ helpers */
@@ -85,6 +86,17 @@
       : "O nome vale para is.gd e da.gd. Se já estiver em uso, o site avisa.";
   }
 
+  /* QR code do link curto, gerado aqui no navegador (o link nao sai da maquina).
+     Devolve "" se a biblioteca nao carregou ou o texto nao cabe num QR. */
+  function qrSvg(texto) {
+    try {
+      var q = window.qrcode(0, "M");
+      q.addData(String(texto));
+      q.make();
+      return q.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+    } catch (e) { return ""; }
+  }
+
   /* ------------------------------------------------------------ tela */
 
   function abrir() {
@@ -104,6 +116,7 @@
         "</details>" +
         '<div class="lk-cab"><p class="grupo-titulo" id="lkConta">Salvos</p>' +
           '<input class="campo lk-busca" id="lkBusca" type="search" placeholder="Buscar" aria-label="Buscar links"></div>' +
+        '<p class="lk-sub lk-qr-dica" id="lkQrDica" hidden>Toque num cartão para ver o QR code do link curto.</p>' +
         '<div id="lkLista">' + esqueletos(2) + "</div>" +
       "</div>");
 
@@ -112,6 +125,15 @@
     var lista = $("#lkLista");
     lista.addEventListener("click", aoClicar);
     lista.addEventListener("input", aoDigitar);
+    lista.addEventListener("keydown", function (e) {
+      var card = e.target.classList && e.target.classList.contains("lk-card") ? e.target : null;
+      if (card && card.classList.contains("selecionavel") && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        selecionar(card.getAttribute("data-card"));
+        var novo = $("#lkLista").querySelector('[data-card="' + card.getAttribute("data-card") + '"]');
+        if (novo) novo.focus();
+      }
+    });
     carregar();
   }
 
@@ -215,10 +237,17 @@
       '<button class="lk-btn" data-act="cl" data-id="' + l.id + '" type="button">Copiar longo</button>' +
       '<button class="lk-btn perigo" data-act="del" data-id="' + l.id + '" type="button">Excluir</button>';
 
-    return '<div class="lk-card" data-card="' + l.id + '">' +
-      '<div class="lk-topo"><strong>' + titulo + '</strong><span class="lk-meta">' + meta + "</span></div>" +
-      (l.url_curta ? '<div class="lk-curto">' + esc(semProtocolo(l.url_curta)) + "</div>" : "") +
-      '<div class="lk-longo" title="' + esc(l.url_longa) + '">' + esc(l.url_longa) + "</div>" +
+    var qr = l.url_curta && LK.sel === l.id ? qrSvg(l.url_curta) : "";
+    var selecionavel = !!l.url_curta;
+    return '<div class="lk-card' + (selecionavel ? " selecionavel" : "") + (LK.sel === l.id && selecionavel ? " sel" : "") + '" data-card="' + l.id + '"' +
+        (selecionavel ? ' tabindex="0" role="group" aria-expanded="' + (LK.sel === l.id) + '"' : "") + ">" +
+      '<div class="lk-linha"><div class="lk-col">' +
+        '<div class="lk-topo"><strong>' + titulo + '</strong><span class="lk-meta">' + meta + "</span></div>" +
+        (l.url_curta ? '<div class="lk-curto">' + esc(semProtocolo(l.url_curta)) + "</div>" : "") +
+        '<div class="lk-longo" title="' + esc(l.url_longa) + '">' + esc(l.url_longa) + "</div>" +
+      "</div>" +
+      (qr ? '<div class="lk-qr" role="img" aria-label="QR code de ' + esc(semProtocolo(l.url_curta)) + '">' + qr + "</div>" : "") +
+      "</div>" +
       (abertoGerar ? painelGerar(l) : "") +
       '<div class="lk-acoes">' + acoes + "</div>" +
     "</div>";
@@ -229,6 +258,8 @@
     var lista = $("#lkLista");
     var conta = $("#lkConta");
     if (conta) conta.textContent = LK.links.length ? "Salvos (" + LK.links.length + ")" : "Salvos";
+    var dq = $("#lkQrDica");
+    if (dq) dq.hidden = !(typeof window.qrcode === "function" && LK.links.some(function (x) { return x.url_curta; }));
 
     if (LK.carregando) { lista.innerHTML = esqueletos(2); return; }
     if (LK.erro) {
@@ -307,6 +338,7 @@
     armado = null;
     chamar("DELETE", "/links/" + id).then(function () {
       LK.links = LK.links.filter(function (x) { return x.id !== id; });
+      if (LK.sel === id) LK.sel = null;
       desenhar();
       avisar("Link excluído");
     }).catch(function (e) { avisar(e.message); });
@@ -320,9 +352,28 @@
     armado = null;
   }
 
+  /* Seleciona (ou solta) o cartao: so o selecionado mostra o QR. Troca so o
+     HTML dos cartoes afetados, pra nao apagar o que esta sendo digitado. */
+  function selecionar(id) {
+    var antes = LK.sel;
+    LK.sel = antes === id ? null : id;
+    [antes, LK.sel].forEach(function (x) {
+      var l = x && achar(x);
+      var el = l && $("#lkLista").querySelector('[data-card="' + x + '"]');
+      if (el) el.outerHTML = cartao(l);
+    });
+  }
+
   function aoClicar(e) {
     var b = e.target.closest("button[data-act]");
-    if (!b) return;
+    if (!b) {
+      var card = e.target.closest(".lk-card.selecionavel");
+      // cliques em campos, links e no painel de gerar nao mexem na selecao
+      if (card && !e.target.closest("input, textarea, a, label, .lk-gerar, .lk-qr") && !window.getSelection().toString()) {
+        selecionar(card.getAttribute("data-card"));
+      }
+      return;
+    }
     var id = b.getAttribute("data-id");
     var act = b.getAttribute("data-act");
     var l = achar(id);
